@@ -18,12 +18,13 @@ LIB_SRCS := src/core/device.c \
             src/core/registry.c \
             src/core/trace.c \
             src/drivers/egis_moc/egis_moc.c \
-            src/drivers/egis_moc/proto.c
+            src/drivers/egis_moc/proto.c \
+            src/storage/bindings.c
 
 # Real hardware backend; tests link a mock instead.
 USB_SRCS := src/transport/usbdevfs.c
 
-TEST_NAMES := test_proto test_egis_moc
+TEST_NAMES := test_proto test_egis_moc test_bindings
 
 LIB      := $(BUILD)/libfpx.a
 LIB_OBJS := $(LIB_SRCS:%.c=$(BUILD)/%.o)
