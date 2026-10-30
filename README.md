@@ -21,7 +21,14 @@ make test     # donanım gerektirmeyen birim testleri
 sudo ./build/fpx info       # sensör bilgisi ve firmware versiyonu
 sudo ./build/fpx list       # sensörde kayıtlı şablon ID'leri
 sudo ./build/fpx identify   # parmağı okut, eşleşen ID'yi göster
+sudo ./build/fpx bind $USER # okutulan parmağı kullanıcıya bağla
+sudo ./build/fpx bindings $USER
+sudo ./build/fpx unbind $USER   # sadece bilgisayardaki bağlamayı siler, sensöre dokunmaz
 ```
+
+Bağlamalar `/var/lib/fpx/<kullanıcı>` dosyasında tutulur (root, 0600). Sensörde kayıt olmadığı sürece önce parmağı Windows Hello'da kaydetmek gerekir; Linux'tan kayıt (enroll) henüz yok.
+
+Protokol ayrıntıları: [docs/protocol-egis-moc.md](docs/protocol-egis-moc.md)
 
 USB trafiğini görmek için komutların başına `FPX_TRACE=1` eklenebilir. Bu, gönderilen ve alınan her paketi hex olarak yazdırır.
 
