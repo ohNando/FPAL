@@ -1,0 +1,8 @@
+/* Only the PAM entry points are visible; libfpx stays private. */
+{
+	global:
+		pam_sm_authenticate;
+		pam_sm_setcred;
+	local:
+		*;
+};

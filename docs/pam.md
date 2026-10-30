@@ -1,0 +1,82 @@
+# pam_fpx
+
+`pam_fpx.so`, PAM kullanan her programa (sudo, su, login, GDM) parmak izi doğrulaması ekler.
+
+```
+auth  sufficient  pam_fpx.so  [timeout=ms] [retries=n] [debug] [quiet]
+```
+
+| Seçenek | Varsayılan | Anlamı |
+|---|---|---|
+| `timeout=` | 10000 | Her denemede parmak için beklenecek süre (ms) |
+| `retries=` | 3 | Yanlış parmakta kaç kez tekrar denenecek (en fazla 10) |
+| `debug` | kapalı | Ayrıntılı mesajları auth log'a yazar |
+| `quiet` | kapalı | "Parmağınızı okutun" ve sonuç mesajlarını gizler |
+
+Mesajlar `PAM_SILENT` bayrağı gelse de gösterilir: sudo bu bayrağı varsayılan olarak gönderir ve mesaj olmazsa kullanıcı parmak beklendiğini bilemez. Mesajları kapatmak için `quiet` kullanılır.
+
+| Durum | Ekrandaki mesaj |
+|---|---|
+| Her deneme öncesi | `[sudo] fingerprint for ohnando:` (servis adı ve kullanıcı; biçim `FPX_PAM_PROMPT_FMT`) |
+| Yanlış parmak, deneme hakkı var | `Fingerprint not recognised, try again` |
+| Son deneme de yanlış | `Fingerprint not recognised` |
+| Süre doldu | `No finger detected` |
+
+## Dönüş değerleri
+
+| Durum | Dönüş |
+|---|---|
+| Parmak eşleşti ve ID kullanıcıya bağlı | `PAM_SUCCESS` |
+| Bütün denemelerde yanlış parmak | `PAM_AUTH_ERR` |
+| Bağlama yok, sensör yok/meşgul, uzak oturum (`PAM_RHOST`), zaman aşımı | `PAM_AUTHINFO_UNAVAIL` |
+
+Kullanıcının bağlaması yoksa sensör hiç açılmaz, şifreye hemen geçilir. Modül `sufficient` olarak kullanılmalıdır; böylece parmak izi tutmazsa şifre her zaman çalışır.
+
+## Güvenli deneme
+
+PAM dosyalarıyla oynarken **ayrı bir terminalde `sudo -i` ile root shell açık tut**. Bir hata olursa oradan geri alırsın.
+
+1. Önce parmağı kullanıcıya bağla:
+
+   ```sh
+   sudo ./build/fpx bind $USER
+   ```
+
+2. Sistemin geri kalanına dokunmayan bir test servisi oluştur. Modül kurulmadan doğrudan `build/` içinden yüklenir:
+
+   ```sh
+   printf 'auth     sufficient %s/build/pam_fpx.so debug\nauth     required   pam_deny.so\naccount  required   pam_permit.so\n' \
+       "$PWD" | sudo tee /etc/pam.d/fpx-test
+   sudo pamtester fpx-test $USER authenticate
+   ```
+
+   Bağlı parmakla `successfully authenticated`, başka parmakla `Authentication failure` görmelisin.
+
+3. Log'lar:
+
+   ```sh
+   sudo journalctl -b --no-pager | grep pam_fpx
+   ```
+
+4. Test servisini kaldır: `sudo rm /etc/pam.d/fpx-test`
+
+## sudo ve su (Fedora / authselect)
+
+`/etc/pam.d/system-auth` dosyası authselect tarafından üretilir; elle değişiklik ilk güncellemede silinir. Bu yüzden `local` profilinden türeyen bir `custom/fpx` profili kullanılır. Bu profilde sadece `pam_fprintd.so` satırları `pam_fpx.so` olur:
+
+```sh
+sudo make install                        # /usr/local/sbin/fpx + /usr/lib64/security/pam_fpx.so
+sudo scripts/authselect-fpx.sh install   # profili seç, fprintd'yi mask'le
+```
+
+Betik önceki ayarların yedeğini alır (`authselect backup-list`). Ayrıca `fprintd`'yi mask'ler; aksi halde fprintd sensörü kapıp pam_fpx'in açmasını engelleyebilir.
+
+Sonra yeni bir terminalde `sudo -k; sudo true` ile dene. Parmak okutulmazsa 10 saniye sonra şifre sorulur.
+
+Geri almak için:
+
+```sh
+sudo scripts/authselect-fpx.sh revert
+```
+
+GNOME giriş ve kilit ekranı fprintd'ye D-Bus üzerinden sorduğu için bu adımdan etkilenmez; o kısım `fpxd` ile gelecek.
