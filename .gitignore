@@ -3,3 +3,11 @@
 *.a
 *.so
 *.d
+
+# Editor and tooling files
+.vscode/
+.idea/
+.cache/
+compile_commands.json
+*.swp
+*~
