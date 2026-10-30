@@ -17,6 +17,7 @@
 
 #include <security/pam_ext.h>
 #include <security/pam_modules.h>
+#include <stdio.h>
 #include <string.h>
 #include <syslog.h>
 
@@ -25,7 +26,6 @@
 #include "fpx/fpx.h"
 #include "opts.h"
 
-#define MSG_TOUCH "Place your finger on the fingerprint sensor"
 #define MSG_RETRY "Fingerprint not recognised, try again"
 #define MSG_FAIL "Fingerprint not recognised"
 #define MSG_TIMEOUT "No finger detected"
@@ -59,13 +59,28 @@ static bool is_bound(const struct fpx_template_id *ids, size_t n,
 	return false;
 }
 
+/* "[sudo] fingerprint for ohnando:" */
+static void format_prompt(pam_handle_t *pamh, const char *user, char *buf,
+			  size_t cap)
+{
+	const void *service = NULL;
+
+	if (pam_get_item(pamh, PAM_SERVICE, &service) != PAM_SUCCESS ||
+	    !service || !((const char *)service)[0])
+		service = "pam_fpx";
+	snprintf(buf, cap, FPX_PAM_PROMPT_FMT, (const char *)service, user);
+}
+
 static int identify_user(pam_handle_t *pamh, const struct pam_fpx_opts *o,
 			 const char *user, const struct fpx_template_id *ids,
 			 size_t n)
 {
+	char prompt[128];
+
 	struct fpx_device *dev;
 	int err;
 
+	format_prompt(pamh, user, prompt, sizeof(prompt));
 	err = fpx_device_open_first(&dev);
 	if (err) {
 		pam_syslog(pamh, LOG_NOTICE, "cannot open sensor: %s",
@@ -77,7 +92,7 @@ static int identify_user(pam_handle_t *pamh, const struct pam_fpx_opts *o,
 		struct fpx_template_id match;
 
 		if (!o->quiet)
-			pam_info(pamh, MSG_TOUCH);
+			pam_info(pamh, "%s", prompt);
 
 		err = fpx_identify(dev, o->timeout_ms, &match);
 		if (err == FPX_OK && is_bound(ids, n, &match)) {

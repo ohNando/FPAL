@@ -40,6 +40,14 @@
 #define FPX_PAM_RETRIES 3u
 #endif
 
+/*
+ * Prompt shown by the PAM module before each finger wait, styled after
+ * sudo's "[sudo] password for user:". Arguments: PAM service, user name.
+ */
+#ifndef FPX_PAM_PROMPT_FMT
+#define FPX_PAM_PROMPT_FMT "[%s] fingerprint for %s:"
+#endif
+
 /* Upper bound accepted for the PAM "retries=" option. */
 #ifndef FPX_PAM_RETRIES_MAX
 #define FPX_PAM_RETRIES_MAX 10u
