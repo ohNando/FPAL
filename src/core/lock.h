@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: LGPL-2.1-or-later */
+/* SPDX-License-Identifier: Apache-2.0 */
 /*
  * Process wide exclusive lock so that two clients (e.g. two sudo prompts)
  * never talk to the sensor at the same time.

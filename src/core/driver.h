@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: LGPL-2.1-or-later */
+/* SPDX-License-Identifier: Apache-2.0 */
 /*
  * Driver interface. Every sensor family implements one struct fpx_driver and
  * is listed in the registry (src/core/registry.c). Adding a sensor never

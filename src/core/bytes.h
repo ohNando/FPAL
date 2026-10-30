@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: LGPL-2.1-or-later */
+/* SPDX-License-Identifier: Apache-2.0 */
 /*
  * Explicit byte order helpers for wire formats. Wire structures are never
  * mapped onto packed C structs; every field is read and written through

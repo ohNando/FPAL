@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LGPL-2.1-or-later
+// SPDX-License-Identifier: Apache-2.0
 /*
  * usbdevfs transport: talks to the kernel's USB core directly through
  * ioctl()s on /dev/bus/usb/BBB/DDD, without libusb.

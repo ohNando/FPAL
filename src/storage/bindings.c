@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LGPL-2.1-or-later
+// SPDX-License-Identifier: Apache-2.0
 /*
  * Binding files: <dir>/<user>, one 64 character hex template id per line.
  * Writes go to a temporary file in the same directory which is then

@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: LGPL-2.1-or-later */
+/* SPDX-License-Identifier: Apache-2.0 */
 /*
  * Transport abstraction. Drivers talk to hardware only through these ops, so
  * the real usbdevfs backend and the test mock are interchangeable.

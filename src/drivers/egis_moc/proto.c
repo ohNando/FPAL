@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LGPL-2.1-or-later
+// SPDX-License-Identifier: Apache-2.0
 /*
  * Egis MoC framing, checksum and payload builders. Pure functions without
  * I/O so they can be unit tested byte for byte.

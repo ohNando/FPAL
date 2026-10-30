@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: LGPL-2.1-or-later */
+/* SPDX-License-Identifier: Apache-2.0 */
 /*
  * Minimal logging. Messages go to stderr by default; the PAM module and the
  * daemon install their own sink (syslog) with fpx_log_set_sink().

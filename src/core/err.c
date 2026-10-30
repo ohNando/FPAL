@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LGPL-2.1-or-later
+// SPDX-License-Identifier: Apache-2.0
 #include "fpx/fpx.h"
 
 const char *fpx_strerror(int err)

@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: LGPL-2.1-or-later */
+/* SPDX-License-Identifier: Apache-2.0 */
 /*
  * Packet tracing: with FPX_TRACE=1 every USB transfer is hex dumped to
  * stderr. Used to learn the protocol and to verify response offsets.

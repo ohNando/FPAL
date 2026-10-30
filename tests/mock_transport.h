@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: LGPL-2.1-or-later */
+/* SPDX-License-Identifier: Apache-2.0 */
 /*
  * Scripted fake transport. Bulk IN responses are served from a queue, every
  * bulk OUT frame is recorded so tests can inspect what the driver sent.

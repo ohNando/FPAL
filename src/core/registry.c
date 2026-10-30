@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LGPL-2.1-or-later
+// SPDX-License-Identifier: Apache-2.0
 /*
  * Driver registry and USB bus scan. Devices are discovered through sysfs
  * (/sys/bus/usb/devices/<port>/idVendor, idProduct, busnum, devnum, ...).

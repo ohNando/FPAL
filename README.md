@@ -36,3 +36,7 @@ USB trafiğini görmek için komutların başına `FPX_TRACE=1` eklenebilir. Bu,
 
 - `develop`: aktif geliştirme dalı.
 - `main`: sadece kararlı sürümler; release'ler buradan çıkar.
+
+## Lisans
+
+Apache-2.0. Ayrıntılar için [LICENSE](LICENSE) dosyasına bakın. Protokol bilgisi libfprint'in `egismoc` sürücüsü okunarak ve gerçek cihazda doğrulanarak elde edildi; libfprint'ten kod kopyalanmadı.
