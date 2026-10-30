@@ -51,7 +51,7 @@ install_profile() {
 	esac
 
 	# shellcheck disable=SC2086 # feature list is split on purpose
-	authselect select "custom/$PROFILE" $feats --backup
+	authselect select "custom/$PROFILE" $feats -b
 	authselect apply-changes
 
 	# fprintd would grab the sensor before pam_fpx can open it.
@@ -64,7 +64,7 @@ install_profile() {
 revert_profile() {
 	feats=$(features)
 	# shellcheck disable=SC2086
-	authselect select "$BASE" $feats --backup
+	authselect select "$BASE" $feats -b
 	systemctl unmask fprintd.service
 	echo "authselect-fpx: $BASE active again, fprintd unmasked"
 }
