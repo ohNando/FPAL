@@ -50,4 +50,23 @@ PAM dosyalarıyla oynarken **ayrı bir terminalde `sudo -i` ile root shell açı
 
 4. Test servisini kaldır: `sudo rm /etc/pam.d/fpx-test`
 
-sudo ve giriş ekranına geçiş (authselect profili, `fprintd` mask) bir sonraki adımda anlatılacak.
+## sudo ve su (Fedora / authselect)
+
+`/etc/pam.d/system-auth` dosyası authselect tarafından üretilir; elle değişiklik ilk güncellemede silinir. Bu yüzden `local` profilinden türeyen bir `custom/fpx` profili kullanılır. Bu profilde sadece `pam_fprintd.so` satırları `pam_fpx.so` olur:
+
+```sh
+sudo make install                        # /usr/local/sbin/fpx + /usr/lib64/security/pam_fpx.so
+sudo scripts/authselect-fpx.sh install   # profili seç, fprintd'yi mask'le
+```
+
+Betik önceki ayarların yedeğini alır (`authselect backup-list`). Ayrıca `fprintd`'yi mask'ler; aksi halde fprintd sensörü kapıp pam_fpx'in açmasını engelleyebilir.
+
+Sonra yeni bir terminalde `sudo -k; sudo true` ile dene. Parmak okutulmazsa 10 saniye sonra şifre sorulur.
+
+Geri almak için:
+
+```sh
+sudo scripts/authselect-fpx.sh revert
+```
+
+GNOME giriş ve kilit ekranı fprintd'ye D-Bus üzerinden sorduğu için bu adımdan etkilenmez; o kısım `fpxd` ile gelecek.
