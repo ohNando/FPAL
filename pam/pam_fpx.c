@@ -2,12 +2,16 @@
 /*
  * pam_fpx: fingerprint authentication on top of libfpx.
  *
- *   auth sufficient pam_fpx.so [timeout=ms] [retries=n] [debug]
+ *   auth sufficient pam_fpx.so [timeout=ms] [retries=n] [debug] [quiet]
  *
  * The user passes if the sensor identifies a finger whose template id is
  * bound to them in FPX_STATE_DIR. Every failure that is not "wrong finger"
  * (no bindings, no sensor, sensor busy, remote login, timeout) returns
  * PAM_AUTHINFO_UNAVAIL so the stack falls through to the password quickly.
+ *
+ * Messages are shown even under PAM_SILENT: sudo sets it by default, and
+ * without the prompt the user cannot know a finger is expected. Use the
+ * "quiet" option to suppress them.
  */
 #define PAM_SM_AUTH
 
@@ -23,6 +27,8 @@
 
 #define MSG_TOUCH "Place your finger on the fingerprint sensor"
 #define MSG_RETRY "Fingerprint not recognised, try again"
+#define MSG_FAIL "Fingerprint not recognised"
+#define MSG_TIMEOUT "No finger detected"
 
 /* libfpx log messages end up in the auth log. */
 static void log_to_syslog(enum fpx_log_level level, const char *msg)
@@ -55,7 +61,7 @@ static bool is_bound(const struct fpx_template_id *ids, size_t n,
 
 static int identify_user(pam_handle_t *pamh, const struct pam_fpx_opts *o,
 			 const char *user, const struct fpx_template_id *ids,
-			 size_t n, bool silent)
+			 size_t n)
 {
 	struct fpx_device *dev;
 	int err;
@@ -70,7 +76,7 @@ static int identify_user(pam_handle_t *pamh, const struct pam_fpx_opts *o,
 	for (uint8_t attempt = 0; attempt < o->retries; attempt++) {
 		struct fpx_template_id match;
 
-		if (!silent)
+		if (!o->quiet)
 			pam_info(pamh, MSG_TOUCH);
 
 		err = fpx_identify(dev, o->timeout_ms, &match);
@@ -83,6 +89,8 @@ static int identify_user(pam_handle_t *pamh, const struct pam_fpx_opts *o,
 		if (err != FPX_OK && err != FPX_E_NOMATCH) {
 			/* Timeout, cancel or I/O error: let the password in. */
 			fpx_device_close(dev);
+			if (!o->quiet && err == FPX_E_TIMEOUT)
+				pam_error(pamh, MSG_TIMEOUT);
 			if (o->debug)
 				pam_syslog(pamh, LOG_DEBUG, "identify: %s",
 					   fpx_strerror(err));
@@ -93,8 +101,9 @@ static int identify_user(pam_handle_t *pamh, const struct pam_fpx_opts *o,
 		pam_syslog(pamh, LOG_NOTICE,
 			   "fingerprint rejected for %s (attempt %u/%u)", user,
 			   attempt + 1u, o->retries);
-		if (!silent && attempt + 1u < o->retries)
-			pam_error(pamh, MSG_RETRY);
+		if (!o->quiet)
+			pam_error(pamh, attempt + 1u < o->retries ? MSG_RETRY :
+								     MSG_FAIL);
 	}
 
 	fpx_device_close(dev);
@@ -110,6 +119,7 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t *pamh, int flags, int argc,
 	size_t n = 0;
 	int bad = -1, err;
 
+	(void)flags; /* PAM_SILENT deliberately ignored, see above */
 	if (pam_fpx_parse_opts(argc, argv, &o, &bad))
 		pam_syslog(pamh, LOG_WARNING, "ignoring bad option '%s'",
 			   argv[bad]);
@@ -138,7 +148,7 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t *pamh, int flags, int argc,
 		return PAM_AUTHINFO_UNAVAIL;
 	}
 
-	return identify_user(pamh, &o, user, ids, n, flags & PAM_SILENT);
+	return identify_user(pamh, &o, user, ids, n);
 }
 
 PAM_EXTERN int pam_sm_setcred(pam_handle_t *pamh, int flags, int argc,
