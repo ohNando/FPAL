@@ -70,7 +70,7 @@ struct egis_rsp {
 	const uint8_t *body; /* data between length field and status word */
 	size_t body_len;
 	uint16_t sw;
-	bool checksum_ok; /* informational, the device's ck is not verified */
+	bool checksum_ok; /* response checksum verifies (same algorithm as commands) */
 };
 
 /*

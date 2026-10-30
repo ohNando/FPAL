@@ -81,8 +81,11 @@ static int egis_exec(struct fpx_device *dev, const uint8_t *payload,
 	if (err)
 		return err;
 
-	if (!rsp->checksum_ok)
-		fpx_dbg("response checksum does not verify");
+	/* Confirmed on 1c7a:0587 fw 9050.6.4.67: responses carry a valid ck. */
+	if (!rsp->checksum_ok) {
+		fpx_warn("response checksum mismatch");
+		return FPX_E_PROTO;
+	}
 	return FPX_OK;
 }
 

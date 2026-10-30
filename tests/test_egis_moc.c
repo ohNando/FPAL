@@ -260,6 +260,27 @@ static void test_identify_empty_sensor(void)
 	fpx_device_close(dev);
 }
 
+/* A corrupted response must not be trusted. */
+static void test_bad_checksum_rejected(void)
+{
+	struct fpx_template_id ids[1], got[FPX_MAX_TEMPLATES];
+	struct fpx_device *dev;
+	struct mock m;
+	size_t n = 0;
+
+	mock_init(&m);
+	make_ids(ids, 1);
+	dev = open_dev(&m);
+	T_CHECK(dev != NULL);
+	if (!dev)
+		return;
+	push_list(&m, ids, 1);
+	m.in[m.n_in - 1].data[EGIS_RSP_BODY_OFF] ^= 0x01;
+
+	T_EQ_INT(fpx_list(dev, got, FPX_MAX_TEMPLATES, &n), FPX_E_PROTO);
+	fpx_device_close(dev);
+}
+
 int main(void)
 {
 	T_RUN(test_open_reads_fw_version);
@@ -271,5 +292,6 @@ int main(void)
 	T_RUN(test_identify_timeout_still_resets);
 	T_RUN(test_identify_cancel);
 	T_RUN(test_identify_empty_sensor);
+	T_RUN(test_bad_checksum_rejected);
 	return T_DONE();
 }
