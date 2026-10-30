@@ -6,16 +6,24 @@
 #include "log.h"
 
 static fpx_log_sink log_sink;
+static bool log_debug;
 
 void fpx_log_set_sink(fpx_log_sink sink)
 {
 	log_sink = sink;
 }
 
+void fpx_log_set_debug(bool on)
+{
+	log_debug = on;
+}
+
 static enum fpx_log_level max_level(void)
 {
 	const char *env = getenv(FPX_ENV_DEBUG);
 
+	if (log_debug)
+		return FPX_LOG_DEBUG;
 	return (env && env[0] && env[0] != '0') ? FPX_LOG_DEBUG : FPX_LOG_INFO;
 }
 

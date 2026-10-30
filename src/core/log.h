@@ -7,6 +7,7 @@
 #define FPX_CORE_LOG_H
 
 #include <stdarg.h>
+#include <stdbool.h>
 
 enum fpx_log_level {
 	FPX_LOG_ERR = 0,
@@ -18,6 +19,9 @@ enum fpx_log_level {
 typedef void (*fpx_log_sink)(enum fpx_log_level level, const char *msg);
 
 void fpx_log_set_sink(fpx_log_sink sink);
+
+/* Force debug messages on, regardless of FPX_DEBUG. */
+void fpx_log_set_debug(bool on);
 
 void fpx_log(enum fpx_log_level level, const char *fmt, ...)
 	__attribute__((format(printf, 2, 3)));
