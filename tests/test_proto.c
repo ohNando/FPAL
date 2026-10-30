@@ -188,6 +188,55 @@ static void test_parse_list(void)
 	T_EQ_INT(egis_parse_list(&rsp, ids, 1, &n), FPX_E_OVERFLOW);
 }
 
+/*
+ * Frames captured from a real 1c7a:0587 (fw 9050.6.4.67). Frames carrying
+ * template ids are left out on purpose.
+ */
+static void test_real_capture_responses(void)
+{
+	static const uint8_t fw[] = { 0x53, 0x49, 0x47, 0x45, 0x00, 0x00, 0x00,
+				      0x01, 0x34, 0xd2, 0x00, 0x00, 0x00, 0x0d,
+				      '9',  '0',  '5',	'0',  '.',  '6',  '.',
+				      '4',  '.',  '6',	'7',  0x90, 0x00 };
+	static const uint8_t reset_ok[] = { 0x53, 0x49, 0x47, 0x45, 0x00, 0x00,
+					    0x00, 0x01, 0xd5, 0x6d, 0x00, 0x00,
+					    0x00, 0x02, 0x90, 0x00 };
+	/* "arm identify" answers 91 00 rather than 90 00 */
+	static const uint8_t arm_rsp[] = { 0x53, 0x49, 0x47, 0x45, 0x00, 0x00,
+					   0x00, 0x01, 0xd4, 0x6d, 0x00, 0x00,
+					   0x00, 0x02, 0x91, 0x00 };
+	struct egis_rsp rsp;
+
+	T_EQ_INT(egis_parse(fw, sizeof(fw), &rsp), FPX_OK);
+	T_CHECK(rsp.checksum_ok);
+	T_EQ_INT(rsp.sw, EGIS_SW_OK);
+	T_EQ_INT(rsp.body_len, 11);
+	T_EQ_MEM(rsp.body, "9050.6.4.67", 11);
+
+	T_EQ_INT(egis_parse(reset_ok, sizeof(reset_ok), &rsp), FPX_OK);
+	T_CHECK(rsp.checksum_ok);
+	T_EQ_INT(rsp.sw, EGIS_SW_OK);
+	T_EQ_INT(rsp.body_len, 0);
+
+	T_EQ_INT(egis_parse(arm_rsp, sizeof(arm_rsp), &rsp), FPX_OK);
+	T_CHECK(rsp.checksum_ok);
+	T_EQ_INT(rsp.sw, 0x9100);
+}
+
+/* Command checksums the real sensor accepted. */
+static void test_real_capture_commands(void)
+{
+	uint8_t out[64];
+	size_t len = 0;
+
+	egis_frame(egis_cmd_arm_identify.data, egis_cmd_arm_identify.len, out,
+		   sizeof(out), &len);
+	T_EQ_INT(fpx_get_be16(out + EGIS_MAGIC_LEN), 0x2048);
+	egis_frame(egis_cmd_sensor_check.data, egis_cmd_sensor_check.len, out,
+		   sizeof(out), &len);
+	T_EQ_INT(fpx_get_be16(out + EGIS_MAGIC_LEN), 0x1f49);
+}
+
 int main(void)
 {
 	T_RUN(test_frame_sensor_reset);
@@ -202,5 +251,7 @@ int main(void)
 	T_RUN(test_parse_rejects_bad_magic);
 	T_RUN(test_parse_rejects_truncated);
 	T_RUN(test_parse_list);
+	T_RUN(test_real_capture_responses);
+	T_RUN(test_real_capture_commands);
 	return T_DONE();
 }
