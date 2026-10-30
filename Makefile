@@ -24,7 +24,7 @@ LIB_SRCS := src/core/device.c \
 # Real hardware backend; tests link a mock instead.
 USB_SRCS := src/transport/usbdevfs.c
 
-TEST_NAMES := test_proto test_egis_moc test_bindings
+TEST_NAMES := test_proto test_egis_moc test_bindings test_pam_opts
 
 LIB      := $(BUILD)/libfpx.a
 LIB_OBJS := $(LIB_SRCS:%.c=$(BUILD)/%.o)
@@ -47,6 +47,9 @@ $(BUILD)/fpx: $(BUILD)/tools/fpx.o $(USB_OBJS) $(LIB)
 
 $(BUILD)/tests/%: $(BUILD)/tests/%.o $(BUILD)/tests/mock_transport.o $(LIB)
 	$(CC) $(CFLAGS) $^ -o $@ $(LDFLAGS)
+
+# PAM option parsing is plain C and tested without libpam.
+$(BUILD)/tests/test_pam_opts: $(BUILD)/pam/opts.o
 
 test: $(TESTS)
 	@set -e; for t in $(TESTS); do echo "== $$t"; $$t; done

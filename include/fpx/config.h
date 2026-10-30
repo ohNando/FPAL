@@ -40,6 +40,11 @@
 #define FPX_PAM_RETRIES 3u
 #endif
 
+/* Upper bound accepted for the PAM "retries=" option. */
+#ifndef FPX_PAM_RETRIES_MAX
+#define FPX_PAM_RETRIES_MAX 10u
+#endif
+
 /* ---- Filesystem paths -------------------------------------------------- */
 
 #ifndef FPX_SYSFS_USB_DEVICES
