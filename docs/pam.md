@@ -17,7 +17,7 @@ Mesajlar `PAM_SILENT` bayrağı gelse de gösterilir: sudo bu bayrağı varsayı
 
 | Durum | Ekrandaki mesaj |
 |---|---|
-| Her deneme öncesi | `Place your finger on the fingerprint sensor` |
+| Her deneme öncesi | `[sudo] fingerprint for ohnando:` (servis adı ve kullanıcı; biçim `FPX_PAM_PROMPT_FMT`) |
 | Yanlış parmak, deneme hakkı var | `Fingerprint not recognised, try again` |
 | Son deneme de yanlış | `Fingerprint not recognised` |
 | Süre doldu | `No finger detected` |
