@@ -1,0 +1,13 @@
+# Linux kernel style (subset of the kernel's own .clang-format)
+BasedOnStyle: LLVM
+IndentWidth: 8
+UseTab: Always
+TabWidth: 8
+ColumnLimit: 80
+BreakBeforeBraces: Linux
+AllowShortIfStatementsOnASingleLine: false
+AllowShortFunctionsOnASingleLine: None
+AllowShortLoopsOnASingleLine: false
+IndentCaseLabels: false
+AlignConsecutiveMacros: true
+SortIncludes: false
