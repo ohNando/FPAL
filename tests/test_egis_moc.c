@@ -10,26 +10,22 @@
 #define FW "1.0.0.4867"
 
 /* Payload of the n-th recorded OUT frame (after the EGIS header). */
-static const uint8_t *out_payload(const struct mock *m, size_t i)
-{
+static const uint8_t *out_payload(const struct mock *m, size_t i) {
 	return m->out[i].data + EGIS_HDR_LEN;
 }
 
-static bool out_is(const struct mock *m, size_t i, const struct egis_cmd *c)
-{
+static bool out_is(const struct mock *m, size_t i, const struct egis_cmd *c) {
 	return i < m->n_out && m->out[i].len == EGIS_HDR_LEN + c->len &&
 	       memcmp(out_payload(m, i), c->data, c->len) == 0;
 }
 
-static void make_ids(struct fpx_template_id *ids, size_t n)
-{
+static void make_ids(struct fpx_template_id *ids, size_t n) {
 	for (size_t i = 0; i < n; i++)
 		memset(ids[i].bytes, (int)('A' + i), FPX_TEMPLATE_ID_LEN);
 }
 
 static void push_list(struct mock *m, const struct fpx_template_id *ids,
-		      size_t n)
-{
+		      size_t n) {
 	uint8_t body[FPX_MAX_TEMPLATES * FPX_TEMPLATE_ID_LEN];
 
 	for (size_t i = 0; i < n; i++)
@@ -38,14 +34,12 @@ static void push_list(struct mock *m, const struct fpx_template_id *ids,
 	mock_push_egis(m, body, n * FPX_TEMPLATE_ID_LEN, EGIS_SW_OK);
 }
 
-static void push_ok(struct mock *m)
-{
+static void push_ok(struct mock *m) {
 	mock_push_egis(m, NULL, 0, EGIS_SW_OK);
 }
 
 /* Open a 1c7a:0587 device on @m; the fw version response is queued here. */
-static struct fpx_device *open_dev(struct mock *m)
-{
+static struct fpx_device *open_dev(struct mock *m) {
 	const struct fpx_usb_id *id = NULL;
 	const struct fpx_driver *drv = fpx_driver_lookup(0x1c7a, 0x0587, &id);
 	struct fpx_device *dev = NULL;
@@ -57,8 +51,7 @@ static struct fpx_device *open_dev(struct mock *m)
 	return dev;
 }
 
-static void test_open_reads_fw_version(void)
-{
+static void test_open_reads_fw_version(void) {
 	struct mock m;
 	struct fpx_device *dev;
 
@@ -78,8 +71,7 @@ static void test_open_reads_fw_version(void)
 	T_EQ_INT(m.releases, m.claims);
 }
 
-static void test_open_busy_does_not_reset(void)
-{
+static void test_open_busy_does_not_reset(void) {
 	const struct fpx_usb_id *id = NULL;
 	const struct fpx_driver *drv = fpx_driver_lookup(0x1c7a, 0x0587, &id);
 	struct fpx_device *dev = NULL;
@@ -94,8 +86,7 @@ static void test_open_busy_does_not_reset(void)
 	T_EQ_INT(m.n_out, 0);
 }
 
-static void test_list(void)
-{
+static void test_list(void) {
 	struct fpx_template_id ids[3], got[FPX_MAX_TEMPLATES];
 	struct fpx_device *dev;
 	struct mock m;
@@ -118,8 +109,7 @@ static void test_list(void)
 
 /* Queue list + reset + arm + check responses; the match answer is next. */
 static struct fpx_device *identify_setup(struct mock *m,
-					 struct fpx_template_id *ids, size_t n)
-{
+					 struct fpx_template_id *ids, size_t n) {
 	struct fpx_device *dev;
 
 	mock_init(m);
@@ -134,8 +124,7 @@ static struct fpx_device *identify_setup(struct mock *m,
 	return dev;
 }
 
-static void test_identify_match(void)
-{
+static void test_identify_match(void) {
 	struct fpx_template_id ids[2], match;
 	uint8_t body[EGIS_IDENTIFY_ID_BODY_OFF + FPX_TEMPLATE_ID_LEN];
 	struct fpx_device *dev;
@@ -167,8 +156,7 @@ static void test_identify_match(void)
 	fpx_device_close(dev);
 }
 
-static void test_identify_no_match(void)
-{
+static void test_identify_no_match(void) {
 	struct fpx_template_id ids[1], match;
 	struct fpx_device *dev;
 	struct mock m;
@@ -186,8 +174,7 @@ static void test_identify_no_match(void)
 }
 
 /* A matched id that is not on the sensor means a wrong offset: refuse. */
-static void test_identify_unknown_id_is_proto_error(void)
-{
+static void test_identify_unknown_id_is_proto_error(void) {
 	struct fpx_template_id ids[1], match;
 	uint8_t body[EGIS_IDENTIFY_ID_BODY_OFF + FPX_TEMPLATE_ID_LEN];
 	struct fpx_device *dev;
@@ -205,8 +192,7 @@ static void test_identify_unknown_id_is_proto_error(void)
 	fpx_device_close(dev);
 }
 
-static void test_identify_timeout_still_resets(void)
-{
+static void test_identify_timeout_still_resets(void) {
 	struct fpx_template_id ids[1], match;
 	struct fpx_device *dev;
 	struct mock m;
@@ -225,8 +211,7 @@ static void test_identify_timeout_still_resets(void)
 	fpx_device_close(dev);
 }
 
-static void test_identify_cancel(void)
-{
+static void test_identify_cancel(void) {
 	struct fpx_template_id ids[1], match;
 	struct fpx_device *dev;
 	struct mock m;
@@ -242,8 +227,7 @@ static void test_identify_cancel(void)
 	fpx_device_close(dev);
 }
 
-static void test_identify_empty_sensor(void)
-{
+static void test_identify_empty_sensor(void) {
 	struct fpx_template_id match;
 	struct fpx_device *dev;
 	struct mock m;
@@ -261,8 +245,7 @@ static void test_identify_empty_sensor(void)
 }
 
 /* A corrupted response must not be trusted. */
-static void test_bad_checksum_rejected(void)
-{
+static void test_bad_checksum_rejected(void) {
 	struct fpx_template_id ids[1], got[FPX_MAX_TEMPLATES];
 	struct fpx_device *dev;
 	struct mock m;
@@ -281,8 +264,7 @@ static void test_bad_checksum_rejected(void)
 	fpx_device_close(dev);
 }
 
-int main(void)
-{
+int main(void) {
 	T_RUN(test_open_reads_fw_version);
 	T_RUN(test_open_busy_does_not_reset);
 	T_RUN(test_list);

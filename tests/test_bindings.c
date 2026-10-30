@@ -11,14 +11,12 @@
 
 static char dir[64];
 
-static void make_id(struct fpx_template_id *id, uint8_t seed)
-{
+static void make_id(struct fpx_template_id *id, uint8_t seed) {
 	for (size_t i = 0; i < FPX_TEMPLATE_ID_LEN; i++)
 		id->bytes[i] = (uint8_t)(seed + i);
 }
 
-static void test_valid_user(void)
-{
+static void test_valid_user(void) {
 	T_CHECK(fpx_bindings_valid_user("ohnando"));
 	T_CHECK(fpx_bindings_valid_user("user_1.name-x"));
 	T_CHECK(!fpx_bindings_valid_user(""));
@@ -30,8 +28,7 @@ static void test_valid_user(void)
 	T_CHECK(!fpx_bindings_valid_user("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")); /* 33 */
 }
 
-static void test_missing_file_is_empty(void)
-{
+static void test_missing_file_is_empty(void) {
 	struct fpx_template_id ids[FPX_MAX_TEMPLATES];
 	size_t n = 99;
 
@@ -40,8 +37,7 @@ static void test_missing_file_is_empty(void)
 	T_EQ_INT(n, 0);
 }
 
-static void test_add_load_roundtrip(void)
-{
+static void test_add_load_roundtrip(void) {
 	struct fpx_template_id a, b, ids[FPX_MAX_TEMPLATES];
 	char path[128];
 	struct stat st;
@@ -68,8 +64,7 @@ static void test_add_load_roundtrip(void)
 	T_EQ_INT(st.st_mode & 0777, 0600);
 }
 
-static void test_clear(void)
-{
+static void test_clear(void) {
 	struct fpx_template_id a;
 
 	make_id(&a, 0x33);
@@ -79,8 +74,7 @@ static void test_clear(void)
 	T_EQ_INT(fpx_bindings_clear(dir, "carol"), FPX_OK); /* idempotent */
 }
 
-static void test_rejects_symlink_and_loose_mode(void)
-{
+static void test_rejects_symlink_and_loose_mode(void) {
 	struct fpx_template_id a, ids[FPX_MAX_TEMPLATES];
 	char path[128];
 	size_t n;
@@ -100,16 +94,14 @@ static void test_rejects_symlink_and_loose_mode(void)
 		 FPX_E_IO);
 }
 
-static void test_rejects_bad_user(void)
-{
+static void test_rejects_bad_user(void) {
 	struct fpx_template_id a;
 
 	make_id(&a, 0);
 	T_EQ_INT(fpx_bindings_add(dir, "../escape", &a), FPX_E_INVAL);
 }
 
-int main(void)
-{
+int main(void) {
 	int rc;
 
 	snprintf(dir, sizeof(dir), "/tmp/fpx-test-XXXXXX");

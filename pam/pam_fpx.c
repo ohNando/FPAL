@@ -31,8 +31,7 @@
 #define MSG_TIMEOUT "No finger detected"
 
 /* libfpx log messages end up in the auth log. */
-static void log_to_syslog(enum fpx_log_level level, const char *msg)
-{
+static void log_to_syslog(enum fpx_log_level level, const char *msg) {
 	static const int prio[] = { LOG_ERR, LOG_WARNING, LOG_INFO,
 				    LOG_DEBUG };
 
@@ -40,8 +39,7 @@ static void log_to_syslog(enum fpx_log_level level, const char *msg)
 }
 
 /* Fingerprints prove presence at this machine, not over the network. */
-static bool is_remote(pam_handle_t *pamh)
-{
+static bool is_remote(pam_handle_t *pamh) {
 	const void *rhost = NULL;
 
 	if (pam_get_item(pamh, PAM_RHOST, &rhost) != PAM_SUCCESS || !rhost)
@@ -51,8 +49,7 @@ static bool is_remote(pam_handle_t *pamh)
 }
 
 static bool is_bound(const struct fpx_template_id *ids, size_t n,
-		     const struct fpx_template_id *id)
-{
+		     const struct fpx_template_id *id) {
 	for (size_t i = 0; i < n; i++)
 		if (memcmp(ids[i].bytes, id->bytes, FPX_TEMPLATE_ID_LEN) == 0)
 			return true;
@@ -61,8 +58,7 @@ static bool is_bound(const struct fpx_template_id *ids, size_t n,
 
 /* "[sudo] fingerprint for ohnando:" */
 static void format_prompt(pam_handle_t *pamh, const char *user, char *buf,
-			  size_t cap)
-{
+			  size_t cap) {
 	const void *service = NULL;
 
 	if (pam_get_item(pamh, PAM_SERVICE, &service) != PAM_SUCCESS ||
@@ -73,8 +69,7 @@ static void format_prompt(pam_handle_t *pamh, const char *user, char *buf,
 
 static int identify_user(pam_handle_t *pamh, const struct pam_fpx_opts *o,
 			 const char *user, const struct fpx_template_id *ids,
-			 size_t n)
-{
+			 size_t n) {
 	char prompt[128];
 
 	struct fpx_device *dev;
@@ -126,8 +121,7 @@ static int identify_user(pam_handle_t *pamh, const struct pam_fpx_opts *o,
 }
 
 PAM_EXTERN int pam_sm_authenticate(pam_handle_t *pamh, int flags, int argc,
-				   const char **argv)
-{
+				   const char **argv) {
 	struct fpx_template_id ids[FPX_MAX_TEMPLATES];
 	struct pam_fpx_opts o;
 	const char *user = NULL;
@@ -167,8 +161,7 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t *pamh, int flags, int argc,
 }
 
 PAM_EXTERN int pam_sm_setcred(pam_handle_t *pamh, int flags, int argc,
-			      const char **argv)
-{
+			      const char **argv) {
 	(void)pamh;
 	(void)flags;
 	(void)argc;

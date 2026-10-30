@@ -49,15 +49,13 @@ static const struct egis_ctrl_step egis_init_seq[] = {
 	{ FPX_USB_TYPE_VENDOR | FPX_USB_RECIP_DEVICE, 82, 0, 8 },
 };
 
-static struct egis_priv *priv(struct fpx_device *dev)
-{
+static struct egis_priv *priv(struct fpx_device *dev) {
 	return dev->priv;
 }
 
 /* Send one command payload and parse the response into @rsp. */
 static int egis_exec(struct fpx_device *dev, const uint8_t *payload,
-		     size_t plen, struct egis_rsp *rsp)
-{
+		     size_t plen, struct egis_rsp *rsp) {
 	struct egis_priv *p = priv(dev);
 	const struct fpx_transport *tr = &dev->tr;
 	size_t tx_len, rx_len = 0;
@@ -90,14 +88,12 @@ static int egis_exec(struct fpx_device *dev, const uint8_t *payload,
 }
 
 static int egis_exec_cmd(struct fpx_device *dev, const struct egis_cmd *cmd,
-			 struct egis_rsp *rsp)
-{
+			 struct egis_rsp *rsp) {
 	return egis_exec(dev, cmd->data, cmd->len, rsp);
 }
 
 /* Commands whose answer carries no data; only the status word is logged. */
-static int egis_exec_simple(struct fpx_device *dev, const struct egis_cmd *cmd)
-{
+static int egis_exec_simple(struct fpx_device *dev, const struct egis_cmd *cmd) {
 	struct egis_rsp rsp;
 	int err = egis_exec_cmd(dev, cmd, &rsp);
 
@@ -107,8 +103,7 @@ static int egis_exec_simple(struct fpx_device *dev, const struct egis_cmd *cmd)
 	return err;
 }
 
-static int egis_read_fw_version(struct fpx_device *dev)
-{
+static int egis_read_fw_version(struct fpx_device *dev) {
 	struct egis_rsp rsp;
 	size_t len;
 	int err;
@@ -132,8 +127,7 @@ static int egis_read_fw_version(struct fpx_device *dev)
 	return FPX_OK;
 }
 
-static int egis_open(struct fpx_device *dev)
-{
+static int egis_open(struct fpx_device *dev) {
 	struct egis_priv *p = priv(dev);
 	const struct fpx_transport *tr = &dev->tr;
 	uint8_t buf[64];
@@ -180,8 +174,7 @@ fail:
 	return err;
 }
 
-static void egis_close(struct fpx_device *dev)
-{
+static void egis_close(struct fpx_device *dev) {
 	struct egis_priv *p = priv(dev);
 
 	if (p->claimed)
@@ -190,8 +183,7 @@ static void egis_close(struct fpx_device *dev)
 }
 
 static int egis_list(struct fpx_device *dev, struct fpx_template_id *out,
-		     size_t cap, size_t *n)
-{
+		     size_t cap, size_t *n) {
 	struct egis_rsp rsp;
 	int err;
 
@@ -201,8 +193,7 @@ static int egis_list(struct fpx_device *dev, struct fpx_template_id *out,
 	return egis_parse_list(&rsp, out, cap, n);
 }
 
-static int egis_wait_finger(struct fpx_device *dev, uint32_t timeout_ms)
-{
+static int egis_wait_finger(struct fpx_device *dev, uint32_t timeout_ms) {
 	struct egis_priv *p = priv(dev);
 	size_t got = 0;
 
@@ -212,8 +203,7 @@ static int egis_wait_finger(struct fpx_device *dev, uint32_t timeout_ms)
 }
 
 static bool id_in_list(const struct fpx_template_id *id,
-		       const struct fpx_template_id *ids, size_t n)
-{
+		       const struct fpx_template_id *ids, size_t n) {
 	for (size_t i = 0; i < n; i++)
 		if (memcmp(id->bytes, ids[i].bytes, FPX_TEMPLATE_ID_LEN) == 0)
 			return true;
@@ -221,8 +211,7 @@ static bool id_in_list(const struct fpx_template_id *id,
 }
 
 static int egis_match(struct fpx_device *dev, const struct fpx_template_id *ids,
-		      size_t n, struct fpx_template_id *match)
-{
+		      size_t n, struct fpx_template_id *match) {
 	struct egis_priv *p = priv(dev);
 	struct egis_rsp rsp;
 	size_t plen;
@@ -264,8 +253,7 @@ static int egis_match(struct fpx_device *dev, const struct fpx_template_id *ids,
 }
 
 static int egis_identify(struct fpx_device *dev, uint32_t timeout_ms,
-			 struct fpx_template_id *match)
-{
+			 struct fpx_template_id *match) {
 	struct fpx_template_id ids[FPX_MAX_TEMPLATES];
 	size_t n = 0;
 	int err, rerr;

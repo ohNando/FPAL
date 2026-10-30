@@ -21,15 +21,13 @@
 
 static struct fpx_device *volatile active_dev;
 
-static void on_sigint(int sig)
-{
+static void on_sigint(int sig) {
 	(void)sig;
 	if (active_dev)
 		fpx_cancel(active_dev);
 }
 
-static void usage(FILE *f)
-{
+static void usage(FILE *f) {
 	fputs("usage: fpx <command> [options]\n"
 	      "\n"
 	      "commands:\n"
@@ -47,8 +45,7 @@ static void usage(FILE *f)
 	      f);
 }
 
-static void print_id(const struct fpx_template_id *id)
-{
+static void print_id(const struct fpx_template_id *id) {
 	for (size_t i = 0; i < FPX_TEMPLATE_ID_LEN; i++)
 		printf("%02x", id->bytes[i]);
 	fputs("  \"", stdout);
@@ -60,8 +57,7 @@ static void print_id(const struct fpx_template_id *id)
 	fputs("\"\n", stdout);
 }
 
-static int report(int err)
-{
+static int report(int err) {
 	fflush(stdout);
 	if (err == FPX_E_PERM && geteuid() != 0)
 		fprintf(stderr, "fpx: %s (try: sudo fpx ...)\n",
@@ -71,8 +67,7 @@ static int report(int err)
 	return 1;
 }
 
-static int open_device(struct fpx_device **dev)
-{
+static int open_device(struct fpx_device **dev) {
 	int err = fpx_device_open_first(dev);
 
 	if (err)
@@ -81,14 +76,12 @@ static int open_device(struct fpx_device **dev)
 	return FPX_OK;
 }
 
-static void close_device(struct fpx_device *dev)
-{
+static void close_device(struct fpx_device *dev) {
 	active_dev = NULL;
 	fpx_device_close(dev);
 }
 
-static int cmd_info(void)
-{
+static int cmd_info(void) {
 	struct fpx_usb_info info[4];
 	struct fpx_device *dev;
 	size_t n = 0;
@@ -116,8 +109,7 @@ static int cmd_info(void)
 	return 0;
 }
 
-static int cmd_list(void)
-{
+static int cmd_list(void) {
 	struct fpx_template_id ids[FPX_MAX_TEMPLATES];
 	struct fpx_device *dev;
 	size_t n = 0;
@@ -142,8 +134,7 @@ static int cmd_list(void)
 }
 
 /* Parse "-t ms"; returns 0 on success, 2 on a usage error. */
-static int parse_timeout(int argc, char **argv, uint32_t *timeout_ms)
-{
+static int parse_timeout(int argc, char **argv, uint32_t *timeout_ms) {
 	int opt;
 
 	*timeout_ms = FPX_FINGER_WAIT_TIMEOUT_MS;
@@ -166,8 +157,7 @@ static int parse_timeout(int argc, char **argv, uint32_t *timeout_ms)
 }
 
 /* Open the sensor, wait for one finger and identify it. */
-static int identify_once(uint32_t timeout_ms, struct fpx_template_id *match)
-{
+static int identify_once(uint32_t timeout_ms, struct fpx_template_id *match) {
 	struct fpx_device *dev;
 	int err;
 
@@ -184,8 +174,7 @@ static int identify_once(uint32_t timeout_ms, struct fpx_template_id *match)
 	return err;
 }
 
-static int cmd_identify(int argc, char **argv)
-{
+static int cmd_identify(int argc, char **argv) {
 	struct fpx_template_id match;
 	uint32_t timeout_ms;
 	int err;
@@ -207,8 +196,7 @@ static int cmd_identify(int argc, char **argv)
 }
 
 /* Validate the user argument: safe file name and an existing account. */
-static const char *user_arg(int argc, char **argv)
-{
+static const char *user_arg(int argc, char **argv) {
 	const char *user;
 
 	if (optind >= argc) {
@@ -223,8 +211,7 @@ static const char *user_arg(int argc, char **argv)
 	return user;
 }
 
-static int cmd_bind(int argc, char **argv)
-{
+static int cmd_bind(int argc, char **argv) {
 	struct fpx_template_id match;
 	uint32_t timeout_ms;
 	const char *user;
@@ -255,8 +242,7 @@ static int cmd_bind(int argc, char **argv)
 	return 0;
 }
 
-static int cmd_unbind(int argc, char **argv)
-{
+static int cmd_unbind(int argc, char **argv) {
 	const char *user;
 	int err;
 
@@ -273,8 +259,7 @@ static int cmd_unbind(int argc, char **argv)
 	return 0;
 }
 
-static int cmd_bindings(int argc, char **argv)
-{
+static int cmd_bindings(int argc, char **argv) {
 	struct fpx_template_id ids[FPX_MAX_TEMPLATES];
 	const char *user;
 	size_t n = 0;
@@ -298,8 +283,7 @@ static int cmd_bindings(int argc, char **argv)
 	return 0;
 }
 
-int main(int argc, char **argv)
-{
+int main(int argc, char **argv) {
 	struct sigaction sa = { .sa_handler = on_sigint };
 	const char *cmd;
 

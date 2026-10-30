@@ -17,8 +17,7 @@
 #define USER_MAX 32u
 #define HEX_LEN (FPX_TEMPLATE_ID_LEN * 2u)
 
-bool fpx_bindings_valid_user(const char *user)
-{
+bool fpx_bindings_valid_user(const char *user) {
 	size_t len;
 
 	if (!user || !user[0] || user[0] == '-' || user[0] == '.')
@@ -39,8 +38,7 @@ bool fpx_bindings_valid_user(const char *user)
 	return true;
 }
 
-static int user_path(const char *dir, const char *user, char *buf, size_t cap)
-{
+static int user_path(const char *dir, const char *user, char *buf, size_t cap) {
 	int len;
 
 	if (!dir || !fpx_bindings_valid_user(user))
@@ -51,8 +49,7 @@ static int user_path(const char *dir, const char *user, char *buf, size_t cap)
 	return FPX_OK;
 }
 
-static int hex_nibble(char c)
-{
+static int hex_nibble(char c) {
 	if (c >= '0' && c <= '9')
 		return c - '0';
 	if (c >= 'a' && c <= 'f')
@@ -62,8 +59,7 @@ static int hex_nibble(char c)
 	return -1;
 }
 
-static bool parse_hex_id(const char *s, struct fpx_template_id *id)
-{
+static bool parse_hex_id(const char *s, struct fpx_template_id *id) {
 	for (size_t i = 0; i < FPX_TEMPLATE_ID_LEN; i++) {
 		const int hi = hex_nibble(s[2 * i]);
 		const int lo = hex_nibble(s[2 * i + 1]);
@@ -76,8 +72,7 @@ static bool parse_hex_id(const char *s, struct fpx_template_id *id)
 }
 
 int fpx_bindings_load(const char *dir, const char *user,
-		      struct fpx_template_id *out, size_t cap, size_t *n)
-{
+		      struct fpx_template_id *out, size_t cap, size_t *n) {
 	char path[512], line[HEX_LEN + 8];
 	size_t count = 0;
 	struct stat st;
@@ -134,8 +129,7 @@ int fpx_bindings_load(const char *dir, const char *user,
 
 /* Atomically replace @user's file with @ids. */
 static int store(const char *dir, const char *user,
-		 const struct fpx_template_id *ids, size_t n)
-{
+		 const struct fpx_template_id *ids, size_t n) {
 	char path[512], tmp[512];
 	FILE *f;
 	int fd, err;
@@ -186,8 +180,7 @@ static int store(const char *dir, const char *user,
 }
 
 static bool contains(const struct fpx_template_id *ids, size_t n,
-		     const struct fpx_template_id *id)
-{
+		     const struct fpx_template_id *id) {
 	for (size_t i = 0; i < n; i++)
 		if (memcmp(ids[i].bytes, id->bytes, FPX_TEMPLATE_ID_LEN) == 0)
 			return true;
@@ -195,8 +188,7 @@ static bool contains(const struct fpx_template_id *ids, size_t n,
 }
 
 int fpx_bindings_add(const char *dir, const char *user,
-		     const struct fpx_template_id *id)
-{
+		     const struct fpx_template_id *id) {
 	struct fpx_template_id ids[FPX_MAX_TEMPLATES];
 	size_t n = 0;
 	int err;
@@ -215,8 +207,7 @@ int fpx_bindings_add(const char *dir, const char *user,
 	return store(dir, user, ids, n);
 }
 
-int fpx_bindings_clear(const char *dir, const char *user)
-{
+int fpx_bindings_clear(const char *dir, const char *user) {
 	char path[512];
 	int err = user_path(dir, user, path, sizeof(path));
 
@@ -229,8 +220,7 @@ int fpx_bindings_clear(const char *dir, const char *user)
 }
 
 bool fpx_bindings_contains(const char *dir, const char *user,
-			   const struct fpx_template_id *id)
-{
+			   const struct fpx_template_id *id) {
 	struct fpx_template_id ids[FPX_MAX_TEMPLATES];
 	size_t n = 0;
 

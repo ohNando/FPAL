@@ -29,8 +29,7 @@ struct usbdevfs_ctx {
 	int cancel_pipe[2]; /* [0] polled by wait_interrupt, [1] written by cancel */
 };
 
-static int errno_to_fpx(int e)
-{
+static int errno_to_fpx(int e) {
 	switch (e) {
 	case EACCES:
 	case EPERM:
@@ -49,8 +48,7 @@ static int errno_to_fpx(int e)
 	}
 }
 
-static int ud_reset(void *ctx)
-{
+static int ud_reset(void *ctx) {
 	struct usbdevfs_ctx *c = ctx;
 
 	if (ioctl(c->fd, USBDEVFS_RESET, NULL) < 0)
@@ -58,8 +56,7 @@ static int ud_reset(void *ctx)
 	return FPX_OK;
 }
 
-static int ud_claim(void *ctx, uint8_t iface)
-{
+static int ud_claim(void *ctx, uint8_t iface) {
 	struct usbdevfs_ctx *c = ctx;
 	struct usbdevfs_getdriver gd = { .interface = iface };
 	unsigned int ifno = iface;
@@ -80,8 +77,7 @@ static int ud_claim(void *ctx, uint8_t iface)
 	return FPX_OK;
 }
 
-static void ud_release(void *ctx, uint8_t iface)
-{
+static void ud_release(void *ctx, uint8_t iface) {
 	struct usbdevfs_ctx *c = ctx;
 	unsigned int ifno = iface;
 
@@ -90,8 +86,7 @@ static void ud_release(void *ctx, uint8_t iface)
 
 static int ud_control_in(void *ctx, uint8_t req_type, uint8_t req,
 			 uint16_t value, uint16_t index, uint8_t *buf,
-			 uint16_t len, uint32_t timeout_ms)
-{
+			 uint16_t len, uint32_t timeout_ms) {
 	struct usbdevfs_ctx *c = ctx;
 	struct usbdevfs_ctrltransfer ct = {
 		.bRequestType = (uint8_t)(req_type | FPX_USB_DIR_IN),
@@ -116,8 +111,7 @@ static int ud_control_in(void *ctx, uint8_t req_type, uint8_t req,
 }
 
 static int ud_bulk(struct usbdevfs_ctx *c, uint8_t ep, void *buf, size_t len,
-		   uint32_t timeout_ms)
-{
+		   uint32_t timeout_ms) {
 	struct usbdevfs_bulktransfer bt = {
 		.ep = ep,
 		.len = (unsigned int)len,
@@ -136,8 +130,7 @@ static int ud_bulk(struct usbdevfs_ctx *c, uint8_t ep, void *buf, size_t len,
 }
 
 static int ud_bulk_out(void *ctx, uint8_t ep, const uint8_t *buf, size_t len,
-		       uint32_t timeout_ms)
-{
+		       uint32_t timeout_ms) {
 	/* USBDEVFS_BULK takes a non-const pointer but does not modify OUT data. */
 	int rc = ud_bulk(ctx, ep, (void *)(uintptr_t)buf, len, timeout_ms);
 
@@ -150,8 +143,7 @@ static int ud_bulk_out(void *ctx, uint8_t ep, const uint8_t *buf, size_t len,
 }
 
 static int ud_bulk_in(void *ctx, uint8_t ep, uint8_t *buf, size_t cap,
-		      size_t *got, uint32_t timeout_ms)
-{
+		      size_t *got, uint32_t timeout_ms) {
 	int rc = ud_bulk(ctx, ep, buf, cap, timeout_ms);
 
 	if (rc < 0)
@@ -161,8 +153,7 @@ static int ud_bulk_in(void *ctx, uint8_t ep, uint8_t *buf, size_t cap,
 	return FPX_OK;
 }
 
-static void drain_cancel_pipe(struct usbdevfs_ctx *c)
-{
+static void drain_cancel_pipe(struct usbdevfs_ctx *c) {
 	uint8_t tmp[16];
 
 	while (read(c->cancel_pipe[0], tmp, sizeof(tmp)) > 0)
@@ -170,8 +161,7 @@ static void drain_cancel_pipe(struct usbdevfs_ctx *c)
 }
 
 /* Discard a submitted URB and reap it so the kernel releases our buffer. */
-static void discard_urb(struct usbdevfs_ctx *c, struct usbdevfs_urb *urb)
-{
+static void discard_urb(struct usbdevfs_ctx *c, struct usbdevfs_urb *urb) {
 	void *reaped = NULL;
 
 	ioctl(c->fd, USBDEVFS_DISCARDURB, urb);
@@ -180,8 +170,7 @@ static void discard_urb(struct usbdevfs_ctx *c, struct usbdevfs_urb *urb)
 }
 
 static int ud_wait_interrupt(void *ctx, uint8_t ep, uint8_t *buf, size_t cap,
-			     size_t *got, uint32_t timeout_ms)
-{
+			     size_t *got, uint32_t timeout_ms) {
 	struct usbdevfs_ctx *c = ctx;
 	struct usbdevfs_urb urb;
 	struct pollfd pfd[2];
@@ -241,8 +230,7 @@ static int ud_wait_interrupt(void *ctx, uint8_t ep, uint8_t *buf, size_t cap,
 	return FPX_OK;
 }
 
-static void ud_cancel(void *ctx)
-{
+static void ud_cancel(void *ctx) {
 	struct usbdevfs_ctx *c = ctx;
 	const uint8_t one = 1;
 
@@ -250,8 +238,7 @@ static void ud_cancel(void *ctx)
 	(void)!write(c->cancel_pipe[1], &one, 1);
 }
 
-static void ud_close(void *ctx)
-{
+static void ud_close(void *ctx) {
 	struct usbdevfs_ctx *c = ctx;
 
 	close(c->cancel_pipe[0]);
@@ -273,8 +260,7 @@ static const struct fpx_transport_ops usbdevfs_ops = {
 };
 
 int fpx_usbdevfs_open(uint8_t busnum, uint8_t devnum,
-		      struct fpx_transport *out)
-{
+		      struct fpx_transport *out) {
 	char path[64];
 	struct usbdevfs_ctx *c;
 	int err;

@@ -6,16 +6,14 @@
 #include "fpx/types.h"
 #include "mock_transport.h"
 
-static int m_reset(void *ctx)
-{
+static int m_reset(void *ctx) {
 	struct mock *m = ctx;
 
 	m->resets++;
 	return FPX_OK;
 }
 
-static int m_claim(void *ctx, uint8_t iface)
-{
+static int m_claim(void *ctx, uint8_t iface) {
 	struct mock *m = ctx;
 
 	(void)iface;
@@ -23,8 +21,7 @@ static int m_claim(void *ctx, uint8_t iface)
 	return m->claim_rc;
 }
 
-static void m_release(void *ctx, uint8_t iface)
-{
+static void m_release(void *ctx, uint8_t iface) {
 	struct mock *m = ctx;
 
 	(void)iface;
@@ -33,8 +30,7 @@ static void m_release(void *ctx, uint8_t iface)
 
 static int m_control_in(void *ctx, uint8_t req_type, uint8_t req,
 			uint16_t value, uint16_t index, uint8_t *buf,
-			uint16_t len, uint32_t timeout_ms)
-{
+			uint16_t len, uint32_t timeout_ms) {
 	struct mock *m = ctx;
 
 	(void)req_type, (void)req, (void)value, (void)index, (void)timeout_ms;
@@ -44,8 +40,7 @@ static int m_control_in(void *ctx, uint8_t req_type, uint8_t req,
 }
 
 static int m_bulk_out(void *ctx, uint8_t ep, const uint8_t *buf, size_t len,
-		      uint32_t timeout_ms)
-{
+		      uint32_t timeout_ms) {
 	struct mock *m = ctx;
 
 	(void)ep, (void)timeout_ms;
@@ -58,8 +53,7 @@ static int m_bulk_out(void *ctx, uint8_t ep, const uint8_t *buf, size_t len,
 }
 
 static int m_bulk_in(void *ctx, uint8_t ep, uint8_t *buf, size_t cap,
-		     size_t *got, uint32_t timeout_ms)
-{
+		     size_t *got, uint32_t timeout_ms) {
 	struct mock *m = ctx;
 	const struct mock_frame *f;
 
@@ -75,8 +69,7 @@ static int m_bulk_in(void *ctx, uint8_t ep, uint8_t *buf, size_t cap,
 }
 
 static int m_wait_interrupt(void *ctx, uint8_t ep, uint8_t *buf, size_t cap,
-			    size_t *got, uint32_t timeout_ms)
-{
+			    size_t *got, uint32_t timeout_ms) {
 	struct mock *m = ctx;
 
 	(void)ep, (void)timeout_ms;
@@ -88,15 +81,13 @@ static int m_wait_interrupt(void *ctx, uint8_t ep, uint8_t *buf, size_t cap,
 	return FPX_OK;
 }
 
-static void m_cancel(void *ctx)
-{
+static void m_cancel(void *ctx) {
 	struct mock *m = ctx;
 
 	m->irq_rc = FPX_E_CANCELLED;
 }
 
-static void m_close(void *ctx)
-{
+static void m_close(void *ctx) {
 	(void)ctx;
 }
 
@@ -112,19 +103,16 @@ static const struct fpx_transport_ops mock_ops = {
 	.close = m_close,
 };
 
-void mock_init(struct mock *m)
-{
+void mock_init(struct mock *m) {
 	memset(m, 0, sizeof(*m));
 }
 
-struct fpx_transport mock_transport(struct mock *m)
-{
+struct fpx_transport mock_transport(struct mock *m) {
 	return (struct fpx_transport){ .ops = &mock_ops, .ctx = m };
 }
 
 void mock_push_egis(struct mock *m, const uint8_t *body, size_t body_len,
-		    uint16_t sw)
-{
+		    uint16_t sw) {
 	static const uint8_t magic[EGIS_MAGIC_LEN] = { 'S', 'I', 'G', 'E',
 						       0, 0, 0, 1 };
 	struct mock_frame *f;
@@ -144,8 +132,7 @@ void mock_push_egis(struct mock *m, const uint8_t *body, size_t body_len,
 
 /* The library references the real backend; tests never open hardware. */
 int fpx_usbdevfs_open(uint8_t busnum, uint8_t devnum,
-		      struct fpx_transport *out)
-{
+		      struct fpx_transport *out) {
 	(void)busnum, (void)devnum, (void)out;
 	return FPX_E_NODEV;
 }

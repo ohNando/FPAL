@@ -18,8 +18,7 @@ const struct fpx_driver *const fpx_drivers[] = {
 };
 
 const struct fpx_driver *fpx_driver_lookup(uint16_t vid, uint16_t pid,
-					   const struct fpx_usb_id **id)
-{
+					   const struct fpx_usb_id **id) {
 	for (size_t d = 0; fpx_drivers[d]; d++) {
 		for (const struct fpx_usb_id *e = fpx_drivers[d]->ids; e->vid;
 		     e++) {
@@ -35,8 +34,7 @@ const struct fpx_driver *fpx_driver_lookup(uint16_t vid, uint16_t pid,
 
 /* Read a one-line sysfs attribute into @buf, stripping the newline. */
 static bool read_attr(const char *dir, const char *name, char *buf,
-		      size_t cap)
-{
+		      size_t cap) {
 	char path[512];
 	FILE *f;
 	size_t len;
@@ -57,8 +55,7 @@ static bool read_attr(const char *dir, const char *name, char *buf,
 }
 
 static bool read_attr_ulong(const char *dir, const char *name, int base,
-			    unsigned long max, unsigned long *out)
-{
+			    unsigned long max, unsigned long *out) {
 	char buf[32];
 	char *end;
 
@@ -68,8 +65,7 @@ static bool read_attr_ulong(const char *dir, const char *name, int base,
 	return end != buf && *end == '\0' && *out <= max;
 }
 
-int fpx_scan(struct fpx_usb_info *out, size_t cap, size_t *n)
-{
+int fpx_scan(struct fpx_usb_info *out, size_t cap, size_t *n) {
 	DIR *d = opendir(FPX_SYSFS_USB_DEVICES);
 	struct dirent *ent;
 	size_t found = 0;

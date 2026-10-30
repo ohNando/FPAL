@@ -12,8 +12,7 @@
 int fpx_device_open_transport(const struct fpx_driver *drv,
 			      const struct fpx_usb_id *id,
 			      struct fpx_transport tr, int lock_fd,
-			      struct fpx_device **out)
-{
+			      struct fpx_device **out) {
 	struct fpx_device *dev = calloc(1, sizeof(*dev));
 	int err;
 
@@ -51,8 +50,7 @@ err_nomem:
 	return FPX_E_NOMEM;
 }
 
-int fpx_device_open_first(struct fpx_device **out)
-{
+int fpx_device_open_first(struct fpx_device **out) {
 	struct fpx_usb_info info;
 	const struct fpx_usb_id *id;
 	const struct fpx_driver *drv;
@@ -93,8 +91,7 @@ int fpx_device_open_first(struct fpx_device **out)
 	return FPX_OK;
 }
 
-void fpx_device_close(struct fpx_device *dev)
-{
+void fpx_device_close(struct fpx_device *dev) {
 	if (!dev)
 		return;
 	dev->drv->close(dev);
@@ -104,39 +101,33 @@ void fpx_device_close(struct fpx_device *dev)
 	free(dev);
 }
 
-const char *fpx_device_driver_name(const struct fpx_device *dev)
-{
+const char *fpx_device_driver_name(const struct fpx_device *dev) {
 	return dev->drv->name;
 }
 
-const char *fpx_device_serial(const struct fpx_device *dev)
-{
+const char *fpx_device_serial(const struct fpx_device *dev) {
 	return dev->serial;
 }
 
-const char *fpx_device_fw_version(const struct fpx_device *dev)
-{
+const char *fpx_device_fw_version(const struct fpx_device *dev) {
 	return dev->fw_version;
 }
 
 int fpx_list(struct fpx_device *dev, struct fpx_template_id *out, size_t cap,
-	     size_t *n)
-{
+	     size_t *n) {
 	if (!dev || !out || !n)
 		return FPX_E_INVAL;
 	return dev->drv->list(dev, out, cap, n);
 }
 
 int fpx_identify(struct fpx_device *dev, uint32_t timeout_ms,
-		 struct fpx_template_id *match)
-{
+		 struct fpx_template_id *match) {
 	if (!dev || !match)
 		return FPX_E_INVAL;
 	return dev->drv->identify(dev, timeout_ms, match);
 }
 
-void fpx_cancel(struct fpx_device *dev)
-{
+void fpx_cancel(struct fpx_device *dev) {
 	if (dev)
 		dev->tr.ops->cancel(dev->tr.ctx);
 }

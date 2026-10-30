@@ -6,8 +6,7 @@
 
 /* Parse "<key><number>" with @min <= number <= @max. */
 static bool parse_num(const char *arg, const char *key, unsigned long min,
-		      unsigned long max, unsigned long *out)
-{
+		      unsigned long max, unsigned long *out) {
 	const size_t klen = strlen(key);
 	unsigned long v;
 	char *end;
@@ -24,8 +23,7 @@ static bool parse_num(const char *arg, const char *key, unsigned long min,
 }
 
 int pam_fpx_parse_opts(int argc, const char **argv, struct pam_fpx_opts *o,
-		       int *bad)
-{
+		       int *bad) {
 	int err = FPX_OK;
 
 	o->timeout_ms = FPX_PAM_TIMEOUT_MS;

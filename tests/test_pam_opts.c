@@ -2,8 +2,7 @@
 #include "../pam/opts.h"
 #include "t.h"
 
-static void test_defaults(void)
-{
+static void test_defaults(void) {
 	struct pam_fpx_opts o;
 
 	T_EQ_INT(pam_fpx_parse_opts(0, NULL, &o, NULL), FPX_OK);
@@ -13,8 +12,7 @@ static void test_defaults(void)
 	T_CHECK(!o.quiet);
 }
 
-static void test_all_options(void)
-{
+static void test_all_options(void) {
 	const char *argv[] = { "timeout=2500", "retries=5", "debug", "quiet" };
 	struct pam_fpx_opts o;
 
@@ -25,8 +23,7 @@ static void test_all_options(void)
 	T_CHECK(o.quiet);
 }
 
-static void test_rejects_bad_values(void)
-{
+static void test_rejects_bad_values(void) {
 	const char *cases[] = { "timeout=0", "timeout=", "timeout=-5",
 				"timeout=12x", "timeout=999999999",
 				"retries=0", "retries=11", "verbose" };
@@ -43,8 +40,7 @@ static void test_rejects_bad_values(void)
 	}
 }
 
-static void test_bad_index_is_first(void)
-{
+static void test_bad_index_is_first(void) {
 	const char *argv[] = { "debug", "nope", "retries=99" };
 	struct pam_fpx_opts o;
 	int bad = -1;
@@ -54,8 +50,7 @@ static void test_bad_index_is_first(void)
 	T_CHECK(o.debug);
 }
 
-int main(void)
-{
+int main(void) {
 	T_RUN(test_defaults);
 	T_RUN(test_all_options);
 	T_RUN(test_rejects_bad_values);

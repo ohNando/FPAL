@@ -7,8 +7,7 @@
 #include "fpx/fpx.h"
 #include "lock.h"
 
-int fpx_lock_acquire(void)
-{
+int fpx_lock_acquire(void) {
 	int fd = open(FPX_LOCK_PATH, O_RDWR | O_CREAT | O_CLOEXEC, 0600);
 
 	if (fd < 0)
@@ -23,8 +22,7 @@ int fpx_lock_acquire(void)
 	return fd;
 }
 
-void fpx_lock_release(int fd)
-{
+void fpx_lock_release(int fd) {
 	if (fd < 0)
 		return;
 	flock(fd, LOCK_UN);

@@ -8,8 +8,7 @@
 #include "mock_transport.h"
 #include "t.h"
 
-static void test_frame_sensor_reset(void)
-{
+static void test_frame_sensor_reset(void) {
 	static const uint8_t expected[] = { 'E',  'G',	'I',  'S',  0x00, 0x00,
 					    0x00, 0x01, 0x21, 0x46, 0x00, 0x00,
 					    0x00, 0x04, 0x50, 0x1a, 0x00, 0x00 };
@@ -24,8 +23,7 @@ static void test_frame_sensor_reset(void)
 }
 
 /* Odd frame length: the implicit pad byte takes part in the checksum. */
-static void test_frame_fw_version_odd_length(void)
-{
+static void test_frame_fw_version_odd_length(void) {
 	uint8_t out[64];
 	size_t len = 0;
 
@@ -36,8 +34,7 @@ static void test_frame_fw_version_odd_length(void)
 	T_EQ_INT(fpx_get_be16(out + EGIS_MAGIC_LEN), 0x14de);
 }
 
-static void test_frame_list(void)
-{
+static void test_frame_list(void) {
 	uint8_t out[64];
 	size_t len = 0;
 
@@ -48,8 +45,7 @@ static void test_frame_list(void)
 }
 
 /* Property: a framed command always sums to 0 mod 0xFFFF. */
-static void test_checksum_self_verifies(void)
-{
+static void test_checksum_self_verifies(void) {
 	const struct egis_cmd *cmds[] = { &egis_cmd_fw_version, &egis_cmd_list,
 					  &egis_cmd_sensor_reset,
 					  &egis_cmd_sensor_check,
@@ -68,8 +64,7 @@ static void test_checksum_self_verifies(void)
 	}
 }
 
-static void test_frame_overflow(void)
-{
+static void test_frame_overflow(void) {
 	uint8_t out[8];
 	size_t len;
 
@@ -78,8 +73,7 @@ static void test_frame_overflow(void)
 		 FPX_E_OVERFLOW);
 }
 
-static void test_build_check_one_id(void)
-{
+static void test_build_check_one_id(void) {
 	struct fpx_template_id id;
 	uint8_t out[256];
 	size_t len = 0;
@@ -99,8 +93,7 @@ static void test_build_check_one_id(void)
 }
 
 /* Seven ids push both length fields past one byte (libfprint's > 6 case). */
-static void test_build_check_seven_ids_type2(void)
-{
+static void test_build_check_seven_ids_type2(void) {
 	struct fpx_template_id ids[7];
 	uint8_t out[512];
 	size_t len = 0;
@@ -115,8 +108,7 @@ static void test_build_check_seven_ids_type2(void)
 	T_EQ_INT(len, 4 + 0x0109);
 }
 
-static void test_build_check_too_many(void)
-{
+static void test_build_check_too_many(void) {
 	struct fpx_template_id ids[FPX_MAX_TEMPLATES + 1];
 	uint8_t out[1024];
 	size_t len;
@@ -127,8 +119,7 @@ static void test_build_check_too_many(void)
 		 FPX_E_INVAL);
 }
 
-static void test_parse_ok(void)
-{
+static void test_parse_ok(void) {
 	struct mock m;
 	struct egis_rsp rsp;
 
@@ -142,8 +133,7 @@ static void test_parse_ok(void)
 	T_CHECK(rsp.checksum_ok);
 }
 
-static void test_parse_rejects_bad_magic(void)
-{
+static void test_parse_rejects_bad_magic(void) {
 	struct mock m;
 	struct egis_rsp rsp;
 
@@ -153,8 +143,7 @@ static void test_parse_rejects_bad_magic(void)
 	T_EQ_INT(egis_parse(m.in[0].data, m.in[0].len, &rsp), FPX_E_PROTO);
 }
 
-static void test_parse_rejects_truncated(void)
-{
+static void test_parse_rejects_truncated(void) {
 	struct mock m;
 	struct egis_rsp rsp;
 
@@ -166,8 +155,7 @@ static void test_parse_rejects_truncated(void)
 	T_EQ_INT(egis_parse(m.in[0].data, 10, &rsp), FPX_E_PROTO);
 }
 
-static void test_parse_list(void)
-{
+static void test_parse_list(void) {
 	uint8_t body[2 * FPX_TEMPLATE_ID_LEN];
 	struct fpx_template_id ids[FPX_MAX_TEMPLATES];
 	struct egis_rsp rsp;
@@ -192,8 +180,7 @@ static void test_parse_list(void)
  * Frames captured from a real 1c7a:0587 (fw 9050.6.4.67). Frames carrying
  * template ids are left out on purpose.
  */
-static void test_real_capture_responses(void)
-{
+static void test_real_capture_responses(void) {
 	static const uint8_t fw[] = { 0x53, 0x49, 0x47, 0x45, 0x00, 0x00, 0x00,
 				      0x01, 0x34, 0xd2, 0x00, 0x00, 0x00, 0x0d,
 				      '9',  '0',  '5',	'0',  '.',  '6',  '.',
@@ -224,8 +211,7 @@ static void test_real_capture_responses(void)
 }
 
 /* Command checksums the real sensor accepted. */
-static void test_real_capture_commands(void)
-{
+static void test_real_capture_commands(void) {
 	uint8_t out[64];
 	size_t len = 0;
 
@@ -237,8 +223,7 @@ static void test_real_capture_commands(void)
 	T_EQ_INT(fpx_get_be16(out + EGIS_MAGIC_LEN), 0x1f49);
 }
 
-int main(void)
-{
+int main(void) {
 	T_RUN(test_frame_sensor_reset);
 	T_RUN(test_frame_fw_version_odd_length);
 	T_RUN(test_frame_list);

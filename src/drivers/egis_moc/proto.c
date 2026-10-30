@@ -40,8 +40,7 @@ static const uint8_t check_prefix_type2[] = { 0x50, 0x17, 0x03, 0x80, 0x00 };
 static const uint8_t check_suffix[] = { 0x00, 0x40 };
 #define CHECK_SEPARATOR_LEN 32u
 
-static uint32_t sum_be16(const uint8_t *buf, size_t len)
-{
+static uint32_t sum_be16(const uint8_t *buf, size_t len) {
 	uint32_t sum = 0;
 	size_t i;
 
@@ -52,14 +51,12 @@ static uint32_t sum_be16(const uint8_t *buf, size_t len)
 	return sum;
 }
 
-uint16_t egis_checksum(const uint8_t *frame, size_t len)
-{
+uint16_t egis_checksum(const uint8_t *frame, size_t len) {
 	return (uint16_t)(0xffffu - (sum_be16(frame, len) % 0xffffu));
 }
 
 int egis_frame(const uint8_t *payload, size_t plen, uint8_t *out, size_t cap,
-	       size_t *out_len)
-{
+	       size_t *out_len) {
 	const size_t len = EGIS_HDR_LEN + plen;
 
 	if (!payload || !out || !out_len)
@@ -76,8 +73,7 @@ int egis_frame(const uint8_t *payload, size_t plen, uint8_t *out, size_t cap,
 	return FPX_OK;
 }
 
-int egis_parse(const uint8_t *buf, size_t len, struct egis_rsp *rsp)
-{
+int egis_parse(const uint8_t *buf, size_t len, struct egis_rsp *rsp) {
 	uint32_t plen;
 	size_t frame_len;
 
@@ -112,8 +108,7 @@ int egis_parse(const uint8_t *buf, size_t len, struct egis_rsp *rsp)
 }
 
 int egis_build_check(const struct fpx_template_id *ids, size_t n,
-		     uint32_t flags, uint8_t *out, size_t cap, size_t *out_len)
-{
+		     uint32_t flags, uint8_t *out, size_t cap, size_t *out_len) {
 	const uint8_t *prefix = (flags & EGIS_FLAG_CHECK_PREFIX_TYPE2) ?
 					check_prefix_type2 :
 					check_prefix_type1;
@@ -150,8 +145,7 @@ int egis_build_check(const struct fpx_template_id *ids, size_t n,
 }
 
 int egis_parse_list(const struct egis_rsp *rsp, struct fpx_template_id *out,
-		    size_t cap, size_t *n)
-{
+		    size_t cap, size_t *n) {
 	size_t count;
 
 	if (!rsp || !n || (cap && !out))

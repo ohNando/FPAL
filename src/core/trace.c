@@ -6,15 +6,13 @@
 #include "fpx/config.h"
 #include "trace.h"
 
-bool fpx_trace_enabled(void)
-{
+bool fpx_trace_enabled(void) {
 	const char *env = getenv(FPX_ENV_TRACE);
 
 	return env && env[0] && env[0] != '0';
 }
 
-void fpx_trace(const char *dir, uint8_t ep, const uint8_t *buf, size_t len)
-{
+void fpx_trace(const char *dir, uint8_t ep, const uint8_t *buf, size_t len) {
 	if (!fpx_trace_enabled())
 		return;
 

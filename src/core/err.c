@@ -1,8 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 #include "fpx/fpx.h"
 
-const char *fpx_strerror(int err)
-{
+const char *fpx_strerror(int err) {
 	switch (err) {
 	case FPX_OK:
 		return "success";
