@@ -3,7 +3,7 @@
 `pam_fpx.so`, PAM kullanan her programa (sudo, su, login, GDM) parmak izi doğrulaması ekler.
 
 ```
-auth  sufficient  pam_fpx.so  [timeout=ms] [retries=n] [debug]
+auth  sufficient  pam_fpx.so  [timeout=ms] [retries=n] [debug] [quiet]
 ```
 
 | Seçenek | Varsayılan | Anlamı |
@@ -11,6 +11,16 @@ auth  sufficient  pam_fpx.so  [timeout=ms] [retries=n] [debug]
 | `timeout=` | 10000 | Her denemede parmak için beklenecek süre (ms) |
 | `retries=` | 3 | Yanlış parmakta kaç kez tekrar denenecek (en fazla 10) |
 | `debug` | kapalı | Ayrıntılı mesajları auth log'a yazar |
+| `quiet` | kapalı | "Parmağınızı okutun" ve sonuç mesajlarını gizler |
+
+Mesajlar `PAM_SILENT` bayrağı gelse de gösterilir: sudo bu bayrağı varsayılan olarak gönderir ve mesaj olmazsa kullanıcı parmak beklendiğini bilemez. Mesajları kapatmak için `quiet` kullanılır.
+
+| Durum | Ekrandaki mesaj |
+|---|---|
+| Her deneme öncesi | `Place your finger on the fingerprint sensor` |
+| Yanlış parmak, deneme hakkı var | `Fingerprint not recognised, try again` |
+| Son deneme de yanlış | `Fingerprint not recognised` |
+| Süre doldu | `No finger detected` |
 
 ## Dönüş değerleri
 
