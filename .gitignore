@@ -6,6 +6,7 @@
 
 # Editor and tooling files
 .vscode/
+.clang-format
 .idea/
 .cache/
 compile_commands.json
