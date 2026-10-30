@@ -11,7 +11,7 @@ Linux için sıfırdan yazılmış, kullanıcı alanında çalışan parmak izi 
 ## Derleme
 
 ```sh
-make          # build/fpx ve build/libfpx.a
+make          # build/fpx, build/libfpx.a ve build/pam_fpx.so (pam-devel gerekir)
 make test     # donanım gerektirmeyen birim testleri
 ```
 
@@ -27,6 +27,8 @@ sudo ./build/fpx unbind $USER   # sadece bilgisayardaki bağlamayı siler, sens�
 ```
 
 Bağlamalar `/var/lib/fpx/<kullanıcı>` dosyasında tutulur (root, 0600). Sensörde kayıt olmadığı sürece önce parmağı Windows Hello'da kaydetmek gerekir; Linux'tan kayıt (enroll) henüz yok.
+
+PAM modülü ve güvenli test adımları: [docs/pam.md](docs/pam.md)
 
 Protokol ayrıntıları: [docs/protocol-egis-moc.md](docs/protocol-egis-moc.md)
 
