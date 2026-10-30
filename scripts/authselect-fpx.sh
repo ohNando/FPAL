@@ -41,6 +41,9 @@ install_profile() {
 	fi
 	sed -i 's/pam_fprintd\.so/pam_fpx.so/' "$DIR/system-auth" \
 		"$DIR/fingerprint-auth"
+	# The stock hint asks to enable fprintd, which is the opposite of us.
+	sed -i 's/make sure fprintd service is configured and enabled/make sure pam_fpx.so is installed and fprintd is masked/' \
+		"$DIR/REQUIREMENTS"
 	grep -q pam_fpx.so "$DIR/system-auth" ||
 		die "$DIR/system-auth has no fingerprint line"
 
