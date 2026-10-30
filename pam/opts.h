@@ -2,7 +2,7 @@
 /*
  * pam_fpx module options, as written in /etc/pam.d/<service>:
  *
- *   auth sufficient pam_fpx.so timeout=10000 retries=3 debug
+ *   auth sufficient pam_fpx.so timeout=10000 retries=3 debug quiet
  */
 #ifndef FPX_PAM_OPTS_H
 #define FPX_PAM_OPTS_H
@@ -13,6 +13,7 @@ struct pam_fpx_opts {
 	uint32_t timeout_ms;	/* finger wait per attempt */
 	uint8_t retries;	/* identify attempts */
 	bool debug;		/* log to syslog at debug level */
+	bool quiet;		/* no prompts or result messages */
 };
 
 /*

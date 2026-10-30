@@ -31,6 +31,7 @@ int pam_fpx_parse_opts(int argc, const char **argv, struct pam_fpx_opts *o,
 	o->timeout_ms = FPX_PAM_TIMEOUT_MS;
 	o->retries = FPX_PAM_RETRIES;
 	o->debug = false;
+	o->quiet = false;
 
 	for (int i = 0; i < argc; i++) {
 		const char *a = argv[i];
@@ -38,6 +39,8 @@ int pam_fpx_parse_opts(int argc, const char **argv, struct pam_fpx_opts *o,
 
 		if (strcmp(a, "debug") == 0) {
 			o->debug = true;
+		} else if (strcmp(a, "quiet") == 0) {
+			o->quiet = true;
 		} else if (parse_num(a, "timeout=", 1, FPX_FINGER_WAIT_TIMEOUT_MS,
 				     &v)) {
 			o->timeout_ms = (uint32_t)v;

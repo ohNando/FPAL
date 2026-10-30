@@ -10,17 +10,19 @@ static void test_defaults(void)
 	T_EQ_INT(o.timeout_ms, FPX_PAM_TIMEOUT_MS);
 	T_EQ_INT(o.retries, FPX_PAM_RETRIES);
 	T_CHECK(!o.debug);
+	T_CHECK(!o.quiet);
 }
 
 static void test_all_options(void)
 {
-	const char *argv[] = { "timeout=2500", "retries=5", "debug" };
+	const char *argv[] = { "timeout=2500", "retries=5", "debug", "quiet" };
 	struct pam_fpx_opts o;
 
-	T_EQ_INT(pam_fpx_parse_opts(3, argv, &o, NULL), FPX_OK);
+	T_EQ_INT(pam_fpx_parse_opts(4, argv, &o, NULL), FPX_OK);
 	T_EQ_INT(o.timeout_ms, 2500);
 	T_EQ_INT(o.retries, 5);
 	T_CHECK(o.debug);
+	T_CHECK(o.quiet);
 }
 
 static void test_rejects_bad_values(void)
