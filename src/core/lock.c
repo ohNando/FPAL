@@ -4,25 +4,25 @@
 #include <sys/file.h>
 #include <unistd.h>
 
-#include "fpx/fpx.h"
+#include "fpal/fpal.h"
 #include "lock.h"
 
-int fpx_lock_acquire(void) {
-	int fd = open(FPX_LOCK_PATH, O_RDWR | O_CREAT | O_CLOEXEC, 0600);
+int fpal_lock_acquire(void) {
+	int fd = open(FPAL_LOCK_PATH, O_RDWR | O_CREAT | O_CLOEXEC, 0600);
 
 	if (fd < 0)
-		return (errno == EACCES || errno == EPERM) ? FPX_E_PERM :
-							     FPX_E_IO;
+		return (errno == EACCES || errno == EPERM) ? FPAL_E_PERM :
+							     FPAL_E_IO;
 
 	if (flock(fd, LOCK_EX | LOCK_NB) < 0) {
 		close(fd);
-		return FPX_E_BUSY;
+		return FPAL_E_BUSY;
 	}
 
 	return fd;
 }
 
-void fpx_lock_release(int fd) {
+void fpal_lock_release(int fd) {
 	if (fd < 0)
 		return;
 	flock(fd, LOCK_UN);

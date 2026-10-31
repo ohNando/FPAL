@@ -8,27 +8,27 @@
  *
  * Unbinding only edits this file and never touches the sensor.
  */
-#ifndef FPX_BINDINGS_H
-#define FPX_BINDINGS_H
+#ifndef FPAL_BINDINGS_H
+#define FPAL_BINDINGS_H
 
 #include "types.h"
 
 /* True if @user is a safe file name (portable POSIX user name subset). */
-bool fpx_bindings_valid_user(const char *user);
+bool fpal_bindings_valid_user(const char *user);
 
 /* Load the ids bound to @user. A missing file yields @n = 0. */
-int fpx_bindings_load(const char *dir, const char *user,
-		      struct fpx_template_id *out, size_t cap, size_t *n);
+int fpal_bindings_load(const char *dir, const char *user,
+		      struct fpal_template_id *out, size_t cap, size_t *n);
 
 /* Bind @id to @user. Binding an id twice is not an error. */
-int fpx_bindings_add(const char *dir, const char *user,
-		     const struct fpx_template_id *id);
+int fpal_bindings_add(const char *dir, const char *user,
+		     const struct fpal_template_id *id);
 
 /* Remove every binding of @user (host side only). */
-int fpx_bindings_clear(const char *dir, const char *user);
+int fpal_bindings_clear(const char *dir, const char *user);
 
 /* True if @id is bound to @user. */
-bool fpx_bindings_contains(const char *dir, const char *user,
-			   const struct fpx_template_id *id);
+bool fpal_bindings_contains(const char *dir, const char *user,
+			   const struct fpal_template_id *id);
 
-#endif /* FPX_BINDINGS_H */
+#endif /* FPAL_BINDINGS_H */

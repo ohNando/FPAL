@@ -45,7 +45,7 @@ static uint32_t sum_be16(const uint8_t *buf, size_t len) {
 	size_t i;
 
 	for (i = 0; i + 1 < len; i += 2)
-		sum += fpx_get_be16(buf + i);
+		sum += fpal_get_be16(buf + i);
 	if (i < len) /* odd length: implicit zero pad byte */
 		sum += (uint32_t)buf[i] << 8;
 	return sum;
@@ -60,17 +60,17 @@ int egis_frame(const uint8_t *payload, size_t plen, uint8_t *out, size_t cap,
 	const size_t len = EGIS_HDR_LEN + plen;
 
 	if (!payload || !out || !out_len)
-		return FPX_E_INVAL;
+		return FPAL_E_INVAL;
 	if (len > cap)
-		return FPX_E_OVERFLOW;
+		return FPAL_E_OVERFLOW;
 
 	memcpy(out, write_magic, EGIS_MAGIC_LEN);
-	fpx_put_be16(out + EGIS_MAGIC_LEN, 0);
+	fpal_put_be16(out + EGIS_MAGIC_LEN, 0);
 	memcpy(out + EGIS_HDR_LEN, payload, plen);
-	fpx_put_be16(out + EGIS_MAGIC_LEN, egis_checksum(out, len));
+	fpal_put_be16(out + EGIS_MAGIC_LEN, egis_checksum(out, len));
 
 	*out_len = len;
-	return FPX_OK;
+	return FPAL_OK;
 }
 
 int egis_parse(const uint8_t *buf, size_t len, struct egis_rsp *rsp) {
@@ -78,92 +78,92 @@ int egis_parse(const uint8_t *buf, size_t len, struct egis_rsp *rsp) {
 	size_t frame_len;
 
 	if (!buf || !rsp)
-		return FPX_E_INVAL;
+		return FPAL_E_INVAL;
 	if (len < EGIS_RSP_BODY_OFF + EGIS_SW_LEN) {
-		fpx_dbg("response too short (%zu bytes)", len);
-		return FPX_E_PROTO;
+		fpal_dbg("response too short (%zu bytes)", len);
+		return FPAL_E_PROTO;
 	}
 	if (memcmp(buf, read_magic, EGIS_MAGIC_LEN) != 0) {
-		fpx_dbg("response has bad magic");
-		return FPX_E_PROTO;
+		fpal_dbg("response has bad magic");
+		return FPAL_E_PROTO;
 	}
 
 	/* Length field covers the body plus the status word. */
-	plen = fpx_get_be32(buf + EGIS_HDR_LEN);
+	plen = fpal_get_be32(buf + EGIS_HDR_LEN);
 	if (plen < EGIS_SW_LEN || plen > len - EGIS_RSP_BODY_OFF) {
-		fpx_dbg("response length field %u does not fit %zu bytes",
+		fpal_dbg("response length field %u does not fit %zu bytes",
 			plen, len);
-		return FPX_E_PROTO;
+		return FPAL_E_PROTO;
 	}
 
 	frame_len = EGIS_RSP_BODY_OFF + plen;
 	if (frame_len != len)
-		fpx_dbg("response has %zu trailing bytes", len - frame_len);
+		fpal_dbg("response has %zu trailing bytes", len - frame_len);
 
 	rsp->body = buf + EGIS_RSP_BODY_OFF;
 	rsp->body_len = plen - EGIS_SW_LEN;
-	rsp->sw = fpx_get_be16(rsp->body + rsp->body_len);
+	rsp->sw = fpal_get_be16(rsp->body + rsp->body_len);
 	rsp->checksum_ok = sum_be16(buf, frame_len) % 0xffffu == 0;
-	return FPX_OK;
+	return FPAL_OK;
 }
 
-int egis_build_check(const struct fpx_template_id *ids, size_t n,
+int egis_build_check(const struct fpal_template_id *ids, size_t n,
 		     uint32_t flags, uint8_t *out, size_t cap, size_t *out_len) {
 	const uint8_t *prefix = (flags & EGIS_FLAG_CHECK_PREFIX_TYPE2) ?
 					check_prefix_type2 :
 					check_prefix_type1;
 	/* The chip expects one zero "separator" id in front of the real ones. */
-	const size_t ids_len = (n + 1) * FPX_TEMPLATE_ID_LEN;
+	const size_t ids_len = (n + 1) * FPAL_TEMPLATE_ID_LEN;
 	const size_t body_len = sizeof(check_prefix_type1) + 2 + ids_len +
 				sizeof(check_suffix);
 	const size_t len = 4 + body_len;
 	uint8_t *p = out;
 
 	if (!out || !out_len || (n && !ids))
-		return FPX_E_INVAL;
-	if (n > FPX_MAX_TEMPLATES)
-		return FPX_E_INVAL;
+		return FPAL_E_INVAL;
+	if (n > FPAL_MAX_TEMPLATES)
+		return FPAL_E_INVAL;
 	if (len > cap)
-		return FPX_E_OVERFLOW;
+		return FPAL_E_OVERFLOW;
 
-	fpx_put_be32(p, (uint32_t)body_len);
+	fpal_put_be32(p, (uint32_t)body_len);
 	p += 4;
 	memcpy(p, prefix, sizeof(check_prefix_type1));
 	p += sizeof(check_prefix_type1);
-	fpx_put_be16(p, (uint16_t)ids_len);
+	fpal_put_be16(p, (uint16_t)ids_len);
 	p += 2;
 	memset(p, 0, CHECK_SEPARATOR_LEN);
 	p += CHECK_SEPARATOR_LEN;
 	for (size_t i = 0; i < n; i++) {
-		memcpy(p, ids[i].bytes, FPX_TEMPLATE_ID_LEN);
-		p += FPX_TEMPLATE_ID_LEN;
+		memcpy(p, ids[i].bytes, FPAL_TEMPLATE_ID_LEN);
+		p += FPAL_TEMPLATE_ID_LEN;
 	}
 	memcpy(p, check_suffix, sizeof(check_suffix));
 
 	*out_len = len;
-	return FPX_OK;
+	return FPAL_OK;
 }
 
-int egis_parse_list(const struct egis_rsp *rsp, struct fpx_template_id *out,
+int egis_parse_list(const struct egis_rsp *rsp, struct fpal_template_id *out,
 		    size_t cap, size_t *n) {
 	size_t count;
 
 	if (!rsp || !n || (cap && !out))
-		return FPX_E_INVAL;
+		return FPAL_E_INVAL;
 	if (rsp->sw != EGIS_SW_OK)
-		return FPX_E_PROTO;
+		return FPAL_E_PROTO;
 	/* Not seen in practice; keep the whole ids and report the rest. */
-	if (rsp->body_len % FPX_TEMPLATE_ID_LEN != 0)
-		fpx_warn("list body length %zu is not a multiple of %u",
-			 rsp->body_len, FPX_TEMPLATE_ID_LEN);
+	if (rsp->body_len % FPAL_TEMPLATE_ID_LEN != 0)
+		fpal_warn("list body length %zu is not a multiple of %u",
+			 rsp->body_len, FPAL_TEMPLATE_ID_LEN);
 
-	count = rsp->body_len / FPX_TEMPLATE_ID_LEN;
+	count = rsp->body_len / FPAL_TEMPLATE_ID_LEN;
 	if (count > cap)
-		return FPX_E_OVERFLOW;
+		return FPAL_E_OVERFLOW;
 
 	for (size_t i = 0; i < count; i++)
-		memcpy(out[i].bytes, rsp->body + i * FPX_TEMPLATE_ID_LEN,
-		       FPX_TEMPLATE_ID_LEN);
+		memcpy(out[i].bytes, rsp->body + i * FPAL_TEMPLATE_ID_LEN,
+		       FPAL_TEMPLATE_ID_LEN);
 	*n = count;
-	return FPX_OK;
+	return FPAL_OK;
 }

@@ -2,20 +2,20 @@
 # SPDX-License-Identifier: Apache-2.0
 #
 # Switch an authselect based system (Fedora, RHEL) from pam_fprintd to
-# pam_fpx, or back.
+# pam_fpal, or back.
 #
-#   sudo scripts/authselect-fpx.sh install   # custom/fpx profile, mask fprintd
-#   sudo scripts/authselect-fpx.sh revert    # back to the stock profile
+#   sudo scripts/authselect-fpal.sh install   # custom/fpal profile, mask fprintd
+#   sudo scripts/authselect-fpal.sh revert    # back to the stock profile
 #
 # Only the pam_fprintd lines change; the password stays a fallback.
 set -eu
 
-PROFILE=fpx
+PROFILE=fpal
 BASE=${BASE:-local}
 DIR=/etc/authselect/custom/$PROFILE
 
 die() {
-	echo "authselect-fpx: $*" >&2
+	echo "authselect-fpal: $*" >&2
 	exit 1
 }
 
@@ -30,21 +30,21 @@ features() {
 install_profile() {
 	found=
 	for d in /usr/lib64/security /usr/lib/security /lib/security; do
-		if [ -e "$d/pam_fpx.so" ]; then
+		if [ -e "$d/pam_fpal.so" ]; then
 			found=$d
 		fi
 	done
-	[ -n "$found" ] || die "pam_fpx.so is not installed (sudo make install)"
+	[ -n "$found" ] || die "pam_fpal.so is not installed (sudo make install)"
 
 	if [ ! -d "$DIR" ]; then
 		authselect create-profile "$PROFILE" -b "$BASE" --symlink-meta
 	fi
-	sed -i 's/pam_fprintd\.so/pam_fpx.so/' "$DIR/system-auth" \
+	sed -i 's/pam_fprintd\.so/pam_fpal.so/' "$DIR/system-auth" \
 		"$DIR/fingerprint-auth"
 	# The stock hint asks to enable fprintd, which is the opposite of us.
-	sed -i 's/make sure fprintd service is configured and enabled/make sure pam_fpx.so is installed and fprintd is masked/' \
+	sed -i 's/make sure fprintd service is configured and enabled/make sure pam_fpal.so is installed and fprintd is masked/' \
 		"$DIR/REQUIREMENTS"
-	grep -q pam_fpx.so "$DIR/system-auth" ||
+	grep -q pam_fpal.so "$DIR/system-auth" ||
 		die "$DIR/system-auth has no fingerprint line"
 
 	feats=$(features)
@@ -57,11 +57,11 @@ install_profile() {
 	authselect select "custom/$PROFILE" $feats -b
 	authselect apply-changes
 
-	# fprintd would grab the sensor before pam_fpx can open it.
+	# fprintd would grab the sensor before pam_fpal can open it.
 	systemctl stop fprintd.service 2>/dev/null || true
 	systemctl mask fprintd.service
 
-	echo "authselect-fpx: custom/$PROFILE active ($feats)"
+	echo "authselect-fpal: custom/$PROFILE active ($feats)"
 }
 
 revert_profile() {
@@ -69,7 +69,7 @@ revert_profile() {
 	# shellcheck disable=SC2086
 	authselect select "$BASE" $feats -b
 	systemctl unmask fprintd.service
-	echo "authselect-fpx: $BASE active again, fprintd unmasked"
+	echo "authselect-fpal: $BASE active again, fprintd unmasked"
 }
 
 case "${1:-}" in

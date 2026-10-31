@@ -1,9 +1,9 @@
-# pam_fpx
+# pam_fpal
 
-`pam_fpx.so`, PAM kullanan her programa (sudo, su, login, GDM) parmak izi doğrulaması ekler.
+`pam_fpal.so`, PAM kullanan her programa (sudo, su, login, GDM) parmak izi doğrulaması ekler.
 
 ```
-auth  sufficient  pam_fpx.so  [timeout=ms] [retries=n] [debug] [quiet]
+auth  sufficient  pam_fpal.so  [timeout=ms] [retries=n] [debug] [quiet]
 ```
 
 | Seçenek | Varsayılan | Anlamı |
@@ -17,7 +17,7 @@ Mesajlar `PAM_SILENT` bayrağı gelse de gösterilir: sudo bu bayrağı varsayı
 
 | Durum | Ekrandaki mesaj |
 |---|---|
-| Her deneme öncesi | `[sudo] fingerprint for ohnando:` (servis adı ve kullanıcı; biçim `FPX_PAM_PROMPT_FMT`) |
+| Her deneme öncesi | `[sudo] fingerprint for ohnando:` (servis adı ve kullanıcı; biçim `FPAL_PAM_PROMPT_FMT`) |
 | Yanlış parmak, deneme hakkı var | `Fingerprint not recognised, try again` |
 | Son deneme de yanlış | `Fingerprint not recognised` |
 | Süre doldu | `No finger detected` |
@@ -39,15 +39,15 @@ PAM dosyalarıyla oynarken **ayrı bir terminalde `sudo -i` ile root shell açı
 1. Önce parmağı kullanıcıya bağla:
 
    ```sh
-   sudo ./build/fpx bind $USER
+   sudo ./build/fpal bind $USER
    ```
 
 2. Sistemin geri kalanına dokunmayan bir test servisi oluştur. Modül kurulmadan doğrudan `build/` içinden yüklenir:
 
    ```sh
-   printf 'auth     sufficient %s/build/pam_fpx.so debug\nauth     required   pam_deny.so\naccount  required   pam_permit.so\n' \
-       "$PWD" | sudo tee /etc/pam.d/fpx-test
-   sudo pamtester fpx-test $USER authenticate
+   printf 'auth     sufficient %s/build/pam_fpal.so debug\nauth     required   pam_deny.so\naccount  required   pam_permit.so\n' \
+       "$PWD" | sudo tee /etc/pam.d/fpal-test
+   sudo pamtester fpal-test $USER authenticate
    ```
 
    Bağlı parmakla `successfully authenticated`, başka parmakla `Authentication failure` görmelisin.
@@ -55,28 +55,28 @@ PAM dosyalarıyla oynarken **ayrı bir terminalde `sudo -i` ile root shell açı
 3. Log'lar:
 
    ```sh
-   sudo journalctl -b --no-pager | grep pam_fpx
+   sudo journalctl -b --no-pager | grep pam_fpal
    ```
 
-4. Test servisini kaldır: `sudo rm /etc/pam.d/fpx-test`
+4. Test servisini kaldır: `sudo rm /etc/pam.d/fpal-test`
 
 ## sudo ve su (Fedora / authselect)
 
-`/etc/pam.d/system-auth` dosyası authselect tarafından üretilir; elle değişiklik ilk güncellemede silinir. Bu yüzden `local` profilinden türeyen bir `custom/fpx` profili kullanılır. Bu profilde sadece `pam_fprintd.so` satırları `pam_fpx.so` olur:
+`/etc/pam.d/system-auth` dosyası authselect tarafından üretilir; elle değişiklik ilk güncellemede silinir. Bu yüzden `local` profilinden türeyen bir `custom/fpal` profili kullanılır. Bu profilde sadece `pam_fprintd.so` satırları `pam_fpal.so` olur:
 
 ```sh
-sudo make install                        # /usr/local/sbin/fpx + /usr/lib64/security/pam_fpx.so
-sudo scripts/authselect-fpx.sh install   # profili seç, fprintd'yi mask'le
+sudo make install                        # /usr/local/sbin/fpal + /usr/lib64/security/pam_fpal.so
+sudo scripts/authselect-fpal.sh install   # profili seç, fprintd'yi mask'le
 ```
 
-Betik önceki ayarların yedeğini alır (`authselect backup-list`). Ayrıca `fprintd`'yi mask'ler; aksi halde fprintd sensörü kapıp pam_fpx'in açmasını engelleyebilir.
+Betik önceki ayarların yedeğini alır (`authselect backup-list`). Ayrıca `fprintd`'yi mask'ler; aksi halde fprintd sensörü kapıp pam_fpal'in açmasını engelleyebilir.
 
 Sonra yeni bir terminalde `sudo -k; sudo true` ile dene. Parmak okutulmazsa 10 saniye sonra şifre sorulur.
 
 Geri almak için:
 
 ```sh
-sudo scripts/authselect-fpx.sh revert
+sudo scripts/authselect-fpal.sh revert
 ```
 
-GNOME giriş ve kilit ekranı fprintd'ye D-Bus üzerinden sorduğu için bu adımdan etkilenmez; o kısım `fpxd` ile gelecek.
+GNOME giriş ve kilit ekranı fprintd'ye D-Bus üzerinden sorduğu için bu adımdan etkilenmez; o kısım `fpald` ile gelecek.

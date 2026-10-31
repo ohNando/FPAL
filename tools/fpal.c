@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: Apache-2.0
 /*
- * fpx command line tool.
+ * fpal command line tool.
  *
- *   fpx info                    sensor and firmware information
- *   fpx list                    template ids stored on the sensor
- *   fpx identify [-t ms]        wait for a finger and print the matching id
- *   fpx bind [-t ms] <user>     bind the touched finger to a local user
- *   fpx unbind <user>           forget a user's bindings (host side only)
- *   fpx bindings <user>         show a user's bindings
+ *   fpal info                    sensor and firmware information
+ *   fpal list                    template ids stored on the sensor
+ *   fpal identify [-t ms]        wait for a finger and print the matching id
+ *   fpal bind [-t ms] <user>     bind the touched finger to a local user
+ *   fpal unbind <user>           forget a user's bindings (host side only)
+ *   fpal bindings <user>         show a user's bindings
  */
 #include <pwd.h>
 #include <signal.h>
@@ -16,19 +16,19 @@
 #include <string.h>
 #include <unistd.h>
 
-#include "fpx/bindings.h"
-#include "fpx/fpx.h"
+#include "fpal/bindings.h"
+#include "fpal/fpal.h"
 
-static struct fpx_device *volatile active_dev;
+static struct fpal_device *volatile active_dev;
 
 static void on_sigint(int sig) {
 	(void)sig;
 	if (active_dev)
-		fpx_cancel(active_dev);
+		fpal_cancel(active_dev);
 }
 
 static void usage(FILE *f) {
-	fputs("usage: fpx <command> [options]\n"
+	fputs("usage: fpal <command> [options]\n"
 	      "\n"
 	      "commands:\n"
 	      "  info              show sensor and firmware information\n"
@@ -37,19 +37,20 @@ static void usage(FILE *f) {
 	      "  bind [-t ms] USER bind the touched finger to USER\n"
 	      "  unbind USER       forget USER's bindings (sensor untouched)\n"
 	      "  bindings USER     show the template ids bound to USER\n"
+	      "  version           show the fpal version\n"
 	      "  help              show this help\n"
 	      "\n"
 	      "environment:\n"
-	      "  " FPX_ENV_TRACE "=1   hex dump every USB packet\n"
-	      "  " FPX_ENV_DEBUG "=1   verbose log messages\n",
+	      "  " FPAL_ENV_TRACE "=1   hex dump every USB packet\n"
+	      "  " FPAL_ENV_DEBUG "=1   verbose log messages\n",
 	      f);
 }
 
-static void print_id(const struct fpx_template_id *id) {
-	for (size_t i = 0; i < FPX_TEMPLATE_ID_LEN; i++)
+static void print_id(const struct fpal_template_id *id) {
+	for (size_t i = 0; i < FPAL_TEMPLATE_ID_LEN; i++)
 		printf("%02x", id->bytes[i]);
 	fputs("  \"", stdout);
-	for (size_t i = 0; i < FPX_TEMPLATE_ID_LEN; i++) {
+	for (size_t i = 0; i < FPAL_TEMPLATE_ID_LEN; i++) {
 		uint8_t c = id->bytes[i];
 
 		putchar(c >= 0x20 && c <= 0x7e ? c : '.');
@@ -59,39 +60,39 @@ static void print_id(const struct fpx_template_id *id) {
 
 static int report(int err) {
 	fflush(stdout);
-	if (err == FPX_E_PERM && geteuid() != 0)
-		fprintf(stderr, "fpx: %s (try: sudo fpx ...)\n",
-			fpx_strerror(err));
+	if (err == FPAL_E_PERM && geteuid() != 0)
+		fprintf(stderr, "fpal: %s (try: sudo fpal ...)\n",
+			fpal_strerror(err));
 	else
-		fprintf(stderr, "fpx: %s\n", fpx_strerror(err));
+		fprintf(stderr, "fpal: %s\n", fpal_strerror(err));
 	return 1;
 }
 
-static int open_device(struct fpx_device **dev) {
-	int err = fpx_device_open_first(dev);
+static int open_device(struct fpal_device **dev) {
+	int err = fpal_device_open_first(dev);
 
 	if (err)
 		return err;
 	active_dev = *dev;
-	return FPX_OK;
+	return FPAL_OK;
 }
 
-static void close_device(struct fpx_device *dev) {
+static void close_device(struct fpal_device *dev) {
 	active_dev = NULL;
-	fpx_device_close(dev);
+	fpal_device_close(dev);
 }
 
 static int cmd_info(void) {
-	struct fpx_usb_info info[4];
-	struct fpx_device *dev;
+	struct fpal_usb_info info[4];
+	struct fpal_device *dev;
 	size_t n = 0;
 	int err;
 
-	err = fpx_scan(info, 4, &n);
+	err = fpal_scan(info, 4, &n);
 	if (err)
 		return report(err);
 	if (n == 0)
-		return report(FPX_E_NODEV);
+		return report(FPAL_E_NODEV);
 
 	for (size_t i = 0; i < n; i++)
 		printf("sensor %zu: %04x:%04x bus %03u dev %03u  %s\n"
@@ -104,14 +105,14 @@ static int cmd_info(void) {
 	err = open_device(&dev);
 	if (err)
 		return report(err);
-	printf("  firmware: %s\n", fpx_device_fw_version(dev));
+	printf("  firmware: %s\n", fpal_device_fw_version(dev));
 	close_device(dev);
 	return 0;
 }
 
 static int cmd_list(void) {
-	struct fpx_template_id ids[FPX_MAX_TEMPLATES];
-	struct fpx_device *dev;
+	struct fpal_template_id ids[FPAL_MAX_TEMPLATES];
+	struct fpal_device *dev;
 	size_t n = 0;
 	int err;
 
@@ -119,13 +120,13 @@ static int cmd_list(void) {
 	if (err)
 		return report(err);
 
-	err = fpx_list(dev, ids, FPX_MAX_TEMPLATES, &n);
+	err = fpal_list(dev, ids, FPAL_MAX_TEMPLATES, &n);
 	close_device(dev);
 	if (err)
 		return report(err);
 
 	printf("%zu template(s) stored on the sensor (max %u)\n", n,
-	       FPX_MAX_TEMPLATES);
+	       FPAL_MAX_TEMPLATES);
 	for (size_t i = 0; i < n; i++) {
 		printf("  [%zu] ", i);
 		print_id(&ids[i]);
@@ -137,7 +138,7 @@ static int cmd_list(void) {
 static int parse_timeout(int argc, char **argv, uint32_t *timeout_ms) {
 	int opt;
 
-	*timeout_ms = FPX_FINGER_WAIT_TIMEOUT_MS;
+	*timeout_ms = FPAL_FINGER_WAIT_TIMEOUT_MS;
 	while ((opt = getopt(argc, argv, "t:")) != -1) {
 		char *end;
 		unsigned long v;
@@ -148,7 +149,7 @@ static int parse_timeout(int argc, char **argv, uint32_t *timeout_ms) {
 		}
 		v = strtoul(optarg, &end, 10);
 		if (*end || v == 0 || v > UINT32_MAX) {
-			fprintf(stderr, "fpx: invalid timeout '%s'\n", optarg);
+			fprintf(stderr, "fpal: invalid timeout '%s'\n", optarg);
 			return 2;
 		}
 		*timeout_ms = (uint32_t)v;
@@ -157,8 +158,8 @@ static int parse_timeout(int argc, char **argv, uint32_t *timeout_ms) {
 }
 
 /* Open the sensor, wait for one finger and identify it. */
-static int identify_once(uint32_t timeout_ms, struct fpx_template_id *match) {
-	struct fpx_device *dev;
+static int identify_once(uint32_t timeout_ms, struct fpal_template_id *match) {
+	struct fpal_device *dev;
 	int err;
 
 	err = open_device(&dev);
@@ -169,13 +170,13 @@ static int identify_once(uint32_t timeout_ms, struct fpx_template_id *match) {
 	       timeout_ms / 1000u);
 	fflush(stdout);
 
-	err = fpx_identify(dev, timeout_ms, match);
+	err = fpal_identify(dev, timeout_ms, match);
 	close_device(dev);
 	return err;
 }
 
 static int cmd_identify(int argc, char **argv) {
-	struct fpx_template_id match;
+	struct fpal_template_id match;
 	uint32_t timeout_ms;
 	int err;
 
@@ -183,7 +184,7 @@ static int cmd_identify(int argc, char **argv) {
 		return 2;
 
 	err = identify_once(timeout_ms, &match);
-	if (err == FPX_E_NOMATCH) {
+	if (err == FPAL_E_NOMATCH) {
 		puts("NO MATCH");
 		return 1;
 	}
@@ -204,15 +205,15 @@ static const char *user_arg(int argc, char **argv) {
 		return NULL;
 	}
 	user = argv[optind];
-	if (!fpx_bindings_valid_user(user) || !getpwnam(user)) {
-		fprintf(stderr, "fpx: no such user '%s'\n", user);
+	if (!fpal_bindings_valid_user(user) || !getpwnam(user)) {
+		fprintf(stderr, "fpal: no such user '%s'\n", user);
 		return NULL;
 	}
 	return user;
 }
 
 static int cmd_bind(int argc, char **argv) {
-	struct fpx_template_id match;
+	struct fpal_template_id match;
 	uint32_t timeout_ms;
 	const char *user;
 	int err;
@@ -224,8 +225,8 @@ static int cmd_bind(int argc, char **argv) {
 		return 2;
 
 	err = identify_once(timeout_ms, &match);
-	if (err == FPX_E_NOMATCH) {
-		fputs("fpx: finger not enrolled on the sensor; enroll it in "
+	if (err == FPAL_E_NOMATCH) {
+		fputs("fpal: finger not enrolled on the sensor; enroll it in "
 		      "Windows Hello first\n",
 		      stderr);
 		return 1;
@@ -233,7 +234,7 @@ static int cmd_bind(int argc, char **argv) {
 	if (err)
 		return report(err);
 
-	err = fpx_bindings_add(FPX_STATE_DIR, user, &match);
+	err = fpal_bindings_add(FPAL_STATE_DIR, user, &match);
 	if (err)
 		return report(err);
 
@@ -252,7 +253,7 @@ static int cmd_unbind(int argc, char **argv) {
 		return 2;
 
 	/* Host side only: the template stays on the sensor. */
-	err = fpx_bindings_clear(FPX_STATE_DIR, user);
+	err = fpal_bindings_clear(FPAL_STATE_DIR, user);
 	if (err)
 		return report(err);
 	printf("removed all bindings of %s (sensor untouched)\n", user);
@@ -260,7 +261,7 @@ static int cmd_unbind(int argc, char **argv) {
 }
 
 static int cmd_bindings(int argc, char **argv) {
-	struct fpx_template_id ids[FPX_MAX_TEMPLATES];
+	struct fpal_template_id ids[FPAL_MAX_TEMPLATES];
 	const char *user;
 	size_t n = 0;
 	int err;
@@ -270,7 +271,7 @@ static int cmd_bindings(int argc, char **argv) {
 	if (!user)
 		return 2;
 
-	err = fpx_bindings_load(FPX_STATE_DIR, user, ids, FPX_MAX_TEMPLATES,
+	err = fpal_bindings_load(FPAL_STATE_DIR, user, ids, FPAL_MAX_TEMPLATES,
 				&n);
 	if (err)
 		return report(err);
@@ -310,13 +311,17 @@ int main(int argc, char **argv) {
 		return cmd_unbind(argc - 1, argv + 1);
 	if (strcmp(cmd, "bindings") == 0)
 		return cmd_bindings(argc - 1, argv + 1);
+	if (strcmp(cmd, "version") == 0 || strcmp(cmd, "--version") == 0) {
+		puts("fpal " FPAL_VERSION);
+		return 0;
+	}
 	if (strcmp(cmd, "help") == 0 || strcmp(cmd, "-h") == 0 ||
 	    strcmp(cmd, "--help") == 0) {
 		usage(stdout);
 		return 0;
 	}
 
-	fprintf(stderr, "fpx: unknown command '%s'\n", cmd);
+	fprintf(stderr, "fpal: unknown command '%s'\n", cmd);
 	usage(stderr);
 	return 2;
 }

@@ -9,11 +9,11 @@
 #include "lock.h"
 #include "log.h"
 
-int fpx_device_open_transport(const struct fpx_driver *drv,
-			      const struct fpx_usb_id *id,
-			      struct fpx_transport tr, int lock_fd,
-			      struct fpx_device **out) {
-	struct fpx_device *dev = calloc(1, sizeof(*dev));
+int fpal_device_open_transport(const struct fpal_driver *drv,
+			      const struct fpal_usb_id *id,
+			      struct fpal_transport tr, int lock_fd,
+			      struct fpal_device **out) {
+	struct fpal_device *dev = calloc(1, sizeof(*dev));
 	int err;
 
 	if (!dev)
@@ -35,51 +35,51 @@ int fpx_device_open_transport(const struct fpx_driver *drv,
 	err = drv->open(dev);
 	if (err) {
 		tr.ops->close(tr.ctx);
-		fpx_lock_release(lock_fd);
+		fpal_lock_release(lock_fd);
 		free(dev->priv);
 		free(dev);
 		return err;
 	}
 
 	*out = dev;
-	return FPX_OK;
+	return FPAL_OK;
 
 err_nomem:
 	tr.ops->close(tr.ctx);
-	fpx_lock_release(lock_fd);
-	return FPX_E_NOMEM;
+	fpal_lock_release(lock_fd);
+	return FPAL_E_NOMEM;
 }
 
-int fpx_device_open_first(struct fpx_device **out) {
-	struct fpx_usb_info info;
-	const struct fpx_usb_id *id;
-	const struct fpx_driver *drv;
-	struct fpx_transport tr;
-	struct fpx_device *dev;
+int fpal_device_open_first(struct fpal_device **out) {
+	struct fpal_usb_info info;
+	const struct fpal_usb_id *id;
+	const struct fpal_driver *drv;
+	struct fpal_transport tr;
+	struct fpal_device *dev;
 	size_t n = 0;
 	int lock_fd, err;
 
-	err = fpx_scan(&info, 1, &n);
+	err = fpal_scan(&info, 1, &n);
 	if (err)
 		return err;
 	if (n == 0)
-		return FPX_E_NODEV;
+		return FPAL_E_NODEV;
 
-	drv = fpx_driver_lookup(info.vid, info.pid, &id);
+	drv = fpal_driver_lookup(info.vid, info.pid, &id);
 	if (!drv)
-		return FPX_E_NODEV;
+		return FPAL_E_NODEV;
 
-	lock_fd = fpx_lock_acquire();
+	lock_fd = fpal_lock_acquire();
 	if (lock_fd < 0)
 		return lock_fd;
 
-	err = fpx_usbdevfs_open(info.busnum, info.devnum, &tr);
+	err = fpal_usbdevfs_open(info.busnum, info.devnum, &tr);
 	if (err) {
-		fpx_lock_release(lock_fd);
+		fpal_lock_release(lock_fd);
 		return err;
 	}
 
-	err = fpx_device_open_transport(drv, id, tr, lock_fd, &dev);
+	err = fpal_device_open_transport(drv, id, tr, lock_fd, &dev);
 	if (err)
 		return err;
 
@@ -88,46 +88,46 @@ int fpx_device_open_first(struct fpx_device **out) {
 		memcpy(dev->serial, info.serial, sizeof(dev->serial));
 
 	*out = dev;
-	return FPX_OK;
+	return FPAL_OK;
 }
 
-void fpx_device_close(struct fpx_device *dev) {
+void fpal_device_close(struct fpal_device *dev) {
 	if (!dev)
 		return;
 	dev->drv->close(dev);
 	dev->tr.ops->close(dev->tr.ctx);
-	fpx_lock_release(dev->lock_fd);
+	fpal_lock_release(dev->lock_fd);
 	free(dev->priv);
 	free(dev);
 }
 
-const char *fpx_device_driver_name(const struct fpx_device *dev) {
+const char *fpal_device_driver_name(const struct fpal_device *dev) {
 	return dev->drv->name;
 }
 
-const char *fpx_device_serial(const struct fpx_device *dev) {
+const char *fpal_device_serial(const struct fpal_device *dev) {
 	return dev->serial;
 }
 
-const char *fpx_device_fw_version(const struct fpx_device *dev) {
+const char *fpal_device_fw_version(const struct fpal_device *dev) {
 	return dev->fw_version;
 }
 
-int fpx_list(struct fpx_device *dev, struct fpx_template_id *out, size_t cap,
+int fpal_list(struct fpal_device *dev, struct fpal_template_id *out, size_t cap,
 	     size_t *n) {
 	if (!dev || !out || !n)
-		return FPX_E_INVAL;
+		return FPAL_E_INVAL;
 	return dev->drv->list(dev, out, cap, n);
 }
 
-int fpx_identify(struct fpx_device *dev, uint32_t timeout_ms,
-		 struct fpx_template_id *match) {
+int fpal_identify(struct fpal_device *dev, uint32_t timeout_ms,
+		 struct fpal_template_id *match) {
 	if (!dev || !match)
-		return FPX_E_INVAL;
+		return FPAL_E_INVAL;
 	return dev->drv->identify(dev, timeout_ms, match);
 }
 
-void fpx_cancel(struct fpx_device *dev) {
+void fpal_cancel(struct fpal_device *dev) {
 	if (dev)
 		dev->tr.ops->cancel(dev->tr.ctx);
 }
