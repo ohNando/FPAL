@@ -1,5 +1,20 @@
 # Installation and usage
 
+## Packages
+
+Packaging files live in `packaging/`: an RPM spec (`packaging/fpal.spec`, Fedora / RHEL), Debian files (`packaging/debian/`) and an Arch `PKGBUILD` (`packaging/arch/`). Only the RPM is tested. Installing a package never changes the PAM stack; the helper script is installed as `/usr/share/fpal/authselect-fpal.sh` (use it instead of `scripts/authselect-fpal.sh` below).
+
+To build the RPM from a checkout:
+
+```sh
+sudo dnf install rpm-build gcc make pam-devel
+make dist
+mkdir -p ~/rpmbuild/SOURCES && cp build/fpal-*.tar.gz ~/rpmbuild/SOURCES/
+rpmbuild -ba packaging/fpal.spec
+```
+
+For Debian, copy `packaging/debian` to `debian` in the source tree and run `dpkg-buildpackage -us -uc`.
+
 ## Build and install
 
 You need a C compiler, `make` and the `libpam` headers:
