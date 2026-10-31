@@ -13,6 +13,11 @@
 #ifndef FPAL_CONFIG_H
 #define FPAL_CONFIG_H
 
+/* Release version, shown by "fpal version". */
+#ifndef FPAL_VERSION
+#define FPAL_VERSION "0.1.0"
+#endif
+
 /* ---- Timeouts (milliseconds) ------------------------------------------- */
 
 /* Single command/response round trip on the bulk endpoints. */

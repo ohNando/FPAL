@@ -37,6 +37,7 @@ static void usage(FILE *f) {
 	      "  bind [-t ms] USER bind the touched finger to USER\n"
 	      "  unbind USER       forget USER's bindings (sensor untouched)\n"
 	      "  bindings USER     show the template ids bound to USER\n"
+	      "  version           show the fpal version\n"
 	      "  help              show this help\n"
 	      "\n"
 	      "environment:\n"
@@ -310,6 +311,10 @@ int main(int argc, char **argv) {
 		return cmd_unbind(argc - 1, argv + 1);
 	if (strcmp(cmd, "bindings") == 0)
 		return cmd_bindings(argc - 1, argv + 1);
+	if (strcmp(cmd, "version") == 0 || strcmp(cmd, "--version") == 0) {
+		puts("fpal " FPAL_VERSION);
+		return 0;
+	}
 	if (strcmp(cmd, "help") == 0 || strcmp(cmd, "-h") == 0 ||
 	    strcmp(cmd, "--help") == 0) {
 		usage(stdout);
