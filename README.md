@@ -4,8 +4,6 @@
 
 **Fingerprint Auth for Linux**
 
-**English** · [Türkçe](README.tr.md)
-
 Use your laptop's fingerprint sensor for `sudo`, `su` and login on Linux.
 A from-scratch, dependency-free, small and readable C project.
 
@@ -31,7 +29,7 @@ If the finger is not read, the sensor is unplugged or you are logged in over SSH
 
 Your laptop's fingerprint sensor works on Windows but does nothing for you on Linux. FPAL ships the driver that talks to the sensor, a command line tool and a PAM module in one small package.
 
-- **Written from scratch.** The sensor's USB protocol was captured and verified on real hardware, and every step is [documented](docs/protocol-egis-moc.md) (Turkish). The code base is about 2,500 lines of C that you can read end to end.
+- **Written from scratch.** The sensor's USB protocol was captured and verified on real hardware, and every step is [documented](docs/protocol-egis-moc.md). The code base is about 2,500 lines of C that you can read end to end.
 - **No dependencies.** No `libusb`, no `libfprint`, no D-Bus library, no build system. At runtime it needs only libc and `libpam`. Building takes nothing but `make`.
 - **Leaves Windows enrolments alone.** No command in the code can delete fingerprints from the sensor. Fingers you enrolled in Windows Hello work on Linux as they are, so a dual-boot machine keeps both.
 - **Safe defaults.** The password is always the fallback, only root can open the sensor, corrupt responses are rejected, and binding files go through symlink and permission checks.
@@ -62,7 +60,7 @@ sudo fpal bind $USER                     # touch the sensor and bind the finger 
 sudo scripts/authselect-fpal.sh install  # sudo and su now ask for a fingerprint
 ```
 
-All commands, PAM setup and troubleshooting: [docs/usage.md](docs/usage.md), [docs/pam.md](docs/pam.md) (both in Turkish).
+All commands, PAM setup and troubleshooting: [docs/usage.md](docs/usage.md), [docs/pam.md](docs/pam.md).
 
 FPAL does not **enrol** fingerprints yet. It reads the fingers you enrolled in Windows Hello from the chip and binds them to a Linux user.
 
@@ -89,9 +87,9 @@ The driver also recognises the other members of the family (`0582`–`0588`, `05
 
 | | |
 |---|---|
-| [docs/usage.md](docs/usage.md) | Installation, commands, troubleshooting (Turkish) |
-| [docs/pam.md](docs/pam.md) | PAM options, messages, rolling out with authselect (Turkish) |
-| [docs/protocol-egis-moc.md](docs/protocol-egis-moc.md) | The sensor's USB protocol, verified on real hardware (Turkish) |
+| [docs/usage.md](docs/usage.md) | Installation, commands, troubleshooting |
+| [docs/pam.md](docs/pam.md) | PAM options, messages, rolling out with authselect |
+| [docs/protocol-egis-moc.md](docs/protocol-egis-moc.md) | The sensor's USB protocol, verified on real hardware |
 
 ## License
 
