@@ -79,4 +79,4 @@ To undo it:
 sudo scripts/authselect-fpal.sh revert
 ```
 
-The GNOME login and lock screens ask fprintd over D-Bus, so this step does not affect them; that part will come with `fpald`.
+The GNOME login and lock screens first ask `net.reactivated.Fprint` over D-Bus whether a reader exists. `fpald` answers that, and the same script starts it; see [gnome.md](gnome.md).

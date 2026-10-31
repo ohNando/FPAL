@@ -91,6 +91,7 @@ The driver also recognises the other members of the family (`0582`–`0588`, `05
 |---|---|
 | [docs/usage.md](docs/usage.md) | Installation, commands, troubleshooting |
 | [docs/pam.md](docs/pam.md) | PAM options, messages, rolling out with authselect |
+| [docs/gnome.md](docs/gnome.md) | GNOME login and lock screen (`fpald`) |
 | [docs/protocol-egis-moc.md](docs/protocol-egis-moc.md) | The sensor's USB protocol, verified on real hardware |
 
 ## License
