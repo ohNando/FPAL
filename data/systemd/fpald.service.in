@@ -1,0 +1,37 @@
+[Unit]
+Description=FPAL fingerprint presence service (net.reactivated.Fprint)
+Documentation=https://github.com/ohNando/fpal
+# GNOME asks for the sensor when it draws the login screen.
+Before=display-manager.service
+
+[Service]
+Type=dbus
+BusName=net.reactivated.Fprint
+ExecStart=@LIBEXECDIR@/fpald
+Restart=on-failure
+# Exit status 3: another service (fprintd) owns the name; do not retry.
+RestartPreventExitStatus=3
+
+# It reads /sys to see whether the sensor is plugged in and talks to the bus.
+CapabilityBoundingSet=
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+PrivateNetwork=false
+RestrictAddressFamilies=AF_UNIX
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectKernelLogs=true
+ProtectControlGroups=true
+ProtectClock=true
+ProtectProc=invisible
+RestrictNamespaces=true
+RestrictRealtime=true
+LockPersonality=true
+MemoryDenyWriteExecute=true
+SystemCallArchitectures=native
+SystemCallFilter=@system-service
+
+[Install]
+WantedBy=multi-user.target

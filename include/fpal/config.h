@@ -92,10 +92,10 @@
 #define FPAL_DBUS_TIMEOUT_MS 5000u
 #endif
 
-/* fpald exits after this long without any D-Bus traffic (ms); bus activation
- * starts it again on the next call. */
+/* fpald exits after this long without any D-Bus traffic (ms). 0 = never,
+ * which is what the systemd service wants; "fpald -t ms" overrides it. */
 #ifndef FPAL_FPALD_IDLE_MS
-#define FPAL_FPALD_IDLE_MS 30000u
+#define FPAL_FPALD_IDLE_MS 0u
 #endif
 
 /* Device name reported to D-Bus clients (the "name" property). */

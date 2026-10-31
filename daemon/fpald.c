@@ -10,6 +10,7 @@
 #include <poll.h>
 #include <signal.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 
@@ -17,6 +18,10 @@
 #include "dbus/conn.h"
 #include "fpal/fpal.h"
 #include "fprint_service.h"
+
+/* The systemd unit lists this in RestartPreventExitStatus: retrying cannot
+ * help while another service owns the name. */
+#define EXIT_NAME_TAKEN 3
 
 static volatile sig_atomic_t stop;
 
@@ -34,8 +39,9 @@ static bool sensor_present(void *ud) {
 }
 
 static void usage(void) {
-	fputs("usage: fpald [-d] [-s bus-socket]\n"
+	fputs("usage: fpald [-d] [-t ms] [-s bus-socket]\n"
 	      "  -d  verbose log messages\n"
+	      "  -t  exit after this many ms without traffic (0 = never)\n"
 	      "  -s  bus socket path (default " FPAL_DBUS_SYSTEM_SOCKET ")\n",
 	      stderr);
 }
@@ -63,12 +69,16 @@ int main(int argc, char **argv) {
 	struct sigaction sa = { .sa_handler = on_signal };
 	struct fpal_dbus c;
 	uint32_t owner = 0;
+	unsigned long idle_ms = FPAL_FPALD_IDLE_MS;
 	int opt, rc;
 
-	while ((opt = getopt(argc, argv, "ds:h")) != -1) {
+	while ((opt = getopt(argc, argv, "dt:s:h")) != -1) {
 		switch (opt) {
 		case 'd':
 			fpal_log_set_debug(true);
+			break;
+		case 't':
+			idle_ms = strtoul(optarg, NULL, 10);
 			break;
 		case 's':
 			sock = optarg;
@@ -94,14 +104,14 @@ int main(int argc, char **argv) {
 	if (rc || owner != FPAL_DBUS_REPLY_PRIMARY_OWNER) {
 		fpal_err("cannot own %s (is fprintd running?)",
 			 FPAL_FPRINT_BUS_NAME);
-		return 1;
+		return EXIT_NAME_TAKEN;
 	}
 	fpal_info("serving %s as %s", FPAL_FPRINT_BUS_NAME, c.unique);
 
 	while (!stop) {
 		struct pollfd pfd = { .fd = c.fd, .events = POLLIN };
 
-		rc = poll(&pfd, 1, (int)FPAL_FPALD_IDLE_MS);
+		rc = poll(&pfd, 1, idle_ms ? (int)idle_ms : -1);
 		if (rc < 0 && errno == EINTR)
 			continue;
 		if (rc < 0)

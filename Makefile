@@ -10,6 +10,10 @@ BUILD    := build
 SBINDIR  ?= $(PREFIX)/sbin
 DOCDIR   ?= $(PREFIX)/share/doc/fpal
 DATADIR  ?= $(PREFIX)/share/fpal
+LIBEXECDIR ?= $(PREFIX)/libexec
+UNITDIR  ?= $(PREFIX)/lib/systemd/system
+# /etc is always read by the bus; packages pass /usr/share/dbus-1/system.d.
+POLICYDIR ?= /etc/dbus-1/system.d
 VERSION  := $(shell sed -n 's/^\#define FPAL_VERSION "\(.*\)"/\1/p' include/fpal/config.h)
 
 CFLAGS   ?= -O2 -g
@@ -49,7 +53,7 @@ DAEMON_OBJS := $(DAEMON_SRCS:%.c=$(BUILD)/%.o)
 PAM_MOD  := $(BUILD)/pam_fpal.so
 TESTS    := $(TEST_NAMES:%=$(BUILD)/tests/%)
 
-.PHONY: all pam test clean install uninstall dist
+.PHONY: all pam test clean install install-fpald uninstall uninstall-fpald dist
 
 all: $(BUILD)/fpal $(BUILD)/fpald $(PAM_MOD)
 
@@ -85,7 +89,7 @@ $(BUILD)/tests/test_pam_opts: $(BUILD)/pam/opts.o
 test: $(TESTS)
 	@set -e; for t in $(TESTS); do echo "== $$t"; $$t; done
 
-install: $(BUILD)/fpal $(PAM_MOD)
+install: $(BUILD)/fpal $(PAM_MOD) install-fpald
 	@test -n "$(PAMDIR)" || { echo "PAMDIR not found, set PAMDIR=..."; exit 1; }
 	install -D -m 0755 $(BUILD)/fpal $(DESTDIR)$(SBINDIR)/fpal
 	install -D -m 0755 $(PAM_MOD) $(DESTDIR)$(PAMDIR)/pam_fpal.so
@@ -93,12 +97,26 @@ install: $(BUILD)/fpal $(PAM_MOD)
 	install -D -m 0644 README.md $(DESTDIR)$(DOCDIR)/README.md
 	install -D -m 0644 docs/usage.md $(DESTDIR)$(DOCDIR)/usage.md
 	install -D -m 0644 docs/pam.md $(DESTDIR)$(DOCDIR)/pam.md
+	install -D -m 0644 docs/gnome.md $(DESTDIR)$(DOCDIR)/gnome.md
 	install -D -m 0644 docs/protocol-egis-moc.md $(DESTDIR)$(DOCDIR)/protocol-egis-moc.md
 
-uninstall:
+# The GNOME presence service alone (daemon, systemd unit, bus policy).
+install-fpald: $(BUILD)/fpald
+	install -D -m 0755 $(BUILD)/fpald $(DESTDIR)$(LIBEXECDIR)/fpald
+	install -d $(DESTDIR)$(UNITDIR)
+	sed 's|@LIBEXECDIR@|$(LIBEXECDIR)|' data/systemd/fpald.service.in \
+		> $(DESTDIR)$(UNITDIR)/fpald.service
+	chmod 0644 $(DESTDIR)$(UNITDIR)/fpald.service
+	install -D -m 0644 data/dbus/fpald.conf $(DESTDIR)$(POLICYDIR)/fpald.conf
+
+uninstall: uninstall-fpald
 	rm -f $(DESTDIR)$(SBINDIR)/fpal
 	rm -f $(DESTDIR)$(PAMDIR)/pam_fpal.so
 	rm -rf $(DESTDIR)$(DATADIR) $(DESTDIR)$(DOCDIR)
+
+uninstall-fpald:
+	rm -f $(DESTDIR)$(LIBEXECDIR)/fpald $(DESTDIR)$(UNITDIR)/fpald.service
+	rm -f $(DESTDIR)$(POLICYDIR)/fpald.conf
 
 # Source tarball of the committed tree: build/fpal-<version>.tar.gz
 dist:
