@@ -23,5 +23,6 @@ check() {
 
 package() {
 	cd "$pkgname-$pkgver"
-	make install DESTDIR="$pkgdir" PREFIX=/usr PAMDIR=/usr/lib/security
+	make install DESTDIR="$pkgdir" PREFIX=/usr SBINDIR=/usr/bin \
+		PAMDIR=/usr/lib/security
 }

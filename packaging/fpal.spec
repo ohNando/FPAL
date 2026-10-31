@@ -34,7 +34,7 @@ RHEL). See /usr/share/doc/fpal/usage.md.
 make test CFLAGS_EXTRA=-Wno-error
 
 %install
-%make_install PREFIX=%{_prefix} PAMDIR=%{_libdir}/security \
+%make_install PREFIX=%{_prefix} SBINDIR=%{_sbindir} PAMDIR=%{_libdir}/security \
     DOCDIR=%{_docdir}/%{name} DATADIR=%{_datadir}/%{name}
 
 %preun
