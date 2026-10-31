@@ -1,0 +1,27 @@
+# Maintainer: ohNando <emirhanbuldurucu12@gmail.com>
+pkgname=fpal
+pkgver=0.1.0
+pkgrel=1
+pkgdesc='Fingerprint Auth for Linux: userspace driver, CLI and PAM module for Match-on-Chip sensors'
+arch=('x86_64')
+url='https://github.com/ohNando/fpal'
+license=('Apache-2.0')
+depends=('pam')
+makedepends=('gcc' 'make')
+source=("$pkgname-$pkgver.tar.gz::$url/archive/refs/tags/v$pkgver.tar.gz")
+sha256sums=('SKIP')
+
+build() {
+	cd "$pkgname-$pkgver"
+	make CFLAGS_EXTRA=-Wno-error
+}
+
+check() {
+	cd "$pkgname-$pkgver"
+	make test CFLAGS_EXTRA=-Wno-error
+}
+
+package() {
+	cd "$pkgname-$pkgver"
+	make install DESTDIR="$pkgdir" PREFIX=/usr PAMDIR=/usr/lib/security
+}

@@ -6,6 +6,9 @@ PREFIX   ?= /usr/local
 # Directory libpam loads modules from; differs between distros.
 PAMDIR   ?= $(firstword $(wildcard /usr/lib64/security /usr/lib/x86_64-linux-gnu/security /usr/lib/security /lib/security))
 BUILD    := build
+DOCDIR   ?= $(PREFIX)/share/doc/fpal
+DATADIR  ?= $(PREFIX)/share/fpal
+VERSION  := $(shell sed -n 's/^\#define FPAL_VERSION "\(.*\)"/\1/p' include/fpal/config.h)
 
 CFLAGS   ?= -O2 -g
 CFLAGS   += -std=c17 -Wall -Wextra -Wpedantic -Werror \
@@ -37,7 +40,7 @@ PAM_OBJS := $(PAM_SRCS:%.c=$(BUILD)/%.o)
 PAM_MOD  := $(BUILD)/pam_fpal.so
 TESTS    := $(TEST_NAMES:%=$(BUILD)/tests/%)
 
-.PHONY: all pam test clean install uninstall
+.PHONY: all pam test clean install uninstall dist
 
 all: $(BUILD)/fpal $(PAM_MOD)
 
@@ -71,10 +74,23 @@ install: $(BUILD)/fpal $(PAM_MOD)
 	@test -n "$(PAMDIR)" || { echo "PAMDIR not found, set PAMDIR=..."; exit 1; }
 	install -D -m 0755 $(BUILD)/fpal $(DESTDIR)$(PREFIX)/sbin/fpal
 	install -D -m 0755 $(PAM_MOD) $(DESTDIR)$(PAMDIR)/pam_fpal.so
+	install -D -m 0755 scripts/authselect-fpal.sh $(DESTDIR)$(DATADIR)/authselect-fpal.sh
+	install -D -m 0644 README.md $(DESTDIR)$(DOCDIR)/README.md
+	install -D -m 0644 docs/usage.md $(DESTDIR)$(DOCDIR)/usage.md
+	install -D -m 0644 docs/pam.md $(DESTDIR)$(DOCDIR)/pam.md
+	install -D -m 0644 docs/protocol-egis-moc.md $(DESTDIR)$(DOCDIR)/protocol-egis-moc.md
 
 uninstall:
 	rm -f $(DESTDIR)$(PREFIX)/sbin/fpal
 	rm -f $(DESTDIR)$(PAMDIR)/pam_fpal.so
+	rm -rf $(DESTDIR)$(DATADIR) $(DESTDIR)$(DOCDIR)
+
+# Source tarball of the committed tree: build/fpal-<version>.tar.gz
+dist:
+	@mkdir -p $(BUILD)
+	git archive --format=tar.gz --prefix=fpal-$(VERSION)/ \
+		-o $(BUILD)/fpal-$(VERSION).tar.gz HEAD
+	@echo $(BUILD)/fpal-$(VERSION).tar.gz
 
 clean:
 	rm -rf $(BUILD)
