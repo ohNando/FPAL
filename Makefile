@@ -6,6 +6,8 @@ PREFIX   ?= /usr/local
 # Directory libpam loads modules from; differs between distros.
 PAMDIR   ?= $(firstword $(wildcard /usr/lib64/security /usr/lib/x86_64-linux-gnu/security /usr/lib/security /lib/security))
 BUILD    := build
+# Distributions with a merged /usr (Fedora, Arch) set SBINDIR to /usr/bin.
+SBINDIR  ?= $(PREFIX)/sbin
 DOCDIR   ?= $(PREFIX)/share/doc/fpal
 DATADIR  ?= $(PREFIX)/share/fpal
 VERSION  := $(shell sed -n 's/^\#define FPAL_VERSION "\(.*\)"/\1/p' include/fpal/config.h)
@@ -72,7 +74,7 @@ test: $(TESTS)
 
 install: $(BUILD)/fpal $(PAM_MOD)
 	@test -n "$(PAMDIR)" || { echo "PAMDIR not found, set PAMDIR=..."; exit 1; }
-	install -D -m 0755 $(BUILD)/fpal $(DESTDIR)$(PREFIX)/sbin/fpal
+	install -D -m 0755 $(BUILD)/fpal $(DESTDIR)$(SBINDIR)/fpal
 	install -D -m 0755 $(PAM_MOD) $(DESTDIR)$(PAMDIR)/pam_fpal.so
 	install -D -m 0755 scripts/authselect-fpal.sh $(DESTDIR)$(DATADIR)/authselect-fpal.sh
 	install -D -m 0644 README.md $(DESTDIR)$(DOCDIR)/README.md
@@ -81,7 +83,7 @@ install: $(BUILD)/fpal $(PAM_MOD)
 	install -D -m 0644 docs/protocol-egis-moc.md $(DESTDIR)$(DOCDIR)/protocol-egis-moc.md
 
 uninstall:
-	rm -f $(DESTDIR)$(PREFIX)/sbin/fpal
+	rm -f $(DESTDIR)$(SBINDIR)/fpal
 	rm -f $(DESTDIR)$(PAMDIR)/pam_fpal.so
 	rm -rf $(DESTDIR)$(DATADIR) $(DESTDIR)$(DOCDIR)
 
