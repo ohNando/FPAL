@@ -9,17 +9,22 @@ Source0:        %{name}-%{version}.tar.gz
 BuildRequires:  gcc
 BuildRequires:  make
 BuildRequires:  pam-devel
+BuildRequires:  systemd-rpm-macros
 Requires:       pam
+Requires:       dbus-common
+%{?systemd_requires}
 
 %description
 FPAL is a from-scratch userspace fingerprint driver, command line tool and PAM
 module for Match-on-Chip fingerprint sensors (currently EgisTec / LighTuning
 1c7a:0587). It talks to the sensor through usbdevfs, needs no libusb or
-libfprint, and never deletes templates stored on the sensor.
+libfprint, and never deletes templates stored on the sensor. The fpald service
+tells GNOME that a sensor exists so the login and lock screens offer it.
 
-Installing the package does not change the PAM stack. To use the fingerprint
-for sudo and su, run /usr/share/fpal/authselect-fpal.sh install (Fedora /
-RHEL). See /usr/share/doc/fpal/usage.md.
+Installing the package does not change the PAM stack and does not start
+fpald. To use the fingerprint for sudo, su and GNOME, run
+/usr/share/fpal/authselect-fpal.sh install (Fedora / RHEL). See
+/usr/share/doc/fpal/usage.md.
 
 %prep
 %autosetup
@@ -35,9 +40,18 @@ make test CFLAGS_EXTRA=-Wno-error
 
 %install
 %make_install PREFIX=%{_prefix} SBINDIR=%{_sbindir} PAMDIR=%{_libdir}/security \
-    DOCDIR=%{_docdir}/%{name} DATADIR=%{_datadir}/%{name}
+    DOCDIR=%{_docdir}/%{name} DATADIR=%{_datadir}/%{name} \
+    LIBEXECDIR=%{_libexecdir} UNITDIR=%{_unitdir} \
+    POLICYDIR=%{_datadir}/dbus-1/system.d
+
+%post
+%systemd_post fpald.service
+
+%postun
+%systemd_postun_with_restart fpald.service
 
 %preun
+%systemd_preun fpald.service
 if [ $1 -eq 0 ] && command -v authselect >/dev/null 2>&1 &&
    authselect current --raw 2>/dev/null | grep -q '^custom/fpal'; then
     echo "fpal: the authselect profile custom/fpal is still active." >&2
@@ -49,6 +63,9 @@ exit 0
 %license LICENSE
 %{_sbindir}/fpal
 %{_libdir}/security/pam_fpal.so
+%{_libexecdir}/fpald
+%{_unitdir}/fpald.service
+%{_datadir}/dbus-1/system.d/fpald.conf
 %{_datadir}/%{name}/
 %{_docdir}/%{name}/
 

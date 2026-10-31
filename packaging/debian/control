@@ -9,7 +9,7 @@ Rules-Requires-Root: no
 
 Package: fpal
 Architecture: any
-Depends: ${shlibs:Depends}, ${misc:Depends}, libpam-runtime
+Depends: ${shlibs:Depends}, ${misc:Depends}, libpam-runtime, dbus
 Description: Fingerprint Auth for Linux
  A from-scratch userspace fingerprint driver, command line tool and PAM
  module for Match-on-Chip fingerprint sensors (currently EgisTec / LighTuning

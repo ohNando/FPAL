@@ -6,7 +6,7 @@ pkgdesc='Fingerprint Auth for Linux: userspace driver, CLI and PAM module for Ma
 arch=('x86_64')
 url='https://github.com/ohNando/fpal'
 license=('Apache-2.0')
-depends=('pam')
+depends=('pam' 'dbus')
 makedepends=('gcc' 'make')
 source=("$pkgname-$pkgver.tar.gz::$url/archive/refs/tags/v$pkgver.tar.gz")
 sha256sums=('SKIP')
@@ -24,5 +24,7 @@ check() {
 package() {
 	cd "$pkgname-$pkgver"
 	make install DESTDIR="$pkgdir" PREFIX=/usr SBINDIR=/usr/bin \
-		PAMDIR=/usr/lib/security
+		PAMDIR=/usr/lib/security LIBEXECDIR=/usr/lib/fpal \
+		UNITDIR=/usr/lib/systemd/system \
+		POLICYDIR=/usr/share/dbus-1/system.d
 }
