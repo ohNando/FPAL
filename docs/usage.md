@@ -1,62 +1,62 @@
-# Kurulum ve kullanım
+# Installation and usage
 
-## Derleme ve kurulum
+## Build and install
 
-Derleme için C derleyicisi, `make` ve `libpam` başlıkları gerekir:
+You need a C compiler, `make` and the `libpam` headers:
 
 ```sh
 sudo dnf install gcc make pam-devel      # Fedora
-sudo apt install gcc make libpam0g-dev   # Debian / Ubuntu (denenmedi)
+sudo apt install gcc make libpam0g-dev   # Debian / Ubuntu (untested)
 
 make            # build/fpal, build/libfpal.a, build/pam_fpal.so
-make test       # donanım gerektirmeyen birim testleri
+make test       # unit tests, no hardware needed
 sudo make install
 ```
 
-`make install` `fpal` komutunu `/usr/local/sbin` altına, `pam_fpal.so` dosyasını dağıtımın PAM klasörüne kurar. Yollar `PREFIX=` ve `PAMDIR=` ile değiştirilebilir.
+`make install` puts the `fpal` command under `/usr/local/sbin` and `pam_fpal.so` into the distribution's PAM directory. The paths can be changed with `PREFIX=` and `PAMDIR=`.
 
-Tüm ayarlanabilir değerler (zaman aşımları, yollar, limitler) `include/fpal/config.h` içindedir ve derlerken değiştirilebilir:
+Every tunable value (timeouts, paths, limits) lives in `include/fpal/config.h` and can be overridden at build time:
 
 ```sh
 make CFLAGS_EXTRA='-DFPAL_PAM_TIMEOUT_MS=5000'
 ```
 
-## Komutlar
+## Commands
 
-Sensör yalnızca root tarafından açılabilir. Bu bilerek böyle: herkese açık bir udev kuralı olsaydı kullanıcının çalıştırdığı her program sensöre ham komut gönderebilirdi.
+Only root can open the sensor. This is on purpose: with a world-accessible udev rule, every program the user runs could send raw commands to the sensor.
 
-| Komut | Ne yapar |
+| Command | What it does |
 |---|---|
-| `sudo fpal info` | Sensör, sürücü, seri numarası ve firmware versiyonu |
-| `sudo fpal list` | Sensörde kayıtlı şablon ID'leri |
-| `sudo fpal identify [-t ms]` | Parmağı okut, eşleşen ID'yi göster |
-| `sudo fpal bind [-t ms] KULLANICI` | Okutulan parmağı bir Linux kullanıcısına bağla |
-| `sudo fpal bindings KULLANICI` | Kullanıcıya bağlı ID'leri göster |
-| `sudo fpal unbind KULLANICI` | Bağlamaları sil. Yalnızca bilgisayardaki dosyayı siler, sensöre dokunmaz |
-| `fpal version` | Sürümü göster |
+| `sudo fpal info` | Sensor, driver, serial number and firmware version |
+| `sudo fpal list` | Template IDs stored on the sensor |
+| `sudo fpal identify [-t ms]` | Touch the sensor and show the matching ID |
+| `sudo fpal bind [-t ms] USER` | Bind the touched finger to a Linux user |
+| `sudo fpal bindings USER` | Show the IDs bound to a user |
+| `sudo fpal unbind USER` | Remove the bindings. Deletes only the file on the computer, the sensor is untouched |
+| `fpal version` | Show the version |
 
-Linux'tan parmak kaydı henüz yok: parmağı önce Windows Hello (ya da sensörün kendi aracı) ile kaydetmek gerekir. Çip bu şablonları Linux'ta da eşleştirir. Bağlamalar `/var/lib/fpal/<kullanıcı>` dosyasında tutulur (root, `0600`).
+Enrolling from Linux is not available yet: enrol the finger with Windows Hello (or the sensor's own tool) first. The chip matches those templates on Linux as well. Bindings are stored in `/var/lib/fpal/<user>` (root, `0600`).
 
-## sudo ve su ile giriş
+## Login with sudo and su
 
 ```sh
 sudo fpal bind $USER
 sudo scripts/authselect-fpal.sh install   # Fedora / RHEL (authselect)
 ```
 
-Betik `fprintd`'yi kapatıp `custom/fpal` adlı bir authselect profili seçer; geri almak için `revert` kullanılır. PAM seçenekleri (`timeout=`, `retries=`, `quiet`, `debug`), mesajlar ve güvenli deneme adımları için: [pam.md](pam.md)
+The script masks `fprintd` and selects an authselect profile called `custom/fpal`; `revert` undoes it. For the PAM options (`timeout=`, `retries=`, `quiet`, `debug`), the messages and safe testing steps see [pam.md](pam.md).
 
-## Sorun giderme
+## Troubleshooting
 
-`FPAL_TRACE=1` gönderilen ve alınan her USB paketini hex olarak yazdırır, `FPAL_DEBUG=1` ayrıntılı mesajlar verir:
+`FPAL_TRACE=1` prints every USB packet sent and received as hex, and `FPAL_DEBUG=1` enables verbose messages:
 
 ```sh
 sudo FPAL_TRACE=1 fpal identify
 ```
 
-| Belirti | Sebep ve çözüm |
+| Symptom | Cause and fix |
 |---|---|
-| `device or resource busy` | Sensörü başka bir süreç (ör. `fprintd`) açmış: `sudo systemctl mask --now fprintd` |
-| `permission denied` | Komut root olarak çalışmalı: `sudo fpal ...` |
-| `NO MATCH` | Parmak sensörde kayıtlı değil. Önce Windows Hello'da kaydet |
-| sudo parmak izi sormuyor | Kullanıcıya parmak bağlanmamış (`sudo fpal bindings $USER`) ya da authselect profili seçilmemiş (`authselect current`) |
+| `device or resource busy` | Another process (e.g. `fprintd`) holds the sensor: `sudo systemctl mask --now fprintd` |
+| `permission denied` | The command must run as root: `sudo fpal ...` |
+| `NO MATCH` | The finger is not enrolled on the sensor. Enrol it in Windows Hello first |
+| sudo does not ask for a fingerprint | No finger is bound to the user (`sudo fpal bindings $USER`) or the authselect profile is not selected (`authselect current`) |
