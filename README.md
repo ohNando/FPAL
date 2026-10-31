@@ -11,7 +11,7 @@ A from-scratch, dependency-free, small and readable C project.
 ![Language](https://img.shields.io/badge/language-C17-informational)
 ![Platform](https://img.shields.io/badge/platform-Linux-lightgrey)
 ![Runtime](https://img.shields.io/badge/runtime-libc%20%2B%20libpam-success)
-![Tests](https://img.shields.io/badge/tests-34%20passing-brightgreen)
+[![CI](https://github.com/ohNando/fpal/actions/workflows/ci.yml/badge.svg)](https://github.com/ohNando/fpal/actions/workflows/ci.yml)
 
 </div>
 
@@ -22,6 +22,8 @@ Fingerprint not recognised, try again
 [sudo] fingerprint for ohnando:
 $                                  # right finger on the last try: no password asked
 ```
+
+[![asciicast](https://asciinema.org/a/44R1RxA91XsLiWO2.svg)](https://asciinema.org/a/44R1RxA91XsLiWO2)
 
 If the finger is not read, the sensor is unplugged or you are logged in over SSH, the system quietly falls back to the password. You never get locked out.
 
