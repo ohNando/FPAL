@@ -24,6 +24,8 @@ LIB_SRCS := src/core/device.c \
             src/core/log.c \
             src/core/registry.c \
             src/core/trace.c \
+            src/dbus/marshal.c \
+            src/dbus/message.c \
             src/drivers/egis_moc/egis_moc.c \
             src/drivers/egis_moc/proto.c \
             src/storage/bindings.c
@@ -33,7 +35,7 @@ USB_SRCS := src/transport/usbdevfs.c
 
 PAM_SRCS := pam/pam_fpal.c pam/opts.c
 
-TEST_NAMES := test_proto test_egis_moc test_bindings test_pam_opts
+TEST_NAMES := test_proto test_egis_moc test_bindings test_pam_opts test_dbus
 
 LIB      := $(BUILD)/libfpal.a
 LIB_OBJS := $(LIB_SRCS:%.c=$(BUILD)/%.o)
