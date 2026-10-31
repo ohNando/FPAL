@@ -82,6 +82,16 @@
 #define FPAL_DBUS_SYSTEM_SOCKET "/run/dbus/system_bus_socket"
 #endif
 
+/* Largest D-Bus message we build or accept (the spec allows 128 MiB). */
+#ifndef FPAL_DBUS_MSG_MAX
+#define FPAL_DBUS_MSG_MAX 16384u
+#endif
+
+/* How long to wait for the bus to answer a call (ms). */
+#ifndef FPAL_DBUS_TIMEOUT_MS
+#define FPAL_DBUS_TIMEOUT_MS 5000u
+#endif
+
 /* ---- Limits ------------------------------------------------------------ */
 
 /* Maximum number of templates any supported sensor can store. */
