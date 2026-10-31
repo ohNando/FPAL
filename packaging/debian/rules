@@ -1,0 +1,20 @@
+#!/usr/bin/make -f
+# dpkg-buildflags provide CFLAGS/LDFLAGS through the environment.
+export DEB_BUILD_MAINT_OPTIONS = hardening=+all
+
+%:
+	dh $@
+
+override_dh_auto_build:
+	$(MAKE) CFLAGS_EXTRA=-Wno-error
+
+override_dh_auto_test:
+	$(MAKE) test CFLAGS_EXTRA=-Wno-error
+
+override_dh_auto_install:
+	$(MAKE) install DESTDIR=$(CURDIR)/debian/fpal PREFIX=/usr \
+		PAMDIR=/usr/lib/$(DEB_HOST_MULTIARCH)/security \
+		DOCDIR=/usr/share/doc/fpal DATADIR=/usr/share/fpal
+
+override_dh_auto_clean:
+	$(MAKE) clean
