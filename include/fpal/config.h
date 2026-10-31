@@ -92,6 +92,17 @@
 #define FPAL_DBUS_TIMEOUT_MS 5000u
 #endif
 
+/* fpald exits after this long without any D-Bus traffic (ms); bus activation
+ * starts it again on the next call. */
+#ifndef FPAL_FPALD_IDLE_MS
+#define FPAL_FPALD_IDLE_MS 30000u
+#endif
+
+/* Device name reported to D-Bus clients (the "name" property). */
+#ifndef FPAL_FPRINT_DEVICE_NAME
+#define FPAL_FPRINT_DEVICE_NAME "FPAL"
+#endif
+
 /* ---- Limits ------------------------------------------------------------ */
 
 /* Maximum number of templates any supported sensor can store. */

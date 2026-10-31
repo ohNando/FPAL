@@ -36,18 +36,22 @@ USB_SRCS := src/transport/usbdevfs.c
 
 PAM_SRCS := pam/pam_fpal.c pam/opts.c
 
-TEST_NAMES := test_proto test_egis_moc test_bindings test_pam_opts test_dbus test_dbus_conn
+DAEMON_SRCS := daemon/fprint_service.c
+
+TEST_NAMES := test_proto test_egis_moc test_bindings test_pam_opts test_dbus \
+              test_dbus_conn test_fprint_service
 
 LIB      := $(BUILD)/libfpal.a
 LIB_OBJS := $(LIB_SRCS:%.c=$(BUILD)/%.o)
 USB_OBJS := $(USB_SRCS:%.c=$(BUILD)/%.o)
 PAM_OBJS := $(PAM_SRCS:%.c=$(BUILD)/%.o)
+DAEMON_OBJS := $(DAEMON_SRCS:%.c=$(BUILD)/%.o)
 PAM_MOD  := $(BUILD)/pam_fpal.so
 TESTS    := $(TEST_NAMES:%=$(BUILD)/tests/%)
 
 .PHONY: all pam test clean install uninstall dist
 
-all: $(BUILD)/fpal $(PAM_MOD)
+all: $(BUILD)/fpal $(BUILD)/fpald $(PAM_MOD)
 
 pam: $(PAM_MOD)
 
@@ -61,6 +65,9 @@ $(LIB): $(LIB_OBJS)
 $(BUILD)/fpal: $(BUILD)/tools/fpal.o $(USB_OBJS) $(LIB)
 	$(CC) $(CFLAGS) $^ -o $@ $(LDFLAGS)
 
+$(BUILD)/fpald: $(BUILD)/daemon/fpald.o $(DAEMON_OBJS) $(USB_OBJS) $(LIB)
+	$(CC) $(CFLAGS) $^ -o $@ $(LDFLAGS)
+
 $(PAM_MOD): $(PAM_OBJS) $(USB_OBJS) $(LIB) pam/pam_fpal.map
 	$(CC) $(CFLAGS) -shared -Wl,--version-script=pam/pam_fpal.map \
 		-Wl,-z,relro,-z,now,-z,defs \
@@ -68,6 +75,9 @@ $(PAM_MOD): $(PAM_OBJS) $(USB_OBJS) $(LIB) pam/pam_fpal.map
 
 $(BUILD)/tests/%: $(BUILD)/tests/%.o $(BUILD)/tests/mock_transport.o $(LIB)
 	$(CC) $(CFLAGS) $^ -o $@ $(LDFLAGS)
+
+# The service logic is linked in as an object; the tests need no bus.
+$(BUILD)/tests/test_fprint_service: $(BUILD)/daemon/fprint_service.o
 
 # PAM option parsing is plain C and tested without libpam.
 $(BUILD)/tests/test_pam_opts: $(BUILD)/pam/opts.o
