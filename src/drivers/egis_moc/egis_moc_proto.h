@@ -20,13 +20,13 @@
  * The delete opcode (INS 0x18) is intentionally not defined anywhere in
  * this project.
  */
-#ifndef FPX_DRIVERS_EGIS_MOC_PROTO_H
-#define FPX_DRIVERS_EGIS_MOC_PROTO_H
+#ifndef FPAL_DRIVERS_EGIS_MOC_PROTO_H
+#define FPAL_DRIVERS_EGIS_MOC_PROTO_H
 
 #include <stddef.h>
 #include <stdint.h>
 
-#include "fpx/types.h"
+#include "fpal/types.h"
 
 /* USB */
 #define EGIS_IFACE 0u
@@ -90,11 +90,11 @@ int egis_parse(const uint8_t *buf, size_t len, struct egis_rsp *rsp);
  * Build the "check" payload sent after a finger touch: it lists every
  * template id on the sensor and the chip answers which one matched.
  */
-int egis_build_check(const struct fpx_template_id *ids, size_t n,
+int egis_build_check(const struct fpal_template_id *ids, size_t n,
 		     uint32_t flags, uint8_t *out, size_t cap, size_t *out_len);
 
 /* Extract template ids from a list response body. */
-int egis_parse_list(const struct egis_rsp *rsp, struct fpx_template_id *out,
+int egis_parse_list(const struct egis_rsp *rsp, struct fpal_template_id *out,
 		    size_t cap, size_t *n);
 
-#endif /* FPX_DRIVERS_EGIS_MOC_PROTO_H */
+#endif /* FPAL_DRIVERS_EGIS_MOC_PROTO_H */

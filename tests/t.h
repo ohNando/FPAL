@@ -2,8 +2,8 @@
 /*
  * Tiny self-contained test harness: a handful of macros, no library.
  */
-#ifndef FPX_TESTS_T_H
-#define FPX_TESTS_T_H
+#ifndef FPAL_TESTS_T_H
+#define FPAL_TESTS_T_H
 
 #include <stdio.h>
 #include <string.h>
@@ -45,4 +45,4 @@ static unsigned t_run;
 	(printf("%u test(s), %u failure(s)\n", t_run, t_failed),        \
 	 t_failed ? 1 : 0)
 
-#endif /* FPX_TESTS_T_H */
+#endif /* FPAL_TESTS_T_H */

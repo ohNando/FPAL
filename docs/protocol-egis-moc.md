@@ -5,7 +5,7 @@ Bu doküman EgisTec / LighTuning Match-on-Chip sensörlerin USB protokolünü an
 - Cihaz: `1c7a:0587` ETU905A88-E (ASUS Zenbook 14 UX3402VA)
 - Firmware: `9050.6.4.67`
 
-✅ işareti, ilgili bilginin bu cihazda `FPX_TRACE=1` dökümleriyle doğrulandığını gösterir.
+✅ işareti, ilgili bilginin bu cihazda `FPAL_TRACE=1` dökümleriyle doğrulandığını gösterir.
 
 ## USB arayüzü
 

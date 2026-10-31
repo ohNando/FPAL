@@ -21,7 +21,7 @@
 
 #include "core/log.h"
 #include "core/trace.h"
-#include "fpx/fpx.h"
+#include "fpal/fpal.h"
 #include "transport.h"
 
 struct usbdevfs_ctx {
@@ -29,22 +29,22 @@ struct usbdevfs_ctx {
 	int cancel_pipe[2]; /* [0] polled by wait_interrupt, [1] written by cancel */
 };
 
-static int errno_to_fpx(int e) {
+static int errno_to_fpal(int e) {
 	switch (e) {
 	case EACCES:
 	case EPERM:
-		return FPX_E_PERM;
+		return FPAL_E_PERM;
 	case EBUSY:
-		return FPX_E_BUSY;
+		return FPAL_E_BUSY;
 	case ETIMEDOUT:
-		return FPX_E_TIMEOUT;
+		return FPAL_E_TIMEOUT;
 	case ENODEV:
 	case ENOENT:
-		return FPX_E_NODEV;
+		return FPAL_E_NODEV;
 	case ENOMEM:
-		return FPX_E_NOMEM;
+		return FPAL_E_NOMEM;
 	default:
-		return FPX_E_IO;
+		return FPAL_E_IO;
 	}
 }
 
@@ -52,8 +52,8 @@ static int ud_reset(void *ctx) {
 	struct usbdevfs_ctx *c = ctx;
 
 	if (ioctl(c->fd, USBDEVFS_RESET, NULL) < 0)
-		return errno_to_fpx(errno);
-	return FPX_OK;
+		return errno_to_fpal(errno);
+	return FPAL_OK;
 }
 
 static int ud_claim(void *ctx, uint8_t iface) {
@@ -67,14 +67,14 @@ static int ud_claim(void *ctx, uint8_t iface) {
 	 * has claimed it. Never steal it.
 	 */
 	if (ioctl(c->fd, USBDEVFS_GETDRIVER, &gd) == 0) {
-		fpx_dbg("interface %u already bound to driver '%s'", iface,
+		fpal_dbg("interface %u already bound to driver '%s'", iface,
 			gd.driver);
-		return FPX_E_BUSY;
+		return FPAL_E_BUSY;
 	}
 
 	if (ioctl(c->fd, USBDEVFS_CLAIMINTERFACE, &ifno) < 0)
-		return errno_to_fpx(errno);
-	return FPX_OK;
+		return errno_to_fpal(errno);
+	return FPAL_OK;
 }
 
 static void ud_release(void *ctx, uint8_t iface) {
@@ -89,7 +89,7 @@ static int ud_control_in(void *ctx, uint8_t req_type, uint8_t req,
 			 uint16_t len, uint32_t timeout_ms) {
 	struct usbdevfs_ctx *c = ctx;
 	struct usbdevfs_ctrltransfer ct = {
-		.bRequestType = (uint8_t)(req_type | FPX_USB_DIR_IN),
+		.bRequestType = (uint8_t)(req_type | FPAL_USB_DIR_IN),
 		.bRequest = req,
 		.wValue = value,
 		.wIndex = index,
@@ -100,14 +100,14 @@ static int ud_control_in(void *ctx, uint8_t req_type, uint8_t req,
 	int rc = ioctl(c->fd, USBDEVFS_CONTROL, &ct);
 
 	if (rc < 0)
-		return errno_to_fpx(errno);
+		return errno_to_fpal(errno);
 
-	fpx_trace("CTRL", req, buf, (size_t)rc);
+	fpal_trace("CTRL", req, buf, (size_t)rc);
 	if (rc != len) {
-		fpx_dbg("control req %u: short read %d/%u", req, rc, len);
-		return FPX_E_IO;
+		fpal_dbg("control req %u: short read %d/%u", req, rc, len);
+		return FPAL_E_IO;
 	}
-	return FPX_OK;
+	return FPAL_OK;
 }
 
 static int ud_bulk(struct usbdevfs_ctx *c, uint8_t ep, void *buf, size_t len,
@@ -121,11 +121,11 @@ static int ud_bulk(struct usbdevfs_ctx *c, uint8_t ep, void *buf, size_t len,
 	int rc;
 
 	if (len > UINT_MAX)
-		return FPX_E_INVAL;
+		return FPAL_E_INVAL;
 
 	rc = ioctl(c->fd, USBDEVFS_BULK, &bt);
 	if (rc < 0)
-		return errno_to_fpx(errno);
+		return errno_to_fpal(errno);
 	return rc;
 }
 
@@ -134,12 +134,12 @@ static int ud_bulk_out(void *ctx, uint8_t ep, const uint8_t *buf, size_t len,
 	/* USBDEVFS_BULK takes a non-const pointer but does not modify OUT data. */
 	int rc = ud_bulk(ctx, ep, (void *)(uintptr_t)buf, len, timeout_ms);
 
-	fpx_trace("OUT", ep, buf, len);
+	fpal_trace("OUT", ep, buf, len);
 	if (rc < 0)
 		return rc;
 	if ((size_t)rc != len)
-		return FPX_E_IO;
-	return FPX_OK;
+		return FPAL_E_IO;
+	return FPAL_OK;
 }
 
 static int ud_bulk_in(void *ctx, uint8_t ep, uint8_t *buf, size_t cap,
@@ -149,8 +149,8 @@ static int ud_bulk_in(void *ctx, uint8_t ep, uint8_t *buf, size_t cap,
 	if (rc < 0)
 		return rc;
 	*got = (size_t)rc;
-	fpx_trace("IN", ep, buf, *got);
-	return FPX_OK;
+	fpal_trace("IN", ep, buf, *got);
+	return FPAL_OK;
 }
 
 static void drain_cancel_pipe(struct usbdevfs_ctx *c) {
@@ -178,7 +178,7 @@ static int ud_wait_interrupt(void *ctx, uint8_t ep, uint8_t *buf, size_t cap,
 	int rc;
 
 	if (cap > INT_MAX)
-		return FPX_E_INVAL;
+		return FPAL_E_INVAL;
 
 	drain_cancel_pipe(c);
 
@@ -189,7 +189,7 @@ static int ud_wait_interrupt(void *ctx, uint8_t ep, uint8_t *buf, size_t cap,
 	urb.buffer_length = (int)cap;
 
 	if (ioctl(c->fd, USBDEVFS_SUBMITURB, &urb) < 0)
-		return errno_to_fpx(errno);
+		return errno_to_fpal(errno);
 
 	/* usbdevfs reports completed URBs as POLLOUT on the device fd. */
 	pfd[0] = (struct pollfd){ .fd = c->fd, .events = POLLOUT };
@@ -206,28 +206,28 @@ static int ud_wait_interrupt(void *ctx, uint8_t ep, uint8_t *buf, size_t cap,
 
 	if (rc < 0) {
 		discard_urb(c, &urb);
-		return FPX_E_IO;
+		return FPAL_E_IO;
 	}
 	if (rc == 0) {
 		discard_urb(c, &urb);
-		return FPX_E_TIMEOUT;
+		return FPAL_E_TIMEOUT;
 	}
 	if (pfd[1].revents & POLLIN) {
 		discard_urb(c, &urb);
 		drain_cancel_pipe(c);
-		return FPX_E_CANCELLED;
+		return FPAL_E_CANCELLED;
 	}
 
 	if (ioctl(c->fd, USBDEVFS_REAPURBNDELAY, &reaped) < 0)
-		return errno_to_fpx(errno);
+		return errno_to_fpal(errno);
 	if (reaped != &urb || urb.status != 0) {
-		fpx_dbg("interrupt urb failed, status %d", urb.status);
-		return FPX_E_IO;
+		fpal_dbg("interrupt urb failed, status %d", urb.status);
+		return FPAL_E_IO;
 	}
 
 	*got = (size_t)urb.actual_length;
-	fpx_trace("IRQ", ep, buf, *got);
-	return FPX_OK;
+	fpal_trace("IRQ", ep, buf, *got);
+	return FPAL_OK;
 }
 
 static void ud_cancel(void *ctx) {
@@ -247,7 +247,7 @@ static void ud_close(void *ctx) {
 	free(c);
 }
 
-static const struct fpx_transport_ops usbdevfs_ops = {
+static const struct fpal_transport_ops usbdevfs_ops = {
 	.reset = ud_reset,
 	.claim = ud_claim,
 	.release = ud_release,
@@ -259,28 +259,28 @@ static const struct fpx_transport_ops usbdevfs_ops = {
 	.close = ud_close,
 };
 
-int fpx_usbdevfs_open(uint8_t busnum, uint8_t devnum,
-		      struct fpx_transport *out) {
+int fpal_usbdevfs_open(uint8_t busnum, uint8_t devnum,
+		      struct fpal_transport *out) {
 	char path[64];
 	struct usbdevfs_ctx *c;
 	int err;
 
-	snprintf(path, sizeof(path), FPX_DEVFS_USB_FMT, busnum, devnum);
+	snprintf(path, sizeof(path), FPAL_DEVFS_USB_FMT, busnum, devnum);
 
 	c = calloc(1, sizeof(*c));
 	if (!c)
-		return FPX_E_NOMEM;
+		return FPAL_E_NOMEM;
 
 	c->fd = open(path, O_RDWR | O_CLOEXEC);
 	if (c->fd < 0) {
-		err = errno_to_fpx(errno);
-		fpx_dbg("open %s: %s", path, strerror(errno));
+		err = errno_to_fpal(errno);
+		fpal_dbg("open %s: %s", path, strerror(errno));
 		free(c);
 		return err;
 	}
 
 	if (pipe2(c->cancel_pipe, O_CLOEXEC | O_NONBLOCK) < 0) {
-		err = errno_to_fpx(errno);
+		err = errno_to_fpal(errno);
 		close(c->fd);
 		free(c);
 		return err;
@@ -288,5 +288,5 @@ int fpx_usbdevfs_open(uint8_t busnum, uint8_t devnum,
 
 	out->ops = &usbdevfs_ops;
 	out->ctx = c;
-	return FPX_OK;
+	return FPAL_OK;
 }

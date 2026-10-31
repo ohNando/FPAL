@@ -3,14 +3,14 @@
 
 #include "core/bytes.h"
 #include "drivers/egis_moc/egis_moc_proto.h"
-#include "fpx/types.h"
+#include "fpal/types.h"
 #include "mock_transport.h"
 
 static int m_reset(void *ctx) {
 	struct mock *m = ctx;
 
 	m->resets++;
-	return FPX_OK;
+	return FPAL_OK;
 }
 
 static int m_claim(void *ctx, uint8_t iface) {
@@ -36,7 +36,7 @@ static int m_control_in(void *ctx, uint8_t req_type, uint8_t req,
 	(void)req_type, (void)req, (void)value, (void)index, (void)timeout_ms;
 	m->ctrls++;
 	memset(buf, 0, len);
-	return FPX_OK;
+	return FPAL_OK;
 }
 
 static int m_bulk_out(void *ctx, uint8_t ep, const uint8_t *buf, size_t len,
@@ -45,11 +45,11 @@ static int m_bulk_out(void *ctx, uint8_t ep, const uint8_t *buf, size_t len,
 
 	(void)ep, (void)timeout_ms;
 	if (m->n_out >= MOCK_MAX_FRAMES || len > sizeof(m->out[0].data))
-		return FPX_E_IO;
+		return FPAL_E_IO;
 	memcpy(m->out[m->n_out].data, buf, len);
 	m->out[m->n_out].len = len;
 	m->n_out++;
-	return FPX_OK;
+	return FPAL_OK;
 }
 
 static int m_bulk_in(void *ctx, uint8_t ep, uint8_t *buf, size_t cap,
@@ -59,13 +59,13 @@ static int m_bulk_in(void *ctx, uint8_t ep, uint8_t *buf, size_t cap,
 
 	(void)ep, (void)timeout_ms;
 	if (m->i_in >= m->n_in)
-		return FPX_E_TIMEOUT; /* script exhausted */
+		return FPAL_E_TIMEOUT; /* script exhausted */
 	f = &m->in[m->i_in++];
 	if (f->len > cap)
-		return FPX_E_OVERFLOW;
+		return FPAL_E_OVERFLOW;
 	memcpy(buf, f->data, f->len);
 	*got = f->len;
-	return FPX_OK;
+	return FPAL_OK;
 }
 
 static int m_wait_interrupt(void *ctx, uint8_t ep, uint8_t *buf, size_t cap,
@@ -78,20 +78,20 @@ static int m_wait_interrupt(void *ctx, uint8_t ep, uint8_t *buf, size_t cap,
 		return m->irq_rc;
 	memset(buf, 0, cap);
 	*got = cap - 1; /* the real sensor is always one byte short */
-	return FPX_OK;
+	return FPAL_OK;
 }
 
 static void m_cancel(void *ctx) {
 	struct mock *m = ctx;
 
-	m->irq_rc = FPX_E_CANCELLED;
+	m->irq_rc = FPAL_E_CANCELLED;
 }
 
 static void m_close(void *ctx) {
 	(void)ctx;
 }
 
-static const struct fpx_transport_ops mock_ops = {
+static const struct fpal_transport_ops mock_ops = {
 	.reset = m_reset,
 	.claim = m_claim,
 	.release = m_release,
@@ -107,8 +107,8 @@ void mock_init(struct mock *m) {
 	memset(m, 0, sizeof(*m));
 }
 
-struct fpx_transport mock_transport(struct mock *m) {
-	return (struct fpx_transport){ .ops = &mock_ops, .ctx = m };
+struct fpal_transport mock_transport(struct mock *m) {
+	return (struct fpal_transport){ .ops = &mock_ops, .ctx = m };
 }
 
 void mock_push_egis(struct mock *m, const uint8_t *body, size_t body_len,
@@ -121,18 +121,18 @@ void mock_push_egis(struct mock *m, const uint8_t *body, size_t body_len,
 		return;
 	f = &m->in[m->n_in++];
 	memcpy(f->data, magic, sizeof(magic));
-	fpx_put_be16(f->data + EGIS_MAGIC_LEN, 0);
-	fpx_put_be32(f->data + EGIS_HDR_LEN, (uint32_t)(body_len + EGIS_SW_LEN));
+	fpal_put_be16(f->data + EGIS_MAGIC_LEN, 0);
+	fpal_put_be32(f->data + EGIS_HDR_LEN, (uint32_t)(body_len + EGIS_SW_LEN));
 	if (body_len)
 		memcpy(f->data + EGIS_RSP_BODY_OFF, body, body_len);
-	fpx_put_be16(f->data + EGIS_RSP_BODY_OFF + body_len, sw);
+	fpal_put_be16(f->data + EGIS_RSP_BODY_OFF + body_len, sw);
 	f->len = EGIS_RSP_BODY_OFF + body_len + EGIS_SW_LEN;
-	fpx_put_be16(f->data + EGIS_MAGIC_LEN, egis_checksum(f->data, f->len));
+	fpal_put_be16(f->data + EGIS_MAGIC_LEN, egis_checksum(f->data, f->len));
 }
 
 /* The library references the real backend; tests never open hardware. */
-int fpx_usbdevfs_open(uint8_t busnum, uint8_t devnum,
-		      struct fpx_transport *out) {
+int fpal_usbdevfs_open(uint8_t busnum, uint8_t devnum,
+		      struct fpal_transport *out) {
 	(void)busnum, (void)devnum, (void)out;
-	return FPX_E_NODEV;
+	return FPAL_E_NODEV;
 }

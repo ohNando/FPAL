@@ -2,29 +2,29 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "fpx/config.h"
+#include "fpal/config.h"
 #include "log.h"
 
-static fpx_log_sink log_sink;
+static fpal_log_sink log_sink;
 static bool log_debug;
 
-void fpx_log_set_sink(fpx_log_sink sink) {
+void fpal_log_set_sink(fpal_log_sink sink) {
 	log_sink = sink;
 }
 
-void fpx_log_set_debug(bool on) {
+void fpal_log_set_debug(bool on) {
 	log_debug = on;
 }
 
-static enum fpx_log_level max_level(void) {
-	const char *env = getenv(FPX_ENV_DEBUG);
+static enum fpal_log_level max_level(void) {
+	const char *env = getenv(FPAL_ENV_DEBUG);
 
 	if (log_debug)
-		return FPX_LOG_DEBUG;
-	return (env && env[0] && env[0] != '0') ? FPX_LOG_DEBUG : FPX_LOG_INFO;
+		return FPAL_LOG_DEBUG;
+	return (env && env[0] && env[0] != '0') ? FPAL_LOG_DEBUG : FPAL_LOG_INFO;
 }
 
-void fpx_log(enum fpx_log_level level, const char *fmt, ...) {
+void fpal_log(enum fpal_log_level level, const char *fmt, ...) {
 	static const char *const prefix[] = { "error", "warning", "info",
 					      "debug" };
 	char msg[512];
@@ -40,5 +40,5 @@ void fpx_log(enum fpx_log_level level, const char *fmt, ...) {
 	if (log_sink)
 		log_sink(level, msg);
 	else
-		fprintf(stderr, "fpx: %s: %s\n", prefix[level], msg);
+		fprintf(stderr, "fpal: %s: %s\n", prefix[level], msg);
 }

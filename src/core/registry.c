@@ -10,22 +10,22 @@
 
 #include "driver.h"
 
-extern const struct fpx_driver fpx_driver_egis_moc;
+extern const struct fpal_driver fpal_driver_egis_moc;
 
-const struct fpx_driver *const fpx_drivers[] = {
-	&fpx_driver_egis_moc,
+const struct fpal_driver *const fpal_drivers[] = {
+	&fpal_driver_egis_moc,
 	NULL,
 };
 
-const struct fpx_driver *fpx_driver_lookup(uint16_t vid, uint16_t pid,
-					   const struct fpx_usb_id **id) {
-	for (size_t d = 0; fpx_drivers[d]; d++) {
-		for (const struct fpx_usb_id *e = fpx_drivers[d]->ids; e->vid;
+const struct fpal_driver *fpal_driver_lookup(uint16_t vid, uint16_t pid,
+					   const struct fpal_usb_id **id) {
+	for (size_t d = 0; fpal_drivers[d]; d++) {
+		for (const struct fpal_usb_id *e = fpal_drivers[d]->ids; e->vid;
 		     e++) {
 			if (e->vid == vid && e->pid == pid) {
 				if (id)
 					*id = e;
-				return fpx_drivers[d];
+				return fpal_drivers[d];
 			}
 		}
 	}
@@ -65,32 +65,32 @@ static bool read_attr_ulong(const char *dir, const char *name, int base,
 	return end != buf && *end == '\0' && *out <= max;
 }
 
-int fpx_scan(struct fpx_usb_info *out, size_t cap, size_t *n) {
-	DIR *d = opendir(FPX_SYSFS_USB_DEVICES);
+int fpal_scan(struct fpal_usb_info *out, size_t cap, size_t *n) {
+	DIR *d = opendir(FPAL_SYSFS_USB_DEVICES);
 	struct dirent *ent;
 	size_t found = 0;
 
 	if (!d)
-		return FPX_E_IO;
+		return FPAL_E_IO;
 
 	while ((ent = readdir(d))) {
 		char dir[384];
 		unsigned long vid, pid, bus, dev;
-		const struct fpx_driver *drv;
-		struct fpx_usb_info *info;
+		const struct fpal_driver *drv;
+		struct fpal_usb_info *info;
 
 		/* Skip ".", ".." and interface entries such as "3-6:1.0". */
 		if (ent->d_name[0] == '.' || strchr(ent->d_name, ':'))
 			continue;
 
-		snprintf(dir, sizeof(dir), "%s/%s", FPX_SYSFS_USB_DEVICES,
+		snprintf(dir, sizeof(dir), "%s/%s", FPAL_SYSFS_USB_DEVICES,
 			 ent->d_name);
 
 		if (!read_attr_ulong(dir, "idVendor", 16, UINT16_MAX, &vid) ||
 		    !read_attr_ulong(dir, "idProduct", 16, UINT16_MAX, &pid))
 			continue;
 
-		drv = fpx_driver_lookup((uint16_t)vid, (uint16_t)pid, NULL);
+		drv = fpal_driver_lookup((uint16_t)vid, (uint16_t)pid, NULL);
 		if (!drv)
 			continue;
 
@@ -116,5 +116,5 @@ int fpx_scan(struct fpx_usb_info *out, size_t cap, size_t *n) {
 
 	closedir(d);
 	*n = found < cap ? found : cap;
-	return FPX_OK;
+	return FPAL_OK;
 }

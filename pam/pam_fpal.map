@@ -1,4 +1,4 @@
-/* Only the PAM entry points are visible; libfpx stays private. */
+/* Only the PAM entry points are visible; libfpal stays private. */
 {
 	global:
 		pam_sm_authenticate;

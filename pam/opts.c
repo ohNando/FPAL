@@ -22,12 +22,12 @@ static bool parse_num(const char *arg, const char *key, unsigned long min,
 	return true;
 }
 
-int pam_fpx_parse_opts(int argc, const char **argv, struct pam_fpx_opts *o,
+int pam_fpal_parse_opts(int argc, const char **argv, struct pam_fpal_opts *o,
 		       int *bad) {
-	int err = FPX_OK;
+	int err = FPAL_OK;
 
-	o->timeout_ms = FPX_PAM_TIMEOUT_MS;
-	o->retries = FPX_PAM_RETRIES;
+	o->timeout_ms = FPAL_PAM_TIMEOUT_MS;
+	o->retries = FPAL_PAM_RETRIES;
 	o->debug = false;
 	o->quiet = false;
 
@@ -39,16 +39,16 @@ int pam_fpx_parse_opts(int argc, const char **argv, struct pam_fpx_opts *o,
 			o->debug = true;
 		} else if (strcmp(a, "quiet") == 0) {
 			o->quiet = true;
-		} else if (parse_num(a, "timeout=", 1, FPX_FINGER_WAIT_TIMEOUT_MS,
+		} else if (parse_num(a, "timeout=", 1, FPAL_FINGER_WAIT_TIMEOUT_MS,
 				     &v)) {
 			o->timeout_ms = (uint32_t)v;
-		} else if (parse_num(a, "retries=", 1, FPX_PAM_RETRIES_MAX,
+		} else if (parse_num(a, "retries=", 1, FPAL_PAM_RETRIES_MAX,
 				     &v)) {
 			o->retries = (uint8_t)v;
 		} else {
-			if (bad && err == FPX_OK)
+			if (bad && err == FPAL_OK)
 				*bad = i;
-			err = FPX_E_INVAL;
+			err = FPAL_E_INVAL;
 		}
 	}
 	return err;

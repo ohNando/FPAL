@@ -1,4 +1,4 @@
-# OpenFinger (fpx) build. Only GNU make and a C17 compiler are required.
+# FPAL (Fingerprint Auth for Linux) build. Only GNU make and a C17 compiler are required.
 
 CC       ?= gcc
 AR       ?= ar
@@ -26,20 +26,20 @@ LIB_SRCS := src/core/device.c \
 # Real hardware backend; tests link a mock instead.
 USB_SRCS := src/transport/usbdevfs.c
 
-PAM_SRCS := pam/pam_fpx.c pam/opts.c
+PAM_SRCS := pam/pam_fpal.c pam/opts.c
 
 TEST_NAMES := test_proto test_egis_moc test_bindings test_pam_opts
 
-LIB      := $(BUILD)/libfpx.a
+LIB      := $(BUILD)/libfpal.a
 LIB_OBJS := $(LIB_SRCS:%.c=$(BUILD)/%.o)
 USB_OBJS := $(USB_SRCS:%.c=$(BUILD)/%.o)
 PAM_OBJS := $(PAM_SRCS:%.c=$(BUILD)/%.o)
-PAM_MOD  := $(BUILD)/pam_fpx.so
+PAM_MOD  := $(BUILD)/pam_fpal.so
 TESTS    := $(TEST_NAMES:%=$(BUILD)/tests/%)
 
 .PHONY: all pam test clean install uninstall
 
-all: $(BUILD)/fpx $(PAM_MOD)
+all: $(BUILD)/fpal $(PAM_MOD)
 
 pam: $(PAM_MOD)
 
@@ -50,11 +50,11 @@ $(BUILD)/%.o: %.c
 $(LIB): $(LIB_OBJS)
 	$(AR) rcs $@ $^
 
-$(BUILD)/fpx: $(BUILD)/tools/fpx.o $(USB_OBJS) $(LIB)
+$(BUILD)/fpal: $(BUILD)/tools/fpal.o $(USB_OBJS) $(LIB)
 	$(CC) $(CFLAGS) $^ -o $@ $(LDFLAGS)
 
-$(PAM_MOD): $(PAM_OBJS) $(USB_OBJS) $(LIB) pam/pam_fpx.map
-	$(CC) $(CFLAGS) -shared -Wl,--version-script=pam/pam_fpx.map \
+$(PAM_MOD): $(PAM_OBJS) $(USB_OBJS) $(LIB) pam/pam_fpal.map
+	$(CC) $(CFLAGS) -shared -Wl,--version-script=pam/pam_fpal.map \
 		-Wl,-z,relro,-z,now,-z,defs \
 		$(filter %.o %.a,$^) -o $@ $(LDFLAGS) -lpam
 
@@ -67,14 +67,14 @@ $(BUILD)/tests/test_pam_opts: $(BUILD)/pam/opts.o
 test: $(TESTS)
 	@set -e; for t in $(TESTS); do echo "== $$t"; $$t; done
 
-install: $(BUILD)/fpx $(PAM_MOD)
+install: $(BUILD)/fpal $(PAM_MOD)
 	@test -n "$(PAMDIR)" || { echo "PAMDIR not found, set PAMDIR=..."; exit 1; }
-	install -D -m 0755 $(BUILD)/fpx $(DESTDIR)$(PREFIX)/sbin/fpx
-	install -D -m 0755 $(PAM_MOD) $(DESTDIR)$(PAMDIR)/pam_fpx.so
+	install -D -m 0755 $(BUILD)/fpal $(DESTDIR)$(PREFIX)/sbin/fpal
+	install -D -m 0755 $(PAM_MOD) $(DESTDIR)$(PAMDIR)/pam_fpal.so
 
 uninstall:
-	rm -f $(DESTDIR)$(PREFIX)/sbin/fpx
-	rm -f $(DESTDIR)$(PAMDIR)/pam_fpx.so
+	rm -f $(DESTDIR)$(PREFIX)/sbin/fpal
+	rm -f $(DESTDIR)$(PAMDIR)/pam_fpal.so
 
 clean:
 	rm -rf $(BUILD)

@@ -17,7 +17,7 @@ static void test_frame_sensor_reset(void) {
 
 	T_EQ_INT(egis_frame(egis_cmd_sensor_reset.data,
 			    egis_cmd_sensor_reset.len, out, sizeof(out), &len),
-		 FPX_OK);
+		 FPAL_OK);
 	T_EQ_INT(len, sizeof(expected));
 	T_EQ_MEM(out, expected, sizeof(expected));
 }
@@ -29,9 +29,9 @@ static void test_frame_fw_version_odd_length(void) {
 
 	T_EQ_INT(egis_frame(egis_cmd_fw_version.data, egis_cmd_fw_version.len,
 			    out, sizeof(out), &len),
-		 FPX_OK);
+		 FPAL_OK);
 	T_EQ_INT(len, 21);
-	T_EQ_INT(fpx_get_be16(out + EGIS_MAGIC_LEN), 0x14de);
+	T_EQ_INT(fpal_get_be16(out + EGIS_MAGIC_LEN), 0x14de);
 }
 
 static void test_frame_list(void) {
@@ -40,8 +40,8 @@ static void test_frame_list(void) {
 
 	T_EQ_INT(egis_frame(egis_cmd_list.data, egis_cmd_list.len, out,
 			    sizeof(out), &len),
-		 FPX_OK);
-	T_EQ_INT(fpx_get_be16(out + EGIS_MAGIC_LEN), 0xdd42);
+		 FPAL_OK);
+	T_EQ_INT(fpal_get_be16(out + EGIS_MAGIC_LEN), 0xdd42);
 }
 
 /* Property: a framed command always sums to 0 mod 0xFFFF. */
@@ -58,7 +58,7 @@ static void test_checksum_self_verifies(void) {
 
 		egis_frame(cmds[i]->data, cmds[i]->len, out, sizeof(out), &len);
 		for (size_t j = 0; j < len; j += 2)
-			sum += j + 1 < len ? fpx_get_be16(out + j) :
+			sum += j + 1 < len ? fpal_get_be16(out + j) :
 					     (uint32_t)out[j] << 8;
 		T_EQ_INT(sum % 0xffffu, 0);
 	}
@@ -70,22 +70,22 @@ static void test_frame_overflow(void) {
 
 	T_EQ_INT(egis_frame(egis_cmd_list.data, egis_cmd_list.len, out,
 			    sizeof(out), &len),
-		 FPX_E_OVERFLOW);
+		 FPAL_E_OVERFLOW);
 }
 
 static void test_build_check_one_id(void) {
-	struct fpx_template_id id;
+	struct fpal_template_id id;
 	uint8_t out[256];
 	size_t len = 0;
 
 	memset(id.bytes, 0xab, sizeof(id.bytes));
-	T_EQ_INT(egis_build_check(&id, 1, 0, out, sizeof(out), &len), FPX_OK);
+	T_EQ_INT(egis_build_check(&id, 1, 0, out, sizeof(out), &len), FPAL_OK);
 
 	/* 4 len + 5 prefix + 2 len + 32 separator + 32 id + 2 suffix */
 	T_EQ_INT(len, 77);
-	T_EQ_INT(fpx_get_be32(out), 0x49);
+	T_EQ_INT(fpal_get_be32(out), 0x49);
 	T_EQ_MEM(out + 4, "\x50\x17\x03\x00\x00", 5);
-	T_EQ_INT(fpx_get_be16(out + 9), 0x40);
+	T_EQ_INT(fpal_get_be16(out + 9), 0x40);
 	for (size_t i = 11; i < 43; i++)
 		T_EQ_INT(out[i], 0);
 	T_EQ_MEM(out + 43, id.bytes, 32);
@@ -94,29 +94,29 @@ static void test_build_check_one_id(void) {
 
 /* Seven ids push both length fields past one byte (libfprint's > 6 case). */
 static void test_build_check_seven_ids_type2(void) {
-	struct fpx_template_id ids[7];
+	struct fpal_template_id ids[7];
 	uint8_t out[512];
 	size_t len = 0;
 
 	memset(ids, 0x11, sizeof(ids));
 	T_EQ_INT(egis_build_check(ids, 7, EGIS_FLAG_CHECK_PREFIX_TYPE2, out,
 				  sizeof(out), &len),
-		 FPX_OK);
-	T_EQ_INT(fpx_get_be32(out), 0x0109);
+		 FPAL_OK);
+	T_EQ_INT(fpal_get_be32(out), 0x0109);
 	T_EQ_MEM(out + 4, "\x50\x17\x03\x80\x00", 5);
-	T_EQ_INT(fpx_get_be16(out + 9), 0x0100);
+	T_EQ_INT(fpal_get_be16(out + 9), 0x0100);
 	T_EQ_INT(len, 4 + 0x0109);
 }
 
 static void test_build_check_too_many(void) {
-	struct fpx_template_id ids[FPX_MAX_TEMPLATES + 1];
+	struct fpal_template_id ids[FPAL_MAX_TEMPLATES + 1];
 	uint8_t out[1024];
 	size_t len;
 
 	memset(ids, 0, sizeof(ids));
-	T_EQ_INT(egis_build_check(ids, FPX_MAX_TEMPLATES + 1, 0, out,
+	T_EQ_INT(egis_build_check(ids, FPAL_MAX_TEMPLATES + 1, 0, out,
 				  sizeof(out), &len),
-		 FPX_E_INVAL);
+		 FPAL_E_INVAL);
 }
 
 static void test_parse_ok(void) {
@@ -126,7 +126,7 @@ static void test_parse_ok(void) {
 	mock_init(&m);
 	mock_push_egis(&m, (const uint8_t *)"1.2.3", 5, EGIS_SW_OK);
 
-	T_EQ_INT(egis_parse(m.in[0].data, m.in[0].len, &rsp), FPX_OK);
+	T_EQ_INT(egis_parse(m.in[0].data, m.in[0].len, &rsp), FPAL_OK);
 	T_EQ_INT(rsp.sw, EGIS_SW_OK);
 	T_EQ_INT(rsp.body_len, 5);
 	T_EQ_MEM(rsp.body, "1.2.3", 5);
@@ -140,7 +140,7 @@ static void test_parse_rejects_bad_magic(void) {
 	mock_init(&m);
 	mock_push_egis(&m, NULL, 0, EGIS_SW_OK);
 	m.in[0].data[0] = 'X';
-	T_EQ_INT(egis_parse(m.in[0].data, m.in[0].len, &rsp), FPX_E_PROTO);
+	T_EQ_INT(egis_parse(m.in[0].data, m.in[0].len, &rsp), FPAL_E_PROTO);
 }
 
 static void test_parse_rejects_truncated(void) {
@@ -151,13 +151,13 @@ static void test_parse_rejects_truncated(void) {
 	mock_push_egis(&m, (const uint8_t *)"abcdef", 6, EGIS_SW_OK);
 	/* Length field promises more bytes than were received. */
 	T_EQ_INT(egis_parse(m.in[0].data, m.in[0].len - 3, &rsp),
-		 FPX_E_PROTO);
-	T_EQ_INT(egis_parse(m.in[0].data, 10, &rsp), FPX_E_PROTO);
+		 FPAL_E_PROTO);
+	T_EQ_INT(egis_parse(m.in[0].data, 10, &rsp), FPAL_E_PROTO);
 }
 
 static void test_parse_list(void) {
-	uint8_t body[2 * FPX_TEMPLATE_ID_LEN];
-	struct fpx_template_id ids[FPX_MAX_TEMPLATES];
+	uint8_t body[2 * FPAL_TEMPLATE_ID_LEN];
+	struct fpal_template_id ids[FPAL_MAX_TEMPLATES];
 	struct egis_rsp rsp;
 	struct mock m;
 	size_t n = 0;
@@ -167,13 +167,13 @@ static void test_parse_list(void) {
 	mock_init(&m);
 	mock_push_egis(&m, body, sizeof(body), EGIS_SW_OK);
 
-	T_EQ_INT(egis_parse(m.in[0].data, m.in[0].len, &rsp), FPX_OK);
-	T_EQ_INT(egis_parse_list(&rsp, ids, FPX_MAX_TEMPLATES, &n), FPX_OK);
+	T_EQ_INT(egis_parse(m.in[0].data, m.in[0].len, &rsp), FPAL_OK);
+	T_EQ_INT(egis_parse_list(&rsp, ids, FPAL_MAX_TEMPLATES, &n), FPAL_OK);
 	T_EQ_INT(n, 2);
 	T_EQ_MEM(ids[0].bytes, body, 32);
 	T_EQ_MEM(ids[1].bytes, body + 32, 32);
 
-	T_EQ_INT(egis_parse_list(&rsp, ids, 1, &n), FPX_E_OVERFLOW);
+	T_EQ_INT(egis_parse_list(&rsp, ids, 1, &n), FPAL_E_OVERFLOW);
 }
 
 /*
@@ -194,18 +194,18 @@ static void test_real_capture_responses(void) {
 					   0x00, 0x02, 0x91, 0x00 };
 	struct egis_rsp rsp;
 
-	T_EQ_INT(egis_parse(fw, sizeof(fw), &rsp), FPX_OK);
+	T_EQ_INT(egis_parse(fw, sizeof(fw), &rsp), FPAL_OK);
 	T_CHECK(rsp.checksum_ok);
 	T_EQ_INT(rsp.sw, EGIS_SW_OK);
 	T_EQ_INT(rsp.body_len, 11);
 	T_EQ_MEM(rsp.body, "9050.6.4.67", 11);
 
-	T_EQ_INT(egis_parse(reset_ok, sizeof(reset_ok), &rsp), FPX_OK);
+	T_EQ_INT(egis_parse(reset_ok, sizeof(reset_ok), &rsp), FPAL_OK);
 	T_CHECK(rsp.checksum_ok);
 	T_EQ_INT(rsp.sw, EGIS_SW_OK);
 	T_EQ_INT(rsp.body_len, 0);
 
-	T_EQ_INT(egis_parse(arm_rsp, sizeof(arm_rsp), &rsp), FPX_OK);
+	T_EQ_INT(egis_parse(arm_rsp, sizeof(arm_rsp), &rsp), FPAL_OK);
 	T_CHECK(rsp.checksum_ok);
 	T_EQ_INT(rsp.sw, 0x9100);
 }
@@ -217,10 +217,10 @@ static void test_real_capture_commands(void) {
 
 	egis_frame(egis_cmd_arm_identify.data, egis_cmd_arm_identify.len, out,
 		   sizeof(out), &len);
-	T_EQ_INT(fpx_get_be16(out + EGIS_MAGIC_LEN), 0x2048);
+	T_EQ_INT(fpal_get_be16(out + EGIS_MAGIC_LEN), 0x2048);
 	egis_frame(egis_cmd_sensor_check.data, egis_cmd_sensor_check.len, out,
 		   sizeof(out), &len);
-	T_EQ_INT(fpx_get_be16(out + EGIS_MAGIC_LEN), 0x1f49);
+	T_EQ_INT(fpal_get_be16(out + EGIS_MAGIC_LEN), 0x1f49);
 }
 
 int main(void) {
