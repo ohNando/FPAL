@@ -23,6 +23,8 @@ Fingerprint not recognised, try again
 $                                  # right finger on the last try: no password asked
 ```
 
+[![asciicast](https://asciinema.org/a/44R1RxA91XsLiWO2.svg)](https://asciinema.org/a/44R1RxA91XsLiWO2)
+
 If the finger is not read, the sensor is unplugged or you are logged in over SSH, the system quietly falls back to the password. You never get locked out.
 
 ## Why FPAL?
