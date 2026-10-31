@@ -4,6 +4,8 @@
 
 **Fingerprint Auth for Linux**
 
+[English](README.md) · **Türkçe**
+
 Parmak izi sensörünü Linux'ta `sudo`, `su` ve giriş için kullan.
 Sıfırdan yazılmış, bağımlılıksız, küçük ve okunabilir bir C projesi.
 
@@ -49,28 +51,6 @@ Dizüstü bilgisayarındaki parmak izi sensörü Windows'ta çalışıyor ama Li
 | 🧩 **Eklenebilir** | Yeni sensör = yeni sürücü klasörü, çekirdek aynı kalır |
 | 🪶 **Hafif** | Arka planda çalışan bir servis yok; sensör sadece giriş sırasında açılır |
 
-## Nasıl çalışır?
-
-Sensörler iki türlüdür. Bazıları parmak izi görüntüsünü bilgisayara gönderir ve eşleştirmeyi yazılım yapar. FPAL'ın desteklediği **Match-on-Chip** sensörlerde ise şablonlar ve eşleştirme çipin içindedir: bilgisayar görüntüyü hiç görmez, çip sadece "eşleşti, şablon numarası şu" der.
-
-```
-  sudo / su / login
-        │
-        ▼
-     libpam ──► pam_fpal.so ──► libfpal ──► usbdevfs ──► sensör
-                    │               │                  (eşleştirme çipte)
-                    │               └─ sürücü tablosu: egis_moc, …
-                    ▼
-        /var/lib/fpal/<kullanıcı>      hangi şablon kimin?
-```
-
-1. `sudo` PAM'a "bu kullanıcıyı doğrula" der.
-2. `pam_fpal.so` sensörü açar ve parmağı bekler.
-3. Çip, parmağı kendi içindeki şablonlarla karşılaştırır ve eşleşen şablonun numarasını döndürür.
-4. Modül bu numaranın o kullanıcıya bağlı olup olmadığına bakar. Bağlıysa giriş onaylanır.
-
-FPAL parmak izi **kaydı** yapmaz; Windows Hello'da kayıtlı parmaklarını çipten okuyup kullanıcıya bağlar (`fpal bind`).
-
 ## Hızlı başlangıç
 
 ```sh
@@ -110,12 +90,6 @@ Sürücü ailenin diğer üyelerini (`0582`–`0588`, `05a1`) tanır ama bunlar 
 | [docs/usage.md](docs/usage.md) | Kurulum, komutlar, sorun giderme |
 | [docs/pam.md](docs/pam.md) | PAM seçenekleri, mesajlar, authselect ile devreye alma |
 | [docs/protocol-egis-moc.md](docs/protocol-egis-moc.md) | Sensörün USB protokolü, gerçek cihazda doğrulanmış |
-
-## Katkı
-
-Yeni sensör eklemek için `src/drivers/` altına bir klasör açıp `struct fpal_driver` tablosunu doldurmak yeterli; örnek olarak `src/drivers/egis_moc/` ve arayüz için `src/core/driver.h`. Hata bildirirken `sudo FPAL_TRACE=1 fpal info` çıktısını eklemen sorunu bulmayı çok kolaylaştırır.
-
-Geliştirme `develop` dalında yapılır, `main` yalnızca sürümleri tutar. Commit mesajları `feat:`, `fix:`, `docs:`, `test:`, `build:`, `chore:` önekleriyle başlar.
 
 ## Lisans
 
