@@ -28,6 +28,7 @@
 #include "fpal/fpal.h"
 #include "fpal/labels.h"
 #include "finger.h"
+#include "manage.h"
 #include "setup.h"
 #include "status.h"
 #include "ui.h"
@@ -52,6 +53,7 @@ static void usage(FILE *f) {
 	      "  bindings USER     show the template ids bound to USER\n"
 	      "  label FINGER [NAME|--clear]\n"
 	      "                    show, set or clear the name of a finger\n"
+	      "  manage            pick fingers with the arrow keys: rename, delete, add\n"
 	      "  status [USER]     show whether fingerprint login is set up\n"
 	      "  setup [--revert]  make sudo, su and the GNOME screens use the fingerprint\n"
 #ifdef FPAL_ENABLE_ENROLL
@@ -69,12 +71,6 @@ static void usage(FILE *f) {
 	      "  " FPAL_ENV_TRACE "=1   hex dump every USB packet\n"
 	      "  " FPAL_ENV_DEBUG "=1   verbose log messages\n",
 	      f);
-}
-
-/* Ids made by fpal enroll start with FPAL_NEW_ID_PREFIX; others are foreign. */
-static bool is_ours(const struct fpal_template_id *id) {
-	return !memcmp(id->bytes, FPAL_NEW_ID_PREFIX,
-		       sizeof(FPAL_NEW_ID_PREFIX) - 1);
 }
 
 static void print_id(const struct fpal_template_id *id) {
@@ -147,24 +143,6 @@ static int cmd_info(void) {
 	return 0;
 }
 
-/* A short, recognisable form of an id for the table: text if it is text, else hex. */
-static void short_id(const struct fpal_ui *ui, const struct fpal_template_id *id,
-		     char *out, size_t cap) {
-	const char *dots = ui->utf8 ? "…" : "...";
-	bool text = true;
-
-	for (size_t i = 0; i < 16; i++)
-		if (id->bytes[i] < 0x20 || id->bytes[i] > 0x7e)
-			text = false;
-	if (text) {
-		snprintf(out, cap, "%.16s%s", (const char *)id->bytes, dots);
-		return;
-	}
-	for (size_t i = 0; i < 8 && 2 * i + 2 < cap; i++)
-		snprintf(out + 2 * i, cap - 2 * i, "%02x", id->bytes[i]);
-	snprintf(out + 16, cap - 16, "%s", dots);
-}
-
 /* The list as a table, for a person at a terminal. */
 static void print_table(const struct fpal_ui *ui,
 			const struct fpal_template_id *ids, size_t n) {
@@ -180,10 +158,10 @@ static void print_table(const struct fpal_ui *ui,
 		(void)fpal_labels_get(FPAL_STATE_DIR, &ids[i], label, sizeof(label));
 		snprintf(num[i], sizeof(num[i]), "%zu", i);
 		snprintf(name[i], sizeof(name[i]), "%s", label[0] ? label : "(no name)");
-		short_id(ui, &ids[i], sid[i], sizeof(sid[i]));
+		fpal_ui_short_id(ui, &ids[i], sid[i], sizeof(sid[i]));
 		cells[i * 5 + 0] = num[i];
 		cells[i * 5 + 1] = name[i];
-		cells[i * 5 + 2] = is_ours(&ids[i]) ? "FPAL" : "other";
+		cells[i * 5 + 2] = fpal_finger_is_ours(&ids[i]) ? "FPAL" : "other";
 		cells[i * 5 + 3] = fpal_bindings_contains(FPAL_STATE_DIR, user, &ids[i]) ?
 					   fpal_ui_mark(ui, UI_OK) :
 					   "";
@@ -671,7 +649,7 @@ static int cmd_delete(int argc, char **argv) {
 
 	printf("finger to delete: [%zu] ", i);
 	print_id(&ids[i]);
-	if (!is_ours(&ids[i]) && !foreign_ok) {
+	if (!fpal_finger_is_ours(&ids[i]) && !foreign_ok) {
 		fputs("fpal: this fingerprint was not created by FPAL (it may "
 		      "come from Windows Hello).\n"
 		      "      Deleting it removes it for every system that uses "
@@ -688,7 +666,7 @@ static int cmd_delete(int argc, char **argv) {
 		return 0;
 	}
 
-	if (is_ours(&ids[i])) {
+	if (fpal_finger_is_ours(&ids[i])) {
 		snprintf(msg, sizeof(msg),
 			 "This DELETES finger [%zu] from the sensor. It cannot be undone.\n"
 			 "The other %zu fingerprint(s) are not touched.",
@@ -774,6 +752,8 @@ int main(int argc, char **argv) {
 		return cmd_unbind(argc - 1, argv + 1);
 	if (strcmp(cmd, "bindings") == 0)
 		return cmd_bindings(argc - 1, argv + 1);
+	if (strcmp(cmd, "manage") == 0)
+		return fpal_cmd_manage(argc - 1, argv + 1);
 	if (strcmp(cmd, "status") == 0)
 		return fpal_cmd_status(argc - 1, argv + 1);
 	if (strcmp(cmd, "setup") == 0)

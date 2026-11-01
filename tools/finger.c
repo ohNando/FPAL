@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "fpal/config.h"
 #include "fpal/labels.h"
 
 static bool all_digits(const char *s) {
@@ -38,6 +39,11 @@ static bool text_prefix_of(const struct fpal_template_id *id, const char *arg) {
 
 	return len >= 6 && len <= FPAL_TEMPLATE_ID_LEN &&
 	       !memcmp(id->bytes, arg, len);
+}
+
+bool fpal_finger_is_ours(const struct fpal_template_id *id) {
+	return !memcmp(id->bytes, FPAL_NEW_ID_PREFIX,
+		       sizeof(FPAL_NEW_ID_PREFIX) - 1);
 }
 
 int fpal_finger_find(const char *state_dir, const struct fpal_template_id *ids,

@@ -7,6 +7,7 @@
 #ifndef FPAL_TOOLS_FINGER_H
 #define FPAL_TOOLS_FINGER_H
 
+#include <stdbool.h>
 #include <stddef.h>
 
 #include "fpal/types.h"
@@ -22,5 +23,8 @@
  */
 int fpal_finger_find(const char *state_dir, const struct fpal_template_id *ids,
 		     size_t n, const char *arg, size_t *index, size_t *matches);
+
+/* Was this template created by fpal (its id starts with FPAL_NEW_ID_PREFIX)? */
+bool fpal_finger_is_ours(const struct fpal_template_id *id);
 
 #endif /* FPAL_TOOLS_FINGER_H */
