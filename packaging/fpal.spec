@@ -1,5 +1,5 @@
 Name:           fpal
-Version:        0.1.0
+Version:        0.2.0
 Release:        1%{?dist}
 Summary:        Fingerprint Auth for Linux
 License:        Apache-2.0
@@ -70,5 +70,9 @@ exit 0
 %{_docdir}/%{name}/
 
 %changelog
+* Sun Nov 01 2026 ohNando <emirhanbuldurucu12@gmail.com> - 0.2.0-1
+- Add fpald, so the GNOME login and lock screens offer the fingerprint
+- Add a small D-Bus implementation, a systemd unit and a bus policy file
+
 * Sat Oct 31 2026 ohNando <emirhanbuldurucu12@gmail.com> - 0.1.0-1
 - First release
