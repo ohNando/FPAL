@@ -51,7 +51,7 @@ PAM_SRCS := pam/pam_fpal.c pam/opts.c
 DAEMON_SRCS := daemon/fprint_service.c
 
 TEST_NAMES := test_proto test_egis_moc test_bindings test_pam_opts test_dbus \
-              test_dbus_conn test_fprint_service test_labels
+              test_dbus_conn test_fprint_service test_labels test_finger
 ifeq ($(ENROLL),1)
 TEST_NAMES += test_enroll
 endif
@@ -77,7 +77,7 @@ $(BUILD)/%.o: %.c
 $(LIB): $(LIB_OBJS)
 	$(AR) rcs $@ $^
 
-$(BUILD)/fpal: $(BUILD)/tools/fpal.o $(USB_OBJS) $(LIB)
+$(BUILD)/fpal: $(BUILD)/tools/fpal.o $(BUILD)/tools/finger.o $(USB_OBJS) $(LIB)
 	$(CC) $(CFLAGS) $^ -o $@ $(LDFLAGS)
 
 $(BUILD)/fpald: $(BUILD)/daemon/fpald.o $(DAEMON_OBJS) $(USB_OBJS) $(LIB)
@@ -90,6 +90,9 @@ $(PAM_MOD): $(PAM_OBJS) $(USB_OBJS) $(LIB) pam/pam_fpal.map
 
 $(BUILD)/tests/%: $(BUILD)/tests/%.o $(BUILD)/tests/mock_transport.o $(LIB)
 	$(CC) $(CFLAGS) $^ -o $@ $(LDFLAGS)
+
+# The finger picking of the command line tool is tested on its own.
+$(BUILD)/tests/test_finger: $(BUILD)/tools/finger.o
 
 # The service logic is linked in as an object; the tests need no bus.
 $(BUILD)/tests/test_fprint_service: $(BUILD)/daemon/fprint_service.o

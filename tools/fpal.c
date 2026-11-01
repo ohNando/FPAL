@@ -8,8 +8,11 @@
  *   fpal bind [-t ms] <user>     bind the touched finger to a local user
  *   fpal unbind <user>           forget a user's bindings (host side only)
  *   fpal bindings <user>         show a user's bindings
- *   fpal enroll [--dry-run] [--allow-chip-write] <user>
+ *   fpal label <finger> [name]   show, set or --clear the name of a finger
+ *   fpal enroll [--dry-run] [--allow-chip-write] [--name N] <user>
  *                                store a NEW finger on the sensor (ENROLL=1 builds)
+ *   fpal delete [--dry-run] [--allow-chip-write] [--allow-foreign] <finger>
+ *                                delete ONE finger from the sensor (ENROLL=1 builds)
  */
 #include <pwd.h>
 #include <signal.h>
@@ -21,6 +24,8 @@
 
 #include "fpal/bindings.h"
 #include "fpal/fpal.h"
+#include "fpal/labels.h"
+#include "finger.h"
 
 static struct fpal_device *volatile active_dev;
 
@@ -40,12 +45,18 @@ static void usage(FILE *f) {
 	      "  bind [-t ms] USER bind the touched finger to USER\n"
 	      "  unbind USER       forget USER's bindings (sensor untouched)\n"
 	      "  bindings USER     show the template ids bound to USER\n"
+	      "  label FINGER [NAME|--clear]\n"
+	      "                    show, set or clear the name of a finger\n"
 #ifdef FPAL_ENABLE_ENROLL
-	      "  enroll [--dry-run] [--allow-chip-write] USER\n"
+	      "  enroll [--dry-run] [--allow-chip-write] [--name NAME] USER\n"
 	      "                    store a new finger on the sensor and bind it to USER\n"
+	      "  delete [--dry-run] [--allow-chip-write] [--allow-foreign] FINGER\n"
+	      "                    delete ONE finger from the sensor (cannot be undone)\n"
 #endif
 	      "  version           show the fpal version\n"
 	      "  help              show this help\n"
+	      "\n"
+	      "FINGER is its number in 'fpal list', its name, or the start of its id.\n"
 	      "\n"
 	      "environment:\n"
 	      "  " FPAL_ENV_TRACE "=1   hex dump every USB packet\n"
@@ -54,6 +65,8 @@ static void usage(FILE *f) {
 }
 
 static void print_id(const struct fpal_template_id *id) {
+	char label[FPAL_LABEL_MAX + 1];
+
 	for (size_t i = 0; i < FPAL_TEMPLATE_ID_LEN; i++)
 		printf("%02x", id->bytes[i]);
 	fputs("  \"", stdout);
@@ -62,7 +75,11 @@ static void print_id(const struct fpal_template_id *id) {
 
 		putchar(c >= 0x20 && c <= 0x7e ? c : '.');
 	}
-	fputs("\"\n", stdout);
+	putchar('"');
+	if (!fpal_labels_get(FPAL_STATE_DIR, id, label, sizeof(label)) &&
+	    label[0])
+		printf("  %s", label);
+	putchar('\n');
 }
 
 static int report(int err) {
@@ -267,6 +284,70 @@ static int cmd_unbind(int argc, char **argv) {
 	return 0;
 }
 
+/* ---- naming and picking a finger --------------------------------------- */
+
+/* Print why a finger could not be picked. */
+static int resolve_finger(const struct fpal_template_id *ids, size_t n,
+			  const char *arg, size_t *index) {
+	size_t matches = 0;
+	int err = fpal_finger_find(FPAL_STATE_DIR, ids, n, arg, index, &matches);
+
+	if (err == FPAL_E_EXISTS)
+		fprintf(stderr, "fpal: '%s' matches %zu fingers, be more specific\n",
+			arg, matches);
+	else if (err == FPAL_E_NODATA)
+		fprintf(stderr, "fpal: no finger matches '%s' (the sensor holds %zu; see: fpal list)\n",
+			arg, n);
+	return err;
+}
+
+static int cmd_label(int argc, char **argv) {
+	struct fpal_template_id ids[FPAL_MAX_TEMPLATES];
+	struct fpal_device *dev;
+	const char *name = argc > 2 ? argv[2] : NULL;
+	bool clear = name && !strcmp(name, "--clear");
+	char label[FPAL_LABEL_MAX + 1];
+	size_t n = 0, i = 0;
+	int err;
+
+	if (argc < 2 || argc > 3) {
+		usage(stderr);
+		return 2;
+	}
+	if (name && !clear && !fpal_label_valid(name)) {
+		fprintf(stderr, "fpal: a name is 1 to %u bytes with no control "
+				"characters and no leading or trailing space\n",
+			FPAL_LABEL_MAX);
+		return 2;
+	}
+
+	err = open_device(&dev);
+	if (err)
+		return report(err);
+	err = fpal_list(dev, ids, FPAL_MAX_TEMPLATES, &n);
+	close_device(dev);
+	if (err)
+		return report(err);
+	if (resolve_finger(ids, n, argv[1], &i))
+		return 1;
+
+	if (!name) {
+		err = fpal_labels_get(FPAL_STATE_DIR, &ids[i], label, sizeof(label));
+		if (err)
+			return report(err);
+		printf("[%zu] %s\n", i, label[0] ? label : "(no name)");
+		return 0;
+	}
+	err = fpal_labels_set(FPAL_STATE_DIR, &ids[i], clear ? NULL : name);
+	if (err)
+		return report(err);
+	if (clear)
+		printf("[%zu] name removed\n", i);
+	else
+		printf("[%zu] is now called \"%s\"\n", i, name);
+	return 0;
+}
+
 static int cmd_bindings(int argc, char **argv) {
 	struct fpal_template_id ids[FPAL_MAX_TEMPLATES];
 	const char *user;
@@ -319,31 +400,43 @@ static void on_enroll_event(enum fpal_enroll_event ev, uint8_t stage,
 	fflush(stdout);
 }
 
-/* The last question before the sensor is written to. */
-static bool confirm_store(size_t used) {
-	char line[16];
+/* Ids made by fpal enroll start with FPAL_NEW_ID_PREFIX; others are foreign. */
+static bool is_ours(const struct fpal_template_id *id) {
+	return !memcmp(id->bytes, FPAL_NEW_ID_PREFIX,
+		       sizeof(FPAL_NEW_ID_PREFIX) - 1);
+}
+
+/* The last question before the sensor is written to: type @phrase exactly. */
+static bool confirm(const char *message, const char *phrase) {
+	char line[32], want[32];
 
 	if (!isatty(STDIN_FILENO)) {
-		fputs("fpal: storing a fingerprint needs a terminal to confirm\n",
-		      stderr);
+		fputs("fpal: this needs a terminal to confirm\n", stderr);
 		return false;
 	}
-	fprintf(stderr,
-		"This stores a NEW fingerprint on the sensor (%zu of %u slots in use).\n"
-		"Fingerprints already stored, including those from Windows, are not touched.\n"
-		"Type 'yes' to continue: ",
-		used, FPAL_MAX_TEMPLATES);
-	if (!fgets(line, sizeof(line), stdin) || strcmp(line, "yes\n") != 0) {
-		fputs("fpal: cancelled, nothing was stored\n", stderr);
+	snprintf(want, sizeof(want), "%s\n", phrase);
+	fprintf(stderr, "%s\nType '%s' to continue: ", message, phrase);
+	if (!fgets(line, sizeof(line), stdin) || strcmp(line, want) != 0) {
+		fputs("fpal: cancelled, the sensor was not changed\n", stderr);
 		return false;
 	}
 	return true;
 }
 
+static bool confirm_store(size_t used) {
+	char msg[256];
+
+	snprintf(msg, sizeof(msg),
+		 "This stores a NEW fingerprint on the sensor (%zu of %u slots in use).\n"
+		 "Fingerprints already stored, including those from Windows, are not touched.",
+		 used, FPAL_MAX_TEMPLATES);
+	return confirm(msg, "yes");
+}
+
 static int cmd_enroll(int argc, char **argv) {
 	struct fpal_template_id ids[FPAL_MAX_TEMPLATES], id;
 	bool dry_run = false, allow = false;
-	const char *user = NULL;
+	const char *user = NULL, *name = NULL;
 	struct fpal_device *dev;
 	size_t before = 0, after = 0;
 	int err;
@@ -353,6 +446,8 @@ static int cmd_enroll(int argc, char **argv) {
 			dry_run = true;
 		else if (!strcmp(argv[i], "--allow-chip-write"))
 			allow = true;
+		else if (!strcmp(argv[i], "--name") && i + 1 < argc)
+			name = argv[++i];
 		else if (argv[i][0] != '-' && !user)
 			user = argv[i];
 		else {
@@ -362,6 +457,13 @@ static int cmd_enroll(int argc, char **argv) {
 	}
 	if (!user || !fpal_bindings_valid_user(user) || !getpwnam(user)) {
 		fprintf(stderr, "fpal: no such user '%s'\n", user ? user : "");
+		return 2;
+	}
+	/* A bad name must not be found out after the 20 scans. */
+	if (name && !fpal_label_valid(name)) {
+		fprintf(stderr, "fpal: a name is 1 to %u bytes with no control "
+				"characters and no leading or trailing space\n",
+			FPAL_LABEL_MAX);
 		return 2;
 	}
 	if (!dry_run && !allow) {
@@ -427,14 +529,143 @@ static int cmd_enroll(int argc, char **argv) {
 		print_id(&id);
 		return report(err);
 	}
+	if (name && fpal_labels_set(FPAL_STATE_DIR, &id, name))
+		fputs("fpal: the finger is stored but its name could not be "
+		      "saved; use 'fpal label'\n",
+		      stderr);
 	printf("enrolled and bound to %s: ", user);
 	print_id(&id);
+	return 0;
+}
+
+/*
+ * Delete ONE template. Three things stand between a typo and a deleted
+ * fingerprint: the build, --allow-chip-write and a typed confirmation, and
+ * fingerprints FPAL did not create need --allow-foreign and a stricter word.
+ */
+static int cmd_delete(int argc, char **argv) {
+	struct fpal_template_id ids[FPAL_MAX_TEMPLATES];
+	bool dry_run = false, allow = false, foreign_ok = false;
+	const char *target = NULL;
+	struct fpal_template_id victim;
+	struct fpal_device *dev;
+	char msg[512];
+	size_t n = 0, i = 0;
+	int err;
+
+	for (int k = 1; k < argc; k++) {
+		if (!strcmp(argv[k], "--dry-run"))
+			dry_run = true;
+		else if (!strcmp(argv[k], "--allow-chip-write"))
+			allow = true;
+		else if (!strcmp(argv[k], "--allow-foreign"))
+			foreign_ok = true;
+		else if (argv[k][0] != '-' && !target)
+			target = argv[k];
+		else {
+			usage(stderr);
+			return 2;
+		}
+	}
+	if (!target) {
+		usage(stderr);
+		return 2;
+	}
+	if (!dry_run && !allow) {
+		fputs("fpal: deleting removes a fingerprint from the sensor "
+		      "for good.\n"
+		      "      add --allow-chip-write to do it, or --dry-run to "
+		      "see what would be deleted\n",
+		      stderr);
+		return 2;
+	}
+
+	err = open_device(&dev);
+	if (err)
+		return report(err);
+	err = fpal_list(dev, ids, FPAL_MAX_TEMPLATES, &n);
+	if (err) {
+		close_device(dev);
+		return report(err);
+	}
+	if (resolve_finger(ids, n, target, &i)) {
+		close_device(dev);
+		return 1;
+	}
+
+	printf("finger to delete: [%zu] ", i);
+	print_id(&ids[i]);
+	if (!is_ours(&ids[i]) && !foreign_ok) {
+		fputs("fpal: this fingerprint was not created by FPAL (it may "
+		      "come from Windows Hello).\n"
+		      "      Deleting it removes it for every system that uses "
+		      "this sensor. If you really\n"
+		      "      mean it, add --allow-foreign\n",
+		      stderr);
+		close_device(dev);
+		return 2;
+	}
+	if (dry_run) {
+		printf("dry run: nothing was deleted (%zu fingerprint(s) on the sensor)\n",
+		       n);
+		close_device(dev);
+		return 0;
+	}
+
+	if (is_ours(&ids[i])) {
+		snprintf(msg, sizeof(msg),
+			 "This DELETES finger [%zu] from the sensor. It cannot be undone.\n"
+			 "The other %zu fingerprint(s) are not touched.",
+			 i, n - 1);
+		if (!confirm(msg, "yes")) {
+			close_device(dev);
+			return 1;
+		}
+	} else {
+		snprintf(msg, sizeof(msg),
+			 "This DELETES finger [%zu], which FPAL did NOT create (Windows Hello?),\n"
+			 "from the sensor. It stops working everywhere and cannot be undone.",
+			 i);
+		if (!confirm(msg, "DELETE")) {
+			close_device(dev);
+			return 1;
+		}
+	}
+
+	victim = ids[i];
+	err = fpal_delete(dev, &victim);
+	if (err) {
+		close_device(dev);
+		fputs("fpal: the sensor's list did not end up as expected; run "
+		      "'fpal list' to see what it holds\n",
+		      stderr);
+		return report(err);
+	}
+	err = fpal_list(dev, ids, FPAL_MAX_TEMPLATES, &n);
+	close_device(dev);
+	if (err)
+		return report(err);
+
+	/* The id is gone from the sensor: drop what pointed at it. */
+	if (fpal_bindings_forget(FPAL_STATE_DIR, &victim) ||
+	    fpal_labels_set(FPAL_STATE_DIR, &victim, NULL))
+		fputs("fpal: deleted, but some bindings or its name could not "
+		      "be cleaned up\n",
+		      stderr);
+	printf("deleted; %zu fingerprint(s) left on the sensor\n", n);
 	return 0;
 }
 #else
 static int cmd_enroll(int argc, char **argv) {
 	(void)argc, (void)argv;
 	fputs("fpal: this build cannot enroll; rebuild with: make ENROLL=1\n",
+	      stderr);
+	return 1;
+}
+
+static int cmd_delete(int argc, char **argv) {
+	(void)argc, (void)argv;
+	fputs("fpal: this build cannot delete; rebuild with: make ENROLL=1\n",
 	      stderr);
 	return 1;
 }
@@ -467,6 +698,10 @@ int main(int argc, char **argv) {
 		return cmd_unbind(argc - 1, argv + 1);
 	if (strcmp(cmd, "bindings") == 0)
 		return cmd_bindings(argc - 1, argv + 1);
+	if (strcmp(cmd, "label") == 0)
+		return cmd_label(argc - 1, argv + 1);
+	if (strcmp(cmd, "delete") == 0)
+		return cmd_delete(argc - 1, argv + 1);
 	if (strcmp(cmd, "enroll") == 0)
 		return cmd_enroll(argc - 1, argv + 1);
 	if (strcmp(cmd, "version") == 0 || strcmp(cmd, "--version") == 0) {
