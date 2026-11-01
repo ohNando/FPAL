@@ -9,6 +9,8 @@
  *   fpal unbind <user>           forget a user's bindings (host side only)
  *   fpal bindings <user>         show a user's bindings
  *   fpal label <finger> [name]   show, set or --clear the name of a finger
+ *   fpal status [user]           is fingerprint login set up, and if not what to do
+ *   fpal setup [--revert]        switch sudo, su and GNOME to the fingerprint, or back
  *   fpal enroll [--dry-run] [--allow-chip-write] [--name N] <user>
  *                                store a NEW finger on the sensor
  *   fpal delete [--dry-run] [--allow-chip-write] [--allow-foreign] <finger>
@@ -26,6 +28,8 @@
 #include "fpal/fpal.h"
 #include "fpal/labels.h"
 #include "finger.h"
+#include "setup.h"
+#include "status.h"
 
 static struct fpal_device *volatile active_dev;
 
@@ -47,6 +51,8 @@ static void usage(FILE *f) {
 	      "  bindings USER     show the template ids bound to USER\n"
 	      "  label FINGER [NAME|--clear]\n"
 	      "                    show, set or clear the name of a finger\n"
+	      "  status [USER]     show whether fingerprint login is set up\n"
+	      "  setup [--revert]  make sudo, su and the GNOME screens use the fingerprint\n"
 #ifdef FPAL_ENABLE_ENROLL
 	      "  enroll [--dry-run] [--allow-chip-write] [--name NAME] USER\n"
 	      "                    store a new finger on the sensor and bind it to USER\n"
@@ -702,6 +708,10 @@ int main(int argc, char **argv) {
 		return cmd_unbind(argc - 1, argv + 1);
 	if (strcmp(cmd, "bindings") == 0)
 		return cmd_bindings(argc - 1, argv + 1);
+	if (strcmp(cmd, "status") == 0)
+		return fpal_cmd_status(argc - 1, argv + 1);
+	if (strcmp(cmd, "setup") == 0)
+		return fpal_cmd_setup(argc - 1, argv + 1);
 	if (strcmp(cmd, "label") == 0)
 		return cmd_label(argc - 1, argv + 1);
 	if (strcmp(cmd, "delete") == 0)

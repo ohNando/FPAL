@@ -52,7 +52,7 @@ PAM_SRCS := pam/pam_fpal.c pam/opts.c
 DAEMON_SRCS := daemon/fprint_service.c
 
 TEST_NAMES := test_proto test_egis_moc test_bindings test_pam_opts test_dbus \
-              test_dbus_conn test_fprint_service test_labels test_finger
+              test_dbus_conn test_fprint_service test_labels test_finger test_setup test_status
 ifneq ($(ENROLL),0)
 TEST_NAMES += test_enroll
 endif
@@ -90,7 +90,8 @@ $(LIB): $(LIB_OBJS)
 $(LIB_RO): $(LIB_RO_OBJS)
 	$(AR) rcs $@ $^
 
-$(BUILD)/fpal: $(BUILD)/tools/fpal.o $(BUILD)/tools/finger.o $(USB_OBJS) $(LIB)
+$(BUILD)/fpal: $(BUILD)/tools/fpal.o $(BUILD)/tools/finger.o \
+               $(BUILD)/tools/setup.o $(BUILD)/tools/status.o $(USB_OBJS) $(LIB)
 	$(CC) $(CFLAGS) $^ -o $@ $(LDFLAGS)
 
 $(BUILD)/fpald: $(BUILD)/daemon/fpald.o $(DAEMON_OBJS) $(USB_OBJS) $(LIB_RO)
@@ -101,11 +102,16 @@ $(PAM_MOD): $(PAM_OBJS) $(USB_OBJS) $(LIB_RO) pam/pam_fpal.map
 		-Wl,-z,relro,-z,now,-z,defs \
 		$(filter %.o %.a,$^) -o $@ $(LDFLAGS) -lpam
 
+# Objects first, archives last: a static library only supplies what is still missing.
 $(BUILD)/tests/%: $(BUILD)/tests/%.o $(BUILD)/tests/mock_transport.o $(LIB)
-	$(CC) $(CFLAGS) $^ -o $@ $(LDFLAGS)
+	$(CC) $(CFLAGS) $(filter-out %.a,$^) $(filter %.a,$^) -o $@ $(LDFLAGS)
 
 # The finger picking of the command line tool is tested on its own.
 $(BUILD)/tests/test_finger: $(BUILD)/tools/finger.o
+
+# Pieces of the command line tool that are tested on their own.
+$(BUILD)/tests/test_setup: $(BUILD)/tools/setup.o
+$(BUILD)/tests/test_status: $(BUILD)/tools/status.o
 
 # The service logic is linked in as an object; the tests need no bus.
 $(BUILD)/tests/test_fprint_service: $(BUILD)/daemon/fprint_service.o
