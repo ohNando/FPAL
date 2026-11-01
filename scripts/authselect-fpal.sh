@@ -4,7 +4,8 @@
 # Switch an authselect based system (Fedora, RHEL) from pam_fprintd to
 # pam_fpal, or back.
 #
-#   sudo scripts/authselect-fpal.sh install   # custom/fpal profile, mask fprintd
+#   sudo scripts/authselect-fpal.sh install   # custom/fpal profile, mask fprintd,
+#                                             # start fpald for GNOME
 #   sudo scripts/authselect-fpal.sh revert    # back to the stock profile
 #
 # Only the pam_fprintd lines change; the password stays a fallback.
@@ -61,6 +62,17 @@ install_profile() {
 	systemctl stop fprintd.service 2>/dev/null || true
 	systemctl mask fprintd.service
 
+	# GNOME asks net.reactivated.Fprint whether a reader exists before it
+	# offers fingerprint on the login and lock screens; fpald answers.
+	if systemctl cat fpald.service >/dev/null 2>&1; then
+		# the bus must read fpald's policy file before the name is owned
+		systemctl reload dbus.service 2>/dev/null || true
+		systemctl enable --now fpald.service
+	else
+		echo "authselect-fpal: fpald.service not installed, GNOME will not" \
+			"offer fingerprint (sudo make install-fpald)" >&2
+	fi
+
 	echo "authselect-fpal: custom/$PROFILE active ($feats)"
 }
 
@@ -68,8 +80,10 @@ revert_profile() {
 	feats=$(features)
 	# shellcheck disable=SC2086
 	authselect select "$BASE" $feats -b
+	# fprintd takes the bus name back
+	systemctl disable --now fpald.service 2>/dev/null || true
 	systemctl unmask fprintd.service
-	echo "authselect-fpal: $BASE active again, fprintd unmasked"
+	echo "authselect-fpal: $BASE active again, fprintd unmasked, fpald stopped"
 }
 
 case "${1:-}" in

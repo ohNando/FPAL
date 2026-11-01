@@ -23,12 +23,12 @@ You need a C compiler, `make` and the `libpam` headers:
 sudo dnf install gcc make pam-devel      # Fedora
 sudo apt install gcc make libpam0g-dev   # Debian / Ubuntu (untested)
 
-make            # build/fpal, build/libfpal.a, build/pam_fpal.so
+make            # build/fpal, build/fpald, build/pam_fpal.so
 make test       # unit tests, no hardware needed
 sudo make install
 ```
 
-`make install` puts the `fpal` command under `/usr/local/sbin` and `pam_fpal.so` into the distribution's PAM directory. The paths can be changed with `PREFIX=` and `PAMDIR=`.
+`make install` puts the `fpal` command under `/usr/local/sbin`, `pam_fpal.so` into the distribution's PAM directory, and the GNOME service (`fpald`, its systemd unit and D-Bus policy) under `/usr/local/libexec`, `/usr/local/lib/systemd/system` and `/etc/dbus-1/system.d`. The paths can be changed with `PREFIX=`, `PAMDIR=`, `LIBEXECDIR=`, `UNITDIR=` and `POLICYDIR=`; `make install-fpald` installs only the service.
 
 Every tunable value (timeouts, paths, limits) lives in `include/fpal/config.h` and can be overridden at build time:
 
@@ -59,7 +59,7 @@ sudo fpal bind $USER
 sudo scripts/authselect-fpal.sh install   # Fedora / RHEL (authselect)
 ```
 
-The script masks `fprintd` and selects an authselect profile called `custom/fpal`; `revert` undoes it. For the PAM options (`timeout=`, `retries=`, `quiet`, `debug`), the messages and safe testing steps see [pam.md](pam.md).
+The script masks `fprintd`, selects an authselect profile called `custom/fpal` and starts `fpald` for GNOME (see [gnome.md](gnome.md)); `revert` undoes it. For the PAM options (`timeout=`, `retries=`, `quiet`, `debug`), the messages and safe testing steps see [pam.md](pam.md).
 
 ## Troubleshooting
 

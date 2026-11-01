@@ -1,3 +1,9 @@
+fpal (0.2.0-1) unstable; urgency=medium
+
+  * Add fpald so the GNOME login and lock screens offer the fingerprint.
+
+ -- ohNando <emirhanbuldurucu12@gmail.com>  Sun, 01 Nov 2026 12:00:00 +0300
+
 fpal (0.1.0-1) unstable; urgency=medium
 
   * First release.

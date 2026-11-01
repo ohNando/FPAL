@@ -15,7 +15,7 @@
 
 /* Release version, shown by "fpal version". */
 #ifndef FPAL_VERSION
-#define FPAL_VERSION "0.1.0"
+#define FPAL_VERSION "0.2.0"
 #endif
 
 /* ---- Timeouts (milliseconds) ------------------------------------------- */
@@ -80,6 +80,27 @@
 
 #ifndef FPAL_DBUS_SYSTEM_SOCKET
 #define FPAL_DBUS_SYSTEM_SOCKET "/run/dbus/system_bus_socket"
+#endif
+
+/* Largest D-Bus message we build or accept (the spec allows 128 MiB). */
+#ifndef FPAL_DBUS_MSG_MAX
+#define FPAL_DBUS_MSG_MAX 16384u
+#endif
+
+/* How long to wait for the bus to answer a call (ms). */
+#ifndef FPAL_DBUS_TIMEOUT_MS
+#define FPAL_DBUS_TIMEOUT_MS 5000u
+#endif
+
+/* fpald exits after this long without any D-Bus traffic (ms). 0 = never,
+ * which is what the systemd service wants; "fpald -t ms" overrides it. */
+#ifndef FPAL_FPALD_IDLE_MS
+#define FPAL_FPALD_IDLE_MS 0u
+#endif
+
+/* Device name reported to D-Bus clients (the "name" property). */
+#ifndef FPAL_FPRINT_DEVICE_NAME
+#define FPAL_FPRINT_DEVICE_NAME "FPAL"
 #endif
 
 /* ---- Limits ------------------------------------------------------------ */

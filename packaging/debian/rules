@@ -14,7 +14,13 @@ override_dh_auto_test:
 override_dh_auto_install:
 	$(MAKE) install DESTDIR=$(CURDIR)/debian/fpal PREFIX=/usr \
 		PAMDIR=/usr/lib/$(DEB_HOST_MULTIARCH)/security \
-		DOCDIR=/usr/share/doc/fpal DATADIR=/usr/share/fpal
+		DOCDIR=/usr/share/doc/fpal DATADIR=/usr/share/fpal \
+		LIBEXECDIR=/usr/libexec UNITDIR=/usr/lib/systemd/system \
+		POLICYDIR=/usr/share/dbus-1/system.d
+
+# Installing the package must not start the service: authselect-fpal.sh does.
+override_dh_installsystemd:
+	dh_installsystemd --name=fpald --no-enable --no-start
 
 override_dh_auto_clean:
 	$(MAKE) clean
