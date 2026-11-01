@@ -489,17 +489,31 @@ static int next_key(struct input *in, struct fpal_key *k) {
 				used = fpal_key_parse(in->buf, in->len, true, k);
 		}
 		if (used) {
+			if (used > in->len)
+				used = in->len;
 			memmove(in->buf, in->buf + used, in->len - used);
 			in->len -= used;
 			return 1;
 		}
-		if (in->len >= sizeof(in->buf))
-			in->len = 0; /* never happens with real keys; do not wedge */
-		r = read(in->fd, in->buf + in->len, sizeof(in->buf) - in->len);
-		if (r > 0)
-			in->len += (size_t)r;
-		else if (r == 0 || errno != EINTR)
-			return 0;
+		{
+			/* A fixed size read, then a bounded copy: no size to get wrong. */
+			unsigned char chunk[16];
+			size_t room = sizeof(in->buf) > in->len ? sizeof(in->buf) - in->len : 0;
+
+			if (!room) {
+				in->len = 0; /* never happens with real keys; do not wedge */
+				room = sizeof(in->buf);
+			}
+			r = read(in->fd, chunk, sizeof(chunk));
+			if (r > 0) {
+				size_t take = (size_t)r < room ? (size_t)r : room;
+
+				memcpy(in->buf + in->len, chunk, take);
+				in->len += take;
+			} else if (r == 0 || errno != EINTR) {
+				return 0;
+			}
+		}
 	}
 }
 
