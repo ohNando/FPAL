@@ -127,6 +127,15 @@ int fpal_identify(struct fpal_device *dev, uint32_t timeout_ms,
 	return dev->drv->identify(dev, timeout_ms, match);
 }
 
+int fpal_enroll(struct fpal_device *dev, const struct fpal_template_id *new_id,
+		uint32_t flags, fpal_enroll_cb cb, void *ud) {
+	if (!dev || !new_id)
+		return FPAL_E_INVAL;
+	if (!dev->drv->enroll)
+		return FPAL_E_NOTSUP;
+	return dev->drv->enroll(dev, new_id, flags, cb, ud);
+}
+
 void fpal_cancel(struct fpal_device *dev) {
 	if (dev)
 		dev->tr.ops->cancel(dev->tr.ctx);

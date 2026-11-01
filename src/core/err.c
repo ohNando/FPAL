@@ -31,6 +31,10 @@ const char *fpal_strerror(int err) {
 		return "operation not supported";
 	case FPAL_E_OVERFLOW:
 		return "buffer too small";
+	case FPAL_E_FULL:
+		return "the sensor cannot store more fingerprints";
+	case FPAL_E_EXISTS:
+		return "this finger is already enrolled";
 	default:
 		return "unknown error";
 	}

@@ -13,8 +13,6 @@
 #include "fpal/fpal.h"
 #include "transport/transport.h"
 
-typedef void (*fpal_progress_cb)(uint8_t stage, uint8_t total, void *ud);
-
 struct fpal_device {
 	const struct fpal_driver *drv;
 	const struct fpal_usb_id *id;
@@ -39,8 +37,8 @@ struct fpal_driver {
 			struct fpal_template_id *match);
 	/* Optional, NULL unless built with ENROLL=1. */
 	int (*enroll)(struct fpal_device *dev,
-		      const struct fpal_template_id *new_id, fpal_progress_cb cb,
-		      void *ud);
+		      const struct fpal_template_id *new_id, uint32_t flags,
+		      fpal_enroll_cb cb, void *ud);
 };
 
 /* NULL terminated table of all built-in drivers. */

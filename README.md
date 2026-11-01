@@ -48,7 +48,7 @@ Your laptop's fingerprint sensor works on Windows but does nothing for you on Li
 | 🖥 **GNOME login and lock screen** | `fpald` answers the question GNOME asks `fprintd`, so the fingerprint option appears |
 | 🖐 **Per-user binding** | Each Linux user gets their own fingers (`fpal bind`) |
 | 🔍 **Transparent** | `FPAL_TRACE=1` prints every USB packet exchanged with the sensor as hex |
-| 🧪 **Testable** | 68 unit tests run against a mock USB device and a fake D-Bus, no hardware needed |
+| 🧪 **Testable** | 69 unit tests run against a mock USB device and a fake D-Bus, no hardware needed |
 | 🧩 **Extensible** | New sensor = new driver folder, the core stays the same |
 | 🪶 **Lightweight** | The only service, `fpald`, uses about 400 KB and never touches the sensor; it is opened only while you log in |
 
@@ -65,7 +65,7 @@ sudo scripts/authselect-fpal.sh install  # sudo, su and the GNOME screens now as
 
 All commands, PAM setup and troubleshooting: [docs/usage.md](docs/usage.md), [docs/pam.md](docs/pam.md).
 
-FPAL does not **enrol** fingerprints yet. It reads the fingers you enrolled in Windows Hello from the chip and binds them to a Linux user.
+FPAL reads the fingers you enrolled in Windows Hello from the chip and binds them to a Linux user. Enrolling new fingers from Linux is possible too, but only in a build made on purpose (`make ENROLL=1`), see [docs/usage.md](docs/usage.md).
 
 ## Status
 
@@ -74,7 +74,7 @@ FPAL does not **enrol** fingerprints yet. It reads the fingers you enrolled in W
 | ✅ | Detect the sensor, list templates, identify a finger, bind it to a user |
 | ✅ | PAM login for `sudo` and `su` |
 | ✅ | GNOME login and lock screen (`fpald`, which stands in for fprintd on D-Bus) |
-| 🔜 | Enrolling from Linux (optional, behind a separate flag) |
+| ✅ | Enrolling from Linux (optional, only in a build made with `make ENROLL=1`) |
 | 🔜 | More sensors, plus packages for Debian and Arch |
 
 **Tested hardware:** EgisTec / LighTuning `1c7a:0587` (ASUS Zenbook 14 UX3402VA), firmware `9050.6.4.67`, Fedora 44, GNOME / Wayland.

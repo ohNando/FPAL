@@ -96,6 +96,33 @@ A 64 byte read request returns 63 bytes (libfprint noted this one byte shortfall
 
 The body starts with `17 01`, an echo of the `INS P1` bytes of the "arm identify" command. The driver does not parse this content; it only waits for the event.
 
+## Enrolling
+
+Taken from libfprint's `egismoc` driver (`libfprint/drivers/egismoc`, 1.94.100). The `0587` uses 20 scans (`EGIS_FLAG_ENROLL_STAGES_20`), other family members 10. These commands exist only in builds made with `make ENROLL=1`.
+
+A ✅ marks what a full `fpal enroll --dry-run` on 1c7a:0587 (fw `9050.6.4.67`, 20 scans, 6 of them retried) showed with `FPAL_TRACE=1`. Commit start and store were never sent in that run. A real `fpal enroll` on the same device then stored a new template: the sensor's list grew from 1 to 2 entries, the new id was there and the existing one untouched ✅. The status words of those two commands were not traced.
+
+| Command | Payload | Answer |
+|---|---|---|
+| Arm enrol | `00 00 00 04 50 17 01 00` | SW `91 00` ✅ (like arm identify) |
+| Enrol start | `00 00 00 07 50 16 01 00 00 00 20` | SW `90 00` with a 32 byte body ✅ (random looking, not an existing id; meaning unknown, libfprint ignores it) |
+| Start capture | `00 00 00 04 50 16 02 01` | SW `91 00` ✅ |
+| Read capture | `00 00 00 07 50 16 02 02 00 00 02` | see below ✅ |
+| Commit start | `00 00 00 07 50 16 05 00 00 00 20` | SW ✅ (worked) |
+| **Store** | `00 00 00 27 50 16 03 00 00 00 20` + 32 byte id | SW ✅ (template stored) |
+
+Capture answers: `90 00` with a 2 byte body is an accepted scan ✅, `64 91` with a 2 byte body means off centre, `64 xx` with no body means a dirty sensor; anything else is retried. On the test finger the sensor also answered `64 93` and `64 95` (2 byte body) for unreadable scans ✅, handled as "lift and touch again". Retries do not count as stages.
+
+```
+list → (full? id taken?) → reset → arm enrol → [finger event] → sensor check
+     → check (same command as identify; 90 04 = finger is new ✅, 90 00 = already enrolled)
+     → enrol start
+     → N × ( reset → start capture → [finger event] → read capture )
+     → commit start → store(id) → reset
+```
+
+Everything up to the last scan lives in the sensor's working memory; **only the store command writes a template**, and the project never sends a delete. FPAL ids are 32 printable bytes: `FPAL-` followed by 27 random hex digits. `fpal enroll --dry-run` runs the whole sequence except commit start and store, then resets the sensor.
+
 ## Identify flow ✅
 
 ```

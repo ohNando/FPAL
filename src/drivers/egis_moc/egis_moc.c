@@ -284,14 +284,180 @@ static int egis_identify(struct fpal_device *dev, uint32_t timeout_ms,
 	return err;
 }
 
+#ifdef FPAL_ENABLE_ENROLL
+/*
+ * Enrolling, as the Windows driver does it. Everything before the commit
+ * (enrol mode, 20 scans) lives in the sensor's working memory; only
+ * egis_build_commit() stores a template. Nothing here deletes anything.
+ */
+
+static void emit(fpal_enroll_cb cb, void *ud, enum fpal_enroll_event ev,
+		 uint8_t stage, uint8_t total) {
+	if (cb)
+		cb(ev, stage, total, ud);
+}
+
+/* A finger the sensor already knows must not be enrolled a second time. */
+static int egis_enroll_check_new(struct fpal_device *dev,
+				 const struct fpal_template_id *ids, size_t n) {
+	struct egis_priv *p = priv(dev);
+	struct egis_rsp rsp;
+	size_t plen;
+	int err;
+
+	err = egis_build_check(ids, n, dev->id->flags, p->payload,
+			       sizeof(p->payload), &plen);
+	if (err)
+		return err;
+	err = egis_exec(dev, p->payload, plen, &rsp);
+	if (err)
+		return err;
+	if (rsp.sw == EGIS_SW_NOMATCH)
+		return FPAL_OK;
+	return rsp.sw == EGIS_SW_OK ? FPAL_E_EXISTS : FPAL_E_PROTO;
+}
+
+/* The scan loop: @stages accepted scans, retries do not count. */
+static int egis_enroll_scans(struct fpal_device *dev, uint8_t stages,
+			     fpal_enroll_cb cb, void *ud) {
+	unsigned done = 0, attempts = 0;
+
+	while (done < stages) {
+		struct egis_rsp rsp;
+		int err;
+
+		if (++attempts > stages + FPAL_ENROLL_MAX_RETRIES)
+			return FPAL_E_TIMEOUT;
+
+		emit(cb, ud, FPAL_ENROLL_TOUCH, (uint8_t)done, stages);
+		err = egis_exec_simple(dev, &egis_cmd_sensor_reset);
+		if (!err)
+			err = egis_exec_simple(dev, &egis_cmd_start_capture);
+		if (!err)
+			err = egis_wait_finger(dev, FPAL_FINGER_WAIT_TIMEOUT_MS);
+		if (!err)
+			err = egis_exec_cmd(dev, &egis_cmd_read_capture, &rsp);
+		if (err)
+			return err;
+
+		switch (egis_classify_capture(&rsp)) {
+		case EGIS_CAPTURE_OK:
+			done++;
+			emit(cb, ud, FPAL_ENROLL_STAGE_DONE, (uint8_t)done,
+			     stages);
+			break;
+		case EGIS_CAPTURE_CENTER:
+			emit(cb, ud, FPAL_ENROLL_RETRY_CENTER, (uint8_t)done,
+			     stages);
+			break;
+		case EGIS_CAPTURE_DIRTY:
+			emit(cb, ud, FPAL_ENROLL_RETRY_DIRTY, (uint8_t)done,
+			     stages);
+			break;
+		default:
+			fpal_dbg("capture answered status %04x, body %zu bytes",
+				rsp.sw, rsp.body_len);
+			emit(cb, ud, FPAL_ENROLL_RETRY, (uint8_t)done, stages);
+			break;
+		}
+	}
+	return FPAL_OK;
+}
+
+/* The one chip write: store the template under @id. */
+static int egis_enroll_commit(struct fpal_device *dev,
+			      const struct fpal_template_id *id) {
+	struct egis_priv *p = priv(dev);
+	struct egis_rsp rsp;
+	size_t plen;
+	int err;
+
+	err = egis_exec_simple(dev, &egis_cmd_commit_start);
+	if (err)
+		return err;
+	err = egis_build_commit(id, p->payload, sizeof(p->payload), &plen);
+	if (err)
+		return err;
+	err = egis_exec(dev, p->payload, plen, &rsp);
+	if (err)
+		return err;
+	/*
+	 * The status word of the store command was never captured; the list
+	 * read back afterwards decides whether it worked.
+	 */
+	if (rsp.sw != EGIS_SW_OK)
+		fpal_warn("store command answered status %04x", rsp.sw);
+	return FPAL_OK;
+}
+
+static int egis_enroll(struct fpal_device *dev,
+		       const struct fpal_template_id *new_id, uint32_t flags,
+		       fpal_enroll_cb cb, void *ud) {
+	struct fpal_template_id ids[FPAL_MAX_TEMPLATES];
+	const uint8_t stages =
+		(dev->id->flags & EGIS_FLAG_ENROLL_STAGES_20) ? 20 : 10;
+	const bool dry_run = flags & FPAL_ENROLL_DRY_RUN;
+	size_t n = 0;
+	int err, rerr;
+
+	/* Read only: refuse before the sensor is put into enrol mode. */
+	err = egis_list(dev, ids, FPAL_MAX_TEMPLATES, &n);
+	if (err)
+		return err;
+	if (n >= FPAL_MAX_TEMPLATES)
+		return FPAL_E_FULL;
+	if (id_in_list(new_id, ids, n))
+		return FPAL_E_EXISTS;
+
+	err = egis_exec_simple(dev, &egis_cmd_sensor_reset);
+	if (!err)
+		err = egis_exec_simple(dev, &egis_cmd_arm_enroll);
+	if (!err) {
+		emit(cb, ud, FPAL_ENROLL_CHECK_TOUCH, 0, stages);
+		err = egis_wait_finger(dev, FPAL_FINGER_WAIT_TIMEOUT_MS);
+	}
+	if (!err)
+		err = egis_exec_simple(dev, &egis_cmd_sensor_check);
+	if (!err)
+		err = egis_enroll_check_new(dev, ids, n);
+	if (!err)
+		err = egis_exec_simple(dev, &egis_cmd_enroll_start);
+	if (!err)
+		err = egis_enroll_scans(dev, stages, cb, ud);
+	if (!err && !dry_run)
+		err = egis_enroll_commit(dev, new_id);
+
+	/* Leave the sensor idle whatever happened; an unfinished enrol is dropped. */
+	rerr = egis_exec_simple(dev, &egis_cmd_sensor_reset);
+	if (rerr)
+		fpal_dbg("final sensor reset failed: %s", fpal_strerror(rerr));
+	if (err || dry_run)
+		return err;
+
+	/* Trust the sensor's own list, not the status word. */
+	err = egis_list(dev, ids, FPAL_MAX_TEMPLATES, &n);
+	if (err)
+		return err;
+	return id_in_list(new_id, ids, n) ? FPAL_OK : FPAL_E_PROTO;
+}
+#endif
+
 const struct fpal_driver fpal_driver_egis_moc = {
 	.name = "egis_moc",
 	.ids = egis_moc_ids,
+#ifdef FPAL_ENABLE_ENROLL
+	.caps = FPAL_CAP_MOC | FPAL_CAP_ENROLL,
+#else
 	.caps = FPAL_CAP_MOC,
+#endif
 	.priv_size = sizeof(struct egis_priv),
 	.open = egis_open,
 	.close = egis_close,
 	.list = egis_list,
 	.identify = egis_identify,
+#ifdef FPAL_ENABLE_ENROLL
+	.enroll = egis_enroll,
+#else
 	.enroll = NULL,
+#endif
 };
