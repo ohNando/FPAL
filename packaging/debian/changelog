@@ -1,3 +1,9 @@
+fpal (0.6.0-1) unstable; urgency=medium
+
+  * Add fpal manage, a full-screen list to rename, delete and add fingers.
+
+ -- ohNando <emirhanbuldurucu12@gmail.com>  Mon, 02 Nov 2026 20:00:00 +0300
+
 fpal (0.5.0-1) unstable; urgency=medium
 
   * Enrolling and deleting are part of the normal build, guarded at run time.

@@ -12,7 +12,17 @@
 #include <stddef.h>
 #include <stdio.h>
 
-enum fpal_style { UI_RESET, UI_BOLD, UI_DIM, UI_RED, UI_GREEN, UI_YELLOW };
+#include "fpal/types.h"
+
+enum fpal_style {
+	UI_RESET,
+	UI_BOLD,
+	UI_DIM,
+	UI_RED,
+	UI_GREEN,
+	UI_YELLOW,
+	UI_REVERSE,
+};
 
 enum fpal_mark { UI_OK, UI_BAD, UI_WARN, UI_INFO };
 
@@ -51,6 +61,10 @@ void fpal_ui_pad(FILE *f, const char *s, size_t width);
 void fpal_ui_table(const struct fpal_ui *ui, FILE *f, size_t ncols,
 		   const char *const *head, size_t nrows,
 		   const char *const *cells);
+
+/* A short, recognisable form of an id: its text if it is text, else hex. */
+void fpal_ui_short_id(const struct fpal_ui *ui, const struct fpal_template_id *id,
+		      char *out, size_t cap);
 
 /* The user a command is run for: SUDO_USER if set, else the caller. */
 const char *fpal_ui_invoking_user(void);

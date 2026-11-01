@@ -37,6 +37,7 @@ const char *fpal_ui_style(const struct fpal_ui *ui, enum fpal_style s) {
 		[UI_RESET] = "\033[0m",	 [UI_BOLD] = "\033[1m",
 		[UI_DIM] = "\033[2m",	 [UI_RED] = "\033[31m",
 		[UI_GREEN] = "\033[32m", [UI_YELLOW] = "\033[33m",
+		[UI_REVERSE] = "\033[7m",
 	};
 
 	return ui->color ? codes[s] : "";
@@ -118,6 +119,28 @@ void fpal_ui_table(const struct fpal_ui *ui, FILE *f, size_t ncols,
 		}
 		fputc('\n', f);
 	}
+}
+
+void fpal_ui_short_id(const struct fpal_ui *ui, const struct fpal_template_id *id,
+		      char *out, size_t cap) {
+	const char *dots = ui->utf8 ? "…" : "...";
+	bool text = true;
+
+	if (cap < 32) {
+		if (cap)
+			out[0] = '\0';
+		return;
+	}
+	for (size_t i = 0; i < 16; i++)
+		if (id->bytes[i] < 0x20 || id->bytes[i] > 0x7e)
+			text = false;
+	if (text) {
+		snprintf(out, cap, "%.16s%s", (const char *)id->bytes, dots);
+		return;
+	}
+	for (size_t i = 0; i < 8; i++)
+		snprintf(out + 2 * i, 3, "%02x", id->bytes[i]);
+	snprintf(out + 16, cap - 16, "%s", dots);
 }
 
 const char *fpal_ui_invoking_user(void) {

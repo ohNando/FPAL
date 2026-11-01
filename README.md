@@ -48,7 +48,7 @@ Your laptop's fingerprint sensor works on Windows but does nothing for you on Li
 | 🖥 **GNOME login and lock screen** | `fpald` answers the question GNOME asks `fprintd`, so the fingerprint option appears |
 | 🖐 **Per-user binding** | Each Linux user gets their own fingers (`fpal bind`), and you can name them (`fpal label 0 "Windows finger"`) |
 | 🔍 **Transparent** | `FPAL_TRACE=1` prints every USB packet exchanged with the sensor as hex |
-| 🧪 **Testable** | 115 unit tests run against a mock USB device and a fake D-Bus, no hardware needed |
+| 🧪 **Testable** | 138 unit tests run against a mock USB device and a fake D-Bus, no hardware needed |
 | 🧩 **Extensible** | New sensor = new driver folder, the core stays the same |
 | 🪶 **Lightweight** | The only service, `fpald`, uses about 400 KB and never touches the sensor; it is opened only while you log in |
 
@@ -65,7 +65,7 @@ sudo fpal setup                                   # sudo, su and the GNOME scree
 fpal status                                       # is everything in place? tells you what to do if not
 ```
 
-Then `man fpal`, or: `sudo fpal list`, `sudo fpal label 0 "Windows finger"`, `sudo fpal enroll --dry-run $USER`.
+Then `man fpal`, or: `sudo fpal manage` for a screen where you pick, rename, delete and add fingers with the arrow keys.
 
 All commands, PAM setup and troubleshooting: [docs/usage.md](docs/usage.md), [docs/pam.md](docs/pam.md).
 
@@ -79,7 +79,7 @@ FPAL reads the fingers you enrolled in Windows Hello from the chip and binds the
 | ✅ | PAM login for `sudo` and `su` |
 | ✅ | GNOME login and lock screen (`fpald`, which stands in for fprintd on D-Bus) |
 | ✅ | Enrolling new fingers and deleting single ones from Linux (`fpal enroll`, `fpal delete`) |
-| ✅ | Naming fingers |
+| ✅ | Naming fingers, and `fpal manage`: pick, rename, delete and add fingers with the arrow keys |
 | 🔜 | More sensors, plus packages for Debian and Arch |
 
 **Tested hardware:** EgisTec / LighTuning `1c7a:0587` (ASUS Zenbook 14 UX3402VA), firmware `9050.6.4.67`, Fedora 44, GNOME / Wayland.
