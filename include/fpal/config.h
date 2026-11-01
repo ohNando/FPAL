@@ -15,7 +15,7 @@
 
 /* Release version, shown by "fpal version". */
 #ifndef FPAL_VERSION
-#define FPAL_VERSION "0.4.0"
+#define FPAL_VERSION "0.5.0"
 #endif
 
 /* ---- Timeouts (milliseconds) ------------------------------------------- */

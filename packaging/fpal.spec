@@ -1,5 +1,5 @@
 Name:           fpal
-Version:        0.4.0
+Version:        0.5.0
 Release:        1%{?dist}
 Summary:        Fingerprint Auth for Linux
 License:        Apache-2.0
@@ -73,6 +73,12 @@ exit 0
 %{_docdir}/%{name}/
 
 %changelog
+* Mon Nov 02 2026 ohNando <emirhanbuldurucu12@gmail.com> - 0.5.0-1
+- Enrolling and deleting a fingerprint are part of the normal build, guarded by
+  --allow-chip-write and a typed confirmation; the PAM module and fpald still
+  cannot write to the sensor
+- Add fpal setup and fpal status, a table for fpal list, and man pages
+
 * Mon Nov 02 2026 ohNando <emirhanbuldurucu12@gmail.com> - 0.4.0-1
 - Add names for fingerprints (fpal label)
 - Add deleting one fingerprint, only in builds made with ENROLL=1
