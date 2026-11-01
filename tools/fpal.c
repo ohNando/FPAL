@@ -455,8 +455,12 @@ static int cmd_enroll(int argc, char **argv) {
 			return 2;
 		}
 	}
-	if (!user || !fpal_bindings_valid_user(user) || !getpwnam(user)) {
-		fprintf(stderr, "fpal: no such user '%s'\n", user ? user : "");
+	if (!user) {
+		usage(stderr);
+		return 2;
+	}
+	if (!fpal_bindings_valid_user(user) || !getpwnam(user)) {
+		fprintf(stderr, "fpal: no such user '%s'\n", user);
 		return 2;
 	}
 	/* A bad name must not be found out after the 20 scans. */
