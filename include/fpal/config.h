@@ -118,6 +118,16 @@
 
 /* ---- Limits ------------------------------------------------------------ */
 
+/* Longest user given name of a fingerprint, in bytes (UTF-8). */
+#ifndef FPAL_LABEL_MAX
+#define FPAL_LABEL_MAX 48u
+#endif
+
+/* Most names kept in the labels file. */
+#ifndef FPAL_LABELS_MAX
+#define FPAL_LABELS_MAX 64u
+#endif
+
 /* Maximum number of templates any supported sensor can store. */
 #ifndef FPAL_MAX_TEMPLATES
 #define FPAL_MAX_TEMPLATES 10u

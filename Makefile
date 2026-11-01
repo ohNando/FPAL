@@ -40,7 +40,8 @@ LIB_SRCS := src/core/device.c \
             src/dbus/message.c \
             src/drivers/egis_moc/egis_moc.c \
             src/drivers/egis_moc/proto.c \
-            src/storage/bindings.c
+            src/storage/bindings.c \
+            src/storage/labels.c
 
 # Real hardware backend; tests link a mock instead.
 USB_SRCS := src/transport/usbdevfs.c
@@ -50,7 +51,7 @@ PAM_SRCS := pam/pam_fpal.c pam/opts.c
 DAEMON_SRCS := daemon/fprint_service.c
 
 TEST_NAMES := test_proto test_egis_moc test_bindings test_pam_opts test_dbus \
-              test_dbus_conn test_fprint_service
+              test_dbus_conn test_fprint_service test_labels
 ifeq ($(ENROLL),1)
 TEST_NAMES += test_enroll
 endif

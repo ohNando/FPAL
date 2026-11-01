@@ -4,6 +4,7 @@
  * Writes go to a temporary file in the same directory which is then
  * renamed over the original, so a crash never leaves a half written file.
  */
+#include <dirent.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <stdio.h>
@@ -227,4 +228,47 @@ bool fpal_bindings_contains(const char *dir, const char *user,
 	if (!id || fpal_bindings_load(dir, user, ids, FPAL_MAX_TEMPLATES, &n))
 		return false;
 	return contains(ids, n, id);
+}
+
+int fpal_bindings_remove(const char *dir, const char *user,
+			 const struct fpal_template_id *id) {
+	struct fpal_template_id ids[FPAL_MAX_TEMPLATES];
+	size_t n = 0, kept = 0;
+	int err;
+
+	if (!id)
+		return FPAL_E_INVAL;
+	err = fpal_bindings_load(dir, user, ids, FPAL_MAX_TEMPLATES, &n);
+	if (err)
+		return err;
+	for (size_t i = 0; i < n; i++)
+		if (memcmp(ids[i].bytes, id->bytes, FPAL_TEMPLATE_ID_LEN))
+			ids[kept++] = ids[i];
+	if (kept == n)
+		return FPAL_OK; /* it was not bound: leave the file alone */
+	return store(dir, user, ids, kept);
+}
+
+int fpal_bindings_forget(const char *dir, const struct fpal_template_id *id) {
+	struct dirent *de;
+	DIR *d;
+	int first = FPAL_OK;
+
+	if (!dir || !id)
+		return FPAL_E_INVAL;
+	d = opendir(dir);
+	if (!d)
+		return errno == ENOENT ? FPAL_OK : FPAL_E_IO;
+	while ((de = readdir(d))) {
+		int err;
+
+		/* skips ".", ".." and the labels file: user names never start with a dot */
+		if (!fpal_bindings_valid_user(de->d_name))
+			continue;
+		err = fpal_bindings_remove(dir, de->d_name, id);
+		if (err && first == FPAL_OK)
+			first = err;
+	}
+	closedir(d);
+	return first;
 }
