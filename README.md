@@ -61,7 +61,8 @@ sudo dnf install ./fpal-*.x86_64.rpm
 
 sudo fpal info                                    # see the sensor
 sudo fpal bind $USER                              # touch the sensor, bind that finger to yourself
-sudo /usr/share/fpal/authselect-fpal.sh install   # sudo, su and the GNOME screens now ask for a fingerprint
+sudo fpal setup                                   # sudo, su and the GNOME screens now ask for a fingerprint
+fpal status                                       # is everything in place? tells you what to do if not
 ```
 
 Then `man fpal`, or: `sudo fpal list`, `sudo fpal label 0 "Windows finger"`, `sudo fpal enroll --dry-run $USER`.

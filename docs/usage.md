@@ -49,6 +49,8 @@ Only root can open the sensor. This is on purpose: with a world-accessible udev 
 | `sudo fpal bindings USER` | Show the IDs bound to a user |
 | `sudo fpal unbind USER` | Remove the bindings. Deletes only the file on the computer, the sensor is untouched |
 | `sudo fpal label FINGER [NAME\|--clear]` | Show, set or remove the name of a finger |
+| `fpal status [USER]` | Is fingerprint login set up? Shows the sensor, the fingers, the PAM and GNOME state, and what to do if something is missing (run it with `sudo` to see the fingers and bindings) |
+| `sudo fpal setup [--revert]` | Make sudo, su and the GNOME screens use the fingerprint, or go back |
 | `fpal version` | Show the version |
 
 Fingers enrolled in Windows Hello work on Linux as they are. Enrolling from Linux, and deleting a finger, exist too, but they write to the sensor, so they are not part of the normal build (see below). Bindings are stored in `/var/lib/fpal/<user>` (root, `0600`).
@@ -103,10 +105,11 @@ A finger FPAL did not create (its id does not start with `FPAL-`, so it most lik
 
 ```sh
 sudo fpal bind $USER
-sudo scripts/authselect-fpal.sh install   # Fedora / RHEL (authselect)
+sudo fpal setup            # Fedora / RHEL (authselect)
+fpal status                # check that it is all in place
 ```
 
-The script masks `fprintd`, selects an authselect profile called `custom/fpal` and starts `fpald` for GNOME (see [gnome.md](gnome.md)); `revert` undoes it. For the PAM options (`timeout=`, `retries=`, `quiet`, `debug`), the messages and safe testing steps see [pam.md](pam.md).
+`fpal setup` masks `fprintd`, selects an authselect profile called `custom/fpal` and starts `fpald` for GNOME (see [gnome.md](gnome.md)); `sudo fpal setup --revert` undoes it. It runs `authselect-fpal.sh`, which is installed next to `fpal` (`/usr/share/fpal/`, or `scripts/` in a checkout). For the PAM options (`timeout=`, `retries=`, `quiet`, `debug`), the messages and safe testing steps see [pam.md](pam.md).
 
 ## Troubleshooting
 

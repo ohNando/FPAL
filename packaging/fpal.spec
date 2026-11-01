@@ -22,8 +22,8 @@ libfprint, and never deletes templates stored on the sensor. The fpald service
 tells GNOME that a sensor exists so the login and lock screens offer it.
 
 Installing the package does not change the PAM stack and does not start
-fpald. To use the fingerprint for sudo, su and GNOME, run
-/usr/share/fpal/authselect-fpal.sh install (Fedora / RHEL). See
+fpald. To use the fingerprint for sudo, su and GNOME, run "sudo fpal setup"
+(Fedora / RHEL), and "fpal status" to check it. See
 /usr/share/doc/fpal/usage.md.
 
 %prep
@@ -55,7 +55,7 @@ make test CFLAGS_EXTRA=-Wno-error
 if [ $1 -eq 0 ] && command -v authselect >/dev/null 2>&1 &&
    authselect current --raw 2>/dev/null | grep -q '^custom/fpal'; then
     echo "fpal: the authselect profile custom/fpal is still active." >&2
-    echo "fpal: run '/usr/share/fpal/authselect-fpal.sh revert' to go back" >&2
+    echo "fpal: run 'fpal setup --revert' to go back" >&2
 fi
 exit 0
 

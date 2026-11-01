@@ -46,7 +46,7 @@ No binding, no sensor, sensor busy, remote session, or timeout.
 .SH EXAMPLES
 On Fedora the authselect profile is switched with
 .nf
-sudo /usr/share/fpal/authselect\-fpal.sh install
+sudo fpal setup
 .fi
 .SH SEE ALSO
 .BR fpal (8),

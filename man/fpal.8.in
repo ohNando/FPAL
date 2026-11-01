@@ -60,6 +60,37 @@ checks that the sensor's list did not change.
 Delete ONE fingerprint from the sensor. This cannot be undone. See
 .BR SAFETY .
 .TP
+.BR status " [\fIuser\fR]"
+Say whether fingerprint login is set up: the sensor, the fingerprints and the
+user's bindings (run it with
+.BR sudo (8)
+to read those), whether
+.B pam_fpal.so
+is in the PAM stack, whether
+.BR fpald (8)
+answers for GNOME, and whether
+.B fprintd
+is masked. Anything missing is listed with what to do about it. The exit
+status is 1 if something is missing.
+.TP
+.BR setup " [" \-\-revert ]
+Make
+.BR sudo (8),
+.BR su (1)
+and the GNOME login and lock screens use the fingerprint: select the
+authselect profile with
+.BR pam_fpal ,
+mask
+.BR fprintd ,
+and start
+.BR fpald (8).
+.B \-\-revert
+goes back. It runs
+.IR authselect\-fpal.sh ,
+which is installed next to
+.BR fpal ,
+and needs root. Only authselect systems (Fedora, RHEL) are supported so far.
+.TP
 .B version
 Show the version.
 .PP
@@ -135,6 +166,8 @@ Verbose messages.
 .nf
 sudo fpal list
 sudo fpal label 0 "Windows finger"
+sudo fpal setup
+fpal status
 sudo fpal bind $USER
 sudo fpal enroll \-\-dry\-run $USER
 sudo fpal enroll \-\-allow\-chip\-write \-\-name "Linux finger" $USER
