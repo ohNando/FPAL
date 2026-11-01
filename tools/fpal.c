@@ -8,9 +8,12 @@
  *   fpal bind [-t ms] <user>     bind the touched finger to a local user
  *   fpal unbind <user>           forget a user's bindings (host side only)
  *   fpal bindings <user>         show a user's bindings
+ *   fpal enroll [--dry-run] [--allow-chip-write] <user>
+ *                                store a NEW finger on the sensor (ENROLL=1 builds)
  */
 #include <pwd.h>
 #include <signal.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -37,6 +40,10 @@ static void usage(FILE *f) {
 	      "  bind [-t ms] USER bind the touched finger to USER\n"
 	      "  unbind USER       forget USER's bindings (sensor untouched)\n"
 	      "  bindings USER     show the template ids bound to USER\n"
+#ifdef FPAL_ENABLE_ENROLL
+	      "  enroll [--dry-run] [--allow-chip-write] USER\n"
+	      "                    store a new finger on the sensor and bind it to USER\n"
+#endif
 	      "  version           show the fpal version\n"
 	      "  help              show this help\n"
 	      "\n"
@@ -284,6 +291,156 @@ static int cmd_bindings(int argc, char **argv) {
 	return 0;
 }
 
+#ifdef FPAL_ENABLE_ENROLL
+static void on_enroll_event(enum fpal_enroll_event ev, uint8_t stage,
+			    uint8_t total, void *ud) {
+	(void)ud;
+	switch (ev) {
+	case FPAL_ENROLL_TOUCH:
+		if (stage == 0)
+			puts("Touch the sensor once so it can check that this "
+			     "finger is new...");
+		else
+			printf("Scan %u of %u: touch the sensor...\n", stage + 1u,
+			       total);
+		break;
+	case FPAL_ENROLL_STAGE_DONE:
+		printf("  accepted (%u/%u)\n", stage, total);
+		break;
+	case FPAL_ENROLL_RETRY_CENTER:
+		puts("  finger off centre, touch again");
+		break;
+	case FPAL_ENROLL_RETRY_DIRTY:
+		puts("  the sensor looks dirty: clean it and touch again");
+		break;
+	case FPAL_ENROLL_RETRY:
+		puts("  could not read that, lift your finger and touch again");
+		break;
+	}
+	fflush(stdout);
+}
+
+/* The last question before the sensor is written to. */
+static bool confirm_store(size_t used) {
+	char line[16];
+
+	if (!isatty(STDIN_FILENO)) {
+		fputs("fpal: storing a fingerprint needs a terminal to confirm\n",
+		      stderr);
+		return false;
+	}
+	fprintf(stderr,
+		"This stores a NEW fingerprint on the sensor (%zu of %u slots in use).\n"
+		"Fingerprints already stored, including those from Windows, are not touched.\n"
+		"Type 'yes' to continue: ",
+		used, FPAL_MAX_TEMPLATES);
+	if (!fgets(line, sizeof(line), stdin) || strcmp(line, "yes\n") != 0) {
+		fputs("fpal: cancelled, nothing was stored\n", stderr);
+		return false;
+	}
+	return true;
+}
+
+static int cmd_enroll(int argc, char **argv) {
+	struct fpal_template_id ids[FPAL_MAX_TEMPLATES], id;
+	bool dry_run = false, allow = false;
+	const char *user = NULL;
+	struct fpal_device *dev;
+	size_t before = 0, after = 0;
+	int err;
+
+	for (int i = 1; i < argc; i++) {
+		if (!strcmp(argv[i], "--dry-run"))
+			dry_run = true;
+		else if (!strcmp(argv[i], "--allow-chip-write"))
+			allow = true;
+		else if (argv[i][0] != '-' && !user)
+			user = argv[i];
+		else {
+			usage(stderr);
+			return 2;
+		}
+	}
+	if (!user || !fpal_bindings_valid_user(user) || !getpwnam(user)) {
+		fprintf(stderr, "fpal: no such user '%s'\n", user ? user : "");
+		return 2;
+	}
+	if (!dry_run && !allow) {
+		fputs("fpal: enrolling stores data on the sensor.\n"
+		      "      add --allow-chip-write to do it, or --dry-run to try "
+		      "every step without storing\n",
+		      stderr);
+		return 2;
+	}
+
+	err = open_device(&dev);
+	if (err)
+		return report(err);
+	err = fpal_list(dev, ids, FPAL_MAX_TEMPLATES, &before);
+	if (err) {
+		close_device(dev);
+		return report(err);
+	}
+	printf("%zu fingerprint(s) on the sensor before\n", before);
+
+	if (!dry_run && !confirm_store(before)) {
+		close_device(dev);
+		return 1;
+	}
+	err = fpal_template_id_generate(&id);
+	if (!err)
+		err = fpal_enroll(dev, &id, dry_run ? FPAL_ENROLL_DRY_RUN : 0,
+				  on_enroll_event, NULL);
+	if (err == FPAL_E_EXISTS) {
+		fputs("fpal: this finger (or id) is already enrolled; use "
+		      "'fpal bind' instead\n",
+		      stderr);
+		close_device(dev);
+		return 1;
+	}
+	if (err) {
+		close_device(dev);
+		return report(err);
+	}
+
+	err = fpal_list(dev, ids, FPAL_MAX_TEMPLATES, &after);
+	close_device(dev);
+	if (err)
+		return report(err);
+
+	if (dry_run) {
+		printf("dry run finished; %zu fingerprint(s) on the sensor after\n",
+		       after);
+		if (after != before) {
+			fputs("fpal: the sensor's list CHANGED during a dry run\n",
+			      stderr);
+			return 1;
+		}
+		puts("nothing was stored");
+		return 0;
+	}
+
+	err = fpal_bindings_add(FPAL_STATE_DIR, user, &id);
+	if (err) {
+		fputs("fpal: the finger is stored but could not be bound; "
+		      "bind it by hand. New id: ",
+		      stderr);
+		print_id(&id);
+		return report(err);
+	}
+	printf("enrolled and bound to %s: ", user);
+	print_id(&id);
+	return 0;
+}
+#else
+static int cmd_enroll(int argc, char **argv) {
+	(void)argc, (void)argv;
+	fputs("fpal: this build cannot enroll; rebuild with: make ENROLL=1\n",
+	      stderr);
+	return 1;
+}
+#endif
+
 int main(int argc, char **argv) {
 	struct sigaction sa = { .sa_handler = on_sigint };
 	const char *cmd;
@@ -311,6 +468,8 @@ int main(int argc, char **argv) {
 		return cmd_unbind(argc - 1, argv + 1);
 	if (strcmp(cmd, "bindings") == 0)
 		return cmd_bindings(argc - 1, argv + 1);
+	if (strcmp(cmd, "enroll") == 0)
+		return cmd_enroll(argc - 1, argv + 1);
 	if (strcmp(cmd, "version") == 0 || strcmp(cmd, "--version") == 0) {
 		puts("fpal " FPAL_VERSION);
 		return 0;
