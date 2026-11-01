@@ -23,8 +23,16 @@ Fingerprints enrolled in Windows Hello are recognised as they are.
 .B info
 Show the sensor, driver, serial number and firmware version.
 .TP
-.B list
-List the fingerprints on the sensor: number, id and name.
+.BR list " [" \-\-raw ]
+List the fingerprints on the sensor. On a terminal this is a table with the
+number, name, kind (\fBFPAL\fR for fingers fpal enrolled, \fBother\fR for the
+rest, such as Windows Hello), whether the finger is bound to you, and a short
+form of the id. When the output is a pipe or a file, or with
+.BR \-\-raw ,
+it prints one plain line per fingerprint with the full id, a format scripts can
+rely on. Colours are left out when
+.B NO_COLOR
+is set or the terminal is not UTF-8.
 .TP
 .BR identify " [" \-t " \fIms\fR]"
 Wait for a finger and show which fingerprint matched.

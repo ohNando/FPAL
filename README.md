@@ -48,7 +48,7 @@ Your laptop's fingerprint sensor works on Windows but does nothing for you on Li
 | 🖥 **GNOME login and lock screen** | `fpald` answers the question GNOME asks `fprintd`, so the fingerprint option appears |
 | 🖐 **Per-user binding** | Each Linux user gets their own fingers (`fpal bind`), and you can name them (`fpal label 0 "Windows finger"`) |
 | 🔍 **Transparent** | `FPAL_TRACE=1` prints every USB packet exchanged with the sensor as hex |
-| 🧪 **Testable** | 100 unit tests run against a mock USB device and a fake D-Bus, no hardware needed |
+| 🧪 **Testable** | 115 unit tests run against a mock USB device and a fake D-Bus, no hardware needed |
 | 🧩 **Extensible** | New sensor = new driver folder, the core stays the same |
 | 🪶 **Lightweight** | The only service, `fpald`, uses about 400 KB and never touches the sensor; it is opened only while you log in |
 

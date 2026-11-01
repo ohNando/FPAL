@@ -43,7 +43,7 @@ Only root can open the sensor. This is on purpose: with a world-accessible udev 
 | Command | What it does |
 |---|---|
 | `sudo fpal info` | Sensor, driver, serial number and firmware version |
-| `sudo fpal list` | Fingers stored on the sensor: number, id and name |
+| `sudo fpal list [--raw]` | Fingers on the sensor as a table (number, name, kind, whether it is yours, id). In a pipe or with `--raw` it prints one plain line per finger with the full id, for scripts |
 | `sudo fpal identify [-t ms]` | Touch the sensor and show the matching ID |
 | `sudo fpal bind [-t ms] USER` | Bind the touched finger to a Linux user |
 | `sudo fpal bindings USER` | Show the IDs bound to a user |
