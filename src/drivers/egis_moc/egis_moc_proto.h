@@ -17,8 +17,9 @@
  * The payload starts with a 4-byte big-endian length followed by an APDU
  * like body: CLA(0x50) INS P1 P2 [00 Lh Ll]. SW1 SW2 = 90 00 means success.
  *
- * Everything that writes to the sensor exists only in builds made with
- * "make ENROLL=1" (FPAL_ENABLE_ENROLL): the enrol opcodes (INS 0x16), the one
+ * Everything that writes to the sensor is compiled only with
+ * FPAL_ENABLE_ENROLL, which "make ENROLL=0" and the copy of the library linked
+ * into pam_fpal.so and fpald leave out: the enrol opcodes (INS 0x16), the one
  * that stores a template (egis_build_commit()) and the one that deletes
  * (INS 0x18, egis_build_delete()). The delete builder takes ONE id: the
  * chip's "delete these ids" command is never used to clear the sensor.

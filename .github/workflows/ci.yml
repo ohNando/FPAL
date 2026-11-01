@@ -16,5 +16,5 @@ jobs:
         run: make
       - name: Unit tests
         run: make test
-      - name: Build and test with enrolling
-        run: make ENROLL=1 test
+      - name: Build and test the read-only variant
+        run: make ENROLL=0 test

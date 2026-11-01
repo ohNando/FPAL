@@ -10,9 +10,9 @@
  *   fpal bindings <user>         show a user's bindings
  *   fpal label <finger> [name]   show, set or --clear the name of a finger
  *   fpal enroll [--dry-run] [--allow-chip-write] [--name N] <user>
- *                                store a NEW finger on the sensor (ENROLL=1 builds)
+ *                                store a NEW finger on the sensor
  *   fpal delete [--dry-run] [--allow-chip-write] [--allow-foreign] <finger>
- *                                delete ONE finger from the sensor (ENROLL=1 builds)
+ *                                delete ONE finger from the sensor
  */
 #include <pwd.h>
 #include <signal.h>
@@ -658,14 +658,14 @@ static int cmd_delete(int argc, char **argv) {
 #else
 static int cmd_enroll(int argc, char **argv) {
 	(void)argc, (void)argv;
-	fputs("fpal: this build cannot enroll; rebuild with: make ENROLL=1\n",
+	fputs("fpal: this is a read-only build (made with ENROLL=0) and cannot enroll\n",
 	      stderr);
 	return 1;
 }
 
 static int cmd_delete(int argc, char **argv) {
 	(void)argc, (void)argv;
-	fputs("fpal: this build cannot delete; rebuild with: make ENROLL=1\n",
+	fputs("fpal: this is a read-only build (made with ENROLL=0) and cannot delete\n",
 	      stderr);
 	return 1;
 }

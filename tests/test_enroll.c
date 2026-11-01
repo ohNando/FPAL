@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 /*
- * Enrolling against the scripted mock transport. Only built with ENROLL=1.
+ * Enrolling against the scripted mock transport. Not built with ENROLL=0.
  * The most important property: nothing but the final store command writes to
  * the sensor, and a dry run never sends it.
  */
