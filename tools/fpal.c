@@ -30,6 +30,7 @@
 #include "finger.h"
 #include "setup.h"
 #include "status.h"
+#include "ui.h"
 
 static struct fpal_device *volatile active_dev;
 
@@ -44,7 +45,7 @@ static void usage(FILE *f) {
 	      "\n"
 	      "commands:\n"
 	      "  info              show sensor and firmware information\n"
-	      "  list              list template ids stored on the sensor\n"
+	      "  list [--raw]      list the fingers stored on the sensor\n"
 	      "  identify [-t ms]  wait for a finger and show the matching id\n"
 	      "  bind [-t ms] USER bind the touched finger to USER\n"
 	      "  unbind USER       forget USER's bindings (sensor untouched)\n"
@@ -68,6 +69,12 @@ static void usage(FILE *f) {
 	      "  " FPAL_ENV_TRACE "=1   hex dump every USB packet\n"
 	      "  " FPAL_ENV_DEBUG "=1   verbose log messages\n",
 	      f);
+}
+
+/* Ids made by fpal enroll start with FPAL_NEW_ID_PREFIX; others are foreign. */
+static bool is_ours(const struct fpal_template_id *id) {
+	return !memcmp(id->bytes, FPAL_NEW_ID_PREFIX,
+		       sizeof(FPAL_NEW_ID_PREFIX) - 1);
 }
 
 static void print_id(const struct fpal_template_id *id) {
@@ -140,11 +147,72 @@ static int cmd_info(void) {
 	return 0;
 }
 
-static int cmd_list(void) {
+/* A short, recognisable form of an id for the table: text if it is text, else hex. */
+static void short_id(const struct fpal_ui *ui, const struct fpal_template_id *id,
+		     char *out, size_t cap) {
+	const char *dots = ui->utf8 ? "…" : "...";
+	bool text = true;
+
+	for (size_t i = 0; i < 16; i++)
+		if (id->bytes[i] < 0x20 || id->bytes[i] > 0x7e)
+			text = false;
+	if (text) {
+		snprintf(out, cap, "%.16s%s", (const char *)id->bytes, dots);
+		return;
+	}
+	for (size_t i = 0; i < 8 && 2 * i + 2 < cap; i++)
+		snprintf(out + 2 * i, cap - 2 * i, "%02x", id->bytes[i]);
+	snprintf(out + 16, cap - 16, "%s", dots);
+}
+
+/* The list as a table, for a person at a terminal. */
+static void print_table(const struct fpal_ui *ui,
+			const struct fpal_template_id *ids, size_t n) {
+	static const char *const head[] = { "#", "Name", "Kind", "Yours", "Id" };
+	char num[FPAL_MAX_TEMPLATES][8], name[FPAL_MAX_TEMPLATES][FPAL_LABEL_MAX + 12];
+	char sid[FPAL_MAX_TEMPLATES][40];
+	const char *cells[FPAL_MAX_TEMPLATES * 5];
+	const char *user = fpal_ui_invoking_user();
+
+	for (size_t i = 0; i < n; i++) {
+		char label[FPAL_LABEL_MAX + 1] = "";
+
+		(void)fpal_labels_get(FPAL_STATE_DIR, &ids[i], label, sizeof(label));
+		snprintf(num[i], sizeof(num[i]), "%zu", i);
+		snprintf(name[i], sizeof(name[i]), "%s", label[0] ? label : "(no name)");
+		short_id(ui, &ids[i], sid[i], sizeof(sid[i]));
+		cells[i * 5 + 0] = num[i];
+		cells[i * 5 + 1] = name[i];
+		cells[i * 5 + 2] = is_ours(&ids[i]) ? "FPAL" : "other";
+		cells[i * 5 + 3] = fpal_bindings_contains(FPAL_STATE_DIR, user, &ids[i]) ?
+					   fpal_ui_mark(ui, UI_OK) :
+					   "";
+		cells[i * 5 + 4] = sid[i];
+	}
+	printf("\n  %s%zu fingerprint(s)%s on the sensor (it holds up to %u)\n\n",
+	       fpal_ui_style(ui, UI_BOLD), n, fpal_ui_style(ui, UI_RESET),
+	       FPAL_MAX_TEMPLATES);
+	if (n)
+		fpal_ui_table(ui, stdout, 5, head, n, cells);
+	printf("\n  %s\"Yours\" = bound to %s. Kind \"other\" = not created by fpal, "
+	       "for example Windows Hello.%s\n\n",
+	       fpal_ui_style(ui, UI_DIM), user, fpal_ui_style(ui, UI_RESET));
+}
+
+static int cmd_list(int argc, char **argv) {
 	struct fpal_template_id ids[FPAL_MAX_TEMPLATES];
+	struct fpal_ui ui = fpal_ui_init(stdout);
 	struct fpal_device *dev;
 	size_t n = 0;
 	int err;
+
+	if (argc > 2 || (argc == 2 && strcmp(argv[1], "--raw") != 0)) {
+		usage(stderr);
+		return 2;
+	}
+	/* --raw, or output that is not a terminal, keeps the format scripts rely on */
+	if (argc == 2)
+		ui.fancy = false;
 
 	err = open_device(&dev);
 	if (err)
@@ -155,6 +223,10 @@ static int cmd_list(void) {
 	if (err)
 		return report(err);
 
+	if (ui.fancy) {
+		print_table(&ui, ids, n);
+		return 0;
+	}
 	printf("%zu template(s) stored on the sensor (max %u)\n", n,
 	       FPAL_MAX_TEMPLATES);
 	for (size_t i = 0; i < n; i++) {
@@ -404,12 +476,6 @@ static void on_enroll_event(enum fpal_enroll_event ev, uint8_t stage,
 		break;
 	}
 	fflush(stdout);
-}
-
-/* Ids made by fpal enroll start with FPAL_NEW_ID_PREFIX; others are foreign. */
-static bool is_ours(const struct fpal_template_id *id) {
-	return !memcmp(id->bytes, FPAL_NEW_ID_PREFIX,
-		       sizeof(FPAL_NEW_ID_PREFIX) - 1);
 }
 
 /* The last question before the sensor is written to: type @phrase exactly. */
@@ -699,7 +765,7 @@ int main(int argc, char **argv) {
 	if (strcmp(cmd, "info") == 0)
 		return cmd_info();
 	if (strcmp(cmd, "list") == 0)
-		return cmd_list();
+		return cmd_list(argc - 1, argv + 1);
 	if (strcmp(cmd, "identify") == 0)
 		return cmd_identify(argc - 1, argv + 1);
 	if (strcmp(cmd, "bind") == 0)

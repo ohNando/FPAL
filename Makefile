@@ -52,7 +52,7 @@ PAM_SRCS := pam/pam_fpal.c pam/opts.c
 DAEMON_SRCS := daemon/fprint_service.c
 
 TEST_NAMES := test_proto test_egis_moc test_bindings test_pam_opts test_dbus \
-              test_dbus_conn test_fprint_service test_labels test_finger test_setup test_status
+              test_dbus_conn test_fprint_service test_labels test_finger test_setup test_status test_ui
 ifneq ($(ENROLL),0)
 TEST_NAMES += test_enroll
 endif
@@ -91,7 +91,8 @@ $(LIB_RO): $(LIB_RO_OBJS)
 	$(AR) rcs $@ $^
 
 $(BUILD)/fpal: $(BUILD)/tools/fpal.o $(BUILD)/tools/finger.o \
-               $(BUILD)/tools/setup.o $(BUILD)/tools/status.o $(USB_OBJS) $(LIB)
+               $(BUILD)/tools/setup.o $(BUILD)/tools/status.o $(BUILD)/tools/ui.o \
+               $(USB_OBJS) $(LIB)
 	$(CC) $(CFLAGS) $^ -o $@ $(LDFLAGS)
 
 $(BUILD)/fpald: $(BUILD)/daemon/fpald.o $(DAEMON_OBJS) $(USB_OBJS) $(LIB_RO)
@@ -111,7 +112,8 @@ $(BUILD)/tests/test_finger: $(BUILD)/tools/finger.o
 
 # Pieces of the command line tool that are tested on their own.
 $(BUILD)/tests/test_setup: $(BUILD)/tools/setup.o
-$(BUILD)/tests/test_status: $(BUILD)/tools/status.o
+$(BUILD)/tests/test_status: $(BUILD)/tools/status.o $(BUILD)/tools/ui.o
+$(BUILD)/tests/test_ui: $(BUILD)/tools/ui.o
 
 # The service logic is linked in as an object; the tests need no bus.
 $(BUILD)/tests/test_fprint_service: $(BUILD)/daemon/fprint_service.o

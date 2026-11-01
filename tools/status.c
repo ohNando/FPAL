@@ -13,6 +13,7 @@
 #include "fpal/bindings.h"
 #include "fpal/fpal.h"
 #include "fpal/labels.h"
+#include "ui.h"
 
 #define FPRINT_NAME "net.reactivated.Fprint"
 #define MODULE "pam_fpal.so"
@@ -36,18 +37,39 @@ bool fpal_file_has_module(const char *path, const char *module) {
 	return found;
 }
 
-/* One line of the report: a fixed width label, then the text. */
-static void row(const char *label, const char *fmt, ...)
-	__attribute__((format(printf, 2, 3)));
+static struct fpal_ui ui;
 
-static void row(const char *label, const char *fmt, ...) {
+/* "  ✓  Label           text": a mark in its colour, a bold label, the text. */
+static void line(enum fpal_mark m, const char *label, const char *fmt, ...)
+	__attribute__((format(printf, 3, 4)));
+
+static void line(enum fpal_mark m, const char *label, const char *fmt, ...) {
 	va_list ap;
 
-	printf("%-14s", label);
+	printf("  %s", fpal_ui_style(&ui, fpal_ui_mark_style(m)));
+	fpal_ui_pad(stdout, fpal_ui_mark(&ui, m), 2);
+	printf("%s  %s", fpal_ui_style(&ui, UI_RESET),
+	       fpal_ui_style(&ui, UI_BOLD));
+	fpal_ui_pad(stdout, label, 16);
+	printf("%s", fpal_ui_style(&ui, UI_RESET));
 	va_start(ap, fmt);
 	vprintf(fmt, ap);
 	va_end(ap);
 	putchar('\n');
+}
+
+/* What to do about the line above, in yellow. */
+static void hint(const char *fmt, ...) __attribute__((format(printf, 1, 2)));
+
+static void hint(const char *fmt, ...) {
+	va_list ap;
+
+	printf("%*s%s%s ", 6, "", fpal_ui_style(&ui, UI_YELLOW),
+	       ui.utf8 ? "→" : "->");
+	va_start(ap, fmt);
+	vprintf(fmt, ap);
+	va_end(ap);
+	printf("%s\n", fpal_ui_style(&ui, UI_RESET));
 }
 
 /* Ask the bus daemon a question about a name; the answer lands in @reply. */
@@ -137,30 +159,42 @@ static void show_fingers(const char *user, unsigned *problems) {
 
 	err = fpal_device_open_first(&dev);
 	if (err) {
-		row("fingerprints", "cannot read the sensor: %s", fpal_strerror(err));
+		line(UI_BAD, "Fingerprints", "cannot read the sensor: %s",
+		     fpal_strerror(err));
+		(*problems)++;
 		return;
 	}
 	err = fpal_list(dev, ids, FPAL_MAX_TEMPLATES, &n);
 	fpal_device_close(dev);
 	if (err) {
-		row("fingerprints", "cannot list them: %s", fpal_strerror(err));
+		line(UI_BAD, "Fingerprints", "cannot list them: %s",
+		     fpal_strerror(err));
+		(*problems)++;
 		return;
 	}
-	row("fingerprints", "%zu on the sensor (it holds up to %u)", n,
-	    FPAL_MAX_TEMPLATES);
+	line(n ? UI_OK : UI_BAD, "Fingerprints",
+	     "%zu on the sensor (it holds up to %u)", n, FPAL_MAX_TEMPLATES);
 	for (size_t i = 0; i < n; i++) {
 		const bool ours = fpal_bindings_contains(FPAL_STATE_DIR, user, &ids[i]);
 
 		label[0] = '\0';
 		(void)fpal_labels_get(FPAL_STATE_DIR, &ids[i], label, sizeof(label));
-		printf("%14s[%zu] %-*s %s\n", "", i, (int)FPAL_LABEL_MAX,
-		       label[0] ? label : "(no name)",
-		       ours ? "<- bound to you" : "");
+		printf("%*s%s[%zu]%s  ", 22, "", fpal_ui_style(&ui, UI_DIM), i,
+		       fpal_ui_style(&ui, UI_RESET));
+		fpal_ui_pad(stdout, label[0] ? label : "(no name)",
+			    FPAL_LABEL_MAX / 2);
+		if (ours)
+			printf(" %s%s %s%s", fpal_ui_style(&ui, UI_GREEN),
+			       ui.utf8 ? "←" : "<-", user,
+			       fpal_ui_style(&ui, UI_RESET));
+		putchar('\n');
 		bound += ours;
 	}
-	row("bound to", "%s: %zu finger(s)", user, bound);
-	if (!bound) {
-		puts("              ! no finger is bound to this user");
+	if (bound) {
+		line(UI_OK, "Bound to you", "%s: %zu finger(s)", user, bound);
+	} else {
+		line(UI_BAD, "Bound to you", "%s has no finger bound", user);
+		hint("run: sudo fpal bind %s", user);
 		(*problems)++;
 	}
 }
@@ -188,28 +222,27 @@ int fpal_cmd_status(int argc, char **argv) {
 			return 2;
 		}
 	} else {
-		/* under sudo the interesting user is the one who typed it */
-		const char *sudo_user = getenv("SUDO_USER");
-		struct passwd *pw = getpwuid(getuid());
-
-		user = sudo_user && getpwnam(sudo_user) ? sudo_user :
-			pw ? pw->pw_name : "root";
+		user = fpal_ui_invoking_user();
 	}
+	ui = fpal_ui_init(stdout);
+
+	printf("\n  %sfpal status%s\n\n", fpal_ui_style(&ui, UI_BOLD),
+	       fpal_ui_style(&ui, UI_RESET));
 
 	err = fpal_scan(info, 4, &n);
 	if (err || n == 0) {
-		row("sensor", "none found");
-		puts("              ! no supported fingerprint sensor is plugged in");
+		line(UI_BAD, "Sensor", "none found");
+		hint("plug in a supported fingerprint sensor");
 		problems++;
 	} else {
-		row("sensor", "%04x:%04x %s (driver %s)", info[0].vid,
-		    info[0].pid, info[0].product, info[0].driver_name);
+		line(UI_OK, "Sensor", "%04x:%04x  %s  (driver %s)", info[0].vid,
+		     info[0].pid, info[0].product, info[0].driver_name);
 	}
 
 	if (geteuid() == 0 && n > 0)
 		show_fingers(user, &problems);
 	else if (n > 0)
-		row("fingerprints", "run with sudo to read the sensor and the bindings");
+		line(UI_INFO, "Fingerprints", "run with sudo to read the sensor");
 
 	for (size_t i = 0; i < sizeof(pam_files) / sizeof(pam_files[0]); i++) {
 		if (fpal_file_has_module(pam_files[i], MODULE)) {
@@ -220,34 +253,44 @@ int fpal_cmd_status(int argc, char **argv) {
 		}
 	}
 	if (used[0]) {
-		row("sudo, login", "pam_fpal.so is active (%s)", used);
+		line(UI_OK, "sudo and login", "pam_fpal.so is active (%s)", used);
 	} else {
-		row("sudo, login", "not set up: they will not ask for a fingerprint");
-		puts("              ! run: sudo fpal setup");
+		line(UI_BAD, "sudo and login", "they will not ask for a fingerprint");
+		hint("run: sudo fpal setup");
 		problems++;
 	}
 
 	err = fprint_owner(who, sizeof(who));
 	if (err == FPAL_OK && !strcmp(who, "fpald")) {
-		row("GNOME screens", "fpald announces the sensor");
+		line(UI_OK, "GNOME screens", "fpald announces the sensor");
 	} else if (err == FPAL_OK) {
-		row("GNOME screens", "%s owns %s, not fpald", who, FPRINT_NAME);
-		puts("              ! run: sudo fpal setup");
+		line(UI_BAD, "GNOME screens", "%s owns %s, not fpald", who,
+		     FPRINT_NAME);
+		hint("run: sudo fpal setup");
 		problems++;
 	} else if (err == FPAL_E_NODATA) {
-		row("GNOME screens", "nobody answers for %s: the lock and "
-				     "login screens will not offer a fingerprint",
-		    FPRINT_NAME);
-		puts("              ! run: sudo fpal setup");
+		line(UI_BAD, "GNOME screens",
+		     "nobody answers for %s, so GNOME will not offer a fingerprint",
+		     FPRINT_NAME);
+		hint("run: sudo fpal setup");
 		problems++;
 	} else {
-		row("GNOME screens", "cannot ask the system bus: %s",
-		    fpal_strerror(err));
+		line(UI_INFO, "GNOME screens", "cannot ask the system bus: %s",
+		     fpal_strerror(err));
 	}
-	row("fprintd", "%s", fprintd_masked() ? "masked (good: fpal uses the sensor)" :
-						"not masked");
+	if (fprintd_masked())
+		line(UI_OK, "fprintd", "masked, so fpal can use the sensor");
+	else
+		line(UI_INFO, "fprintd",
+		     "not masked (fine while fpald is what GNOME talks to)");
 
-	puts(problems ? "\nnot ready, see the lines starting with !" :
-			"\nready: fingerprint login is set up");
+	if (problems)
+		printf("\n  %s%sNot ready:%s %u thing(s) to fix, see the arrows above\n\n",
+		       fpal_ui_style(&ui, UI_RED), fpal_ui_style(&ui, UI_BOLD),
+		       fpal_ui_style(&ui, UI_RESET), problems);
+	else
+		printf("\n  %s%sReady:%s fingerprint login is set up\n\n",
+		       fpal_ui_style(&ui, UI_GREEN), fpal_ui_style(&ui, UI_BOLD),
+		       fpal_ui_style(&ui, UI_RESET));
 	return problems ? 1 : 0;
 }
