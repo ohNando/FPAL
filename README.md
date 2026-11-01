@@ -74,7 +74,7 @@ FPAL reads the fingers you enrolled in Windows Hello from the chip and binds the
 | ✅ | Detect the sensor, list templates, identify a finger, bind it to a user |
 | ✅ | PAM login for `sudo` and `su` |
 | ✅ | GNOME login and lock screen (`fpald`, which stands in for fprintd on D-Bus) |
-| 🧪 | Enrolling from Linux (optional, `make ENROLL=1`; written, being tested on hardware) |
+| ✅ | Enrolling from Linux (optional, only in a build made with `make ENROLL=1`) |
 | 🔜 | More sensors, plus packages for Debian and Arch |
 
 **Tested hardware:** EgisTec / LighTuning `1c7a:0587` (ASUS Zenbook 14 UX3402VA), firmware `9050.6.4.67`, Fedora 44, GNOME / Wayland.
