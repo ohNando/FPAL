@@ -30,6 +30,8 @@ enum fpal_err {
 	FPAL_E_NODATA = -11,   /* no templates stored on the sensor */
 	FPAL_E_NOTSUP = -12,   /* operation not supported by this driver */
 	FPAL_E_OVERFLOW = -13, /* buffer too small */
+	FPAL_E_FULL = -14,     /* sensor storage is full */
+	FPAL_E_EXISTS = -15,   /* finger or id is already enrolled */
 };
 
 /* Driver capability flags (struct fpal_driver.caps). */

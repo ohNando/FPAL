@@ -2,54 +2,7 @@
 /*
  * Egis MoC driver state machine tests against the scripted mock transport.
  */
-#include "core/driver.h"
-#include "drivers/egis_moc/egis_moc_proto.h"
-#include "mock_transport.h"
-#include "t.h"
-
-#define FW "1.0.0.4867"
-
-/* Payload of the n-th recorded OUT frame (after the EGIS header). */
-static const uint8_t *out_payload(const struct mock *m, size_t i) {
-	return m->out[i].data + EGIS_HDR_LEN;
-}
-
-static bool out_is(const struct mock *m, size_t i, const struct egis_cmd *c) {
-	return i < m->n_out && m->out[i].len == EGIS_HDR_LEN + c->len &&
-	       memcmp(out_payload(m, i), c->data, c->len) == 0;
-}
-
-static void make_ids(struct fpal_template_id *ids, size_t n) {
-	for (size_t i = 0; i < n; i++)
-		memset(ids[i].bytes, (int)('A' + i), FPAL_TEMPLATE_ID_LEN);
-}
-
-static void push_list(struct mock *m, const struct fpal_template_id *ids,
-		      size_t n) {
-	uint8_t body[FPAL_MAX_TEMPLATES * FPAL_TEMPLATE_ID_LEN];
-
-	for (size_t i = 0; i < n; i++)
-		memcpy(body + i * FPAL_TEMPLATE_ID_LEN, ids[i].bytes,
-		       FPAL_TEMPLATE_ID_LEN);
-	mock_push_egis(m, body, n * FPAL_TEMPLATE_ID_LEN, EGIS_SW_OK);
-}
-
-static void push_ok(struct mock *m) {
-	mock_push_egis(m, NULL, 0, EGIS_SW_OK);
-}
-
-/* Open a 1c7a:0587 device on @m; the fw version response is queued here. */
-static struct fpal_device *open_dev(struct mock *m) {
-	const struct fpal_usb_id *id = NULL;
-	const struct fpal_driver *drv = fpal_driver_lookup(0x1c7a, 0x0587, &id);
-	struct fpal_device *dev = NULL;
-
-	mock_push_egis(m, (const uint8_t *)FW, sizeof(FW) - 1, EGIS_SW_OK);
-	if (!drv ||
-	    fpal_device_open_transport(drv, id, mock_transport(m), -1, &dev))
-		return NULL;
-	return dev;
-}
+#include "egis_util.h"
 
 static void test_open_reads_fw_version(void) {
 	struct mock m;
@@ -264,6 +217,31 @@ static void test_bad_checksum_rejected(void) {
 	fpal_device_close(dev);
 }
 
+#ifndef FPAL_ENABLE_ENROLL
+/* A normal build must be unable to write to the sensor. */
+static void test_default_build_cannot_enroll(void) {
+	struct fpal_template_id id = { .bytes = "FPAL-test" };
+	const struct fpal_driver *drv = fpal_driver_lookup(0x1c7a, 0x0587, NULL);
+	struct fpal_device *dev;
+	struct mock m;
+	size_t sent;
+
+	mock_init(&m);
+	dev = open_dev(&m);
+	T_CHECK(dev != NULL);
+	T_CHECK(drv != NULL && drv->enroll == NULL);
+	T_CHECK(!(drv->caps & FPAL_CAP_ENROLL));
+
+	sent = m.n_out;
+	T_EQ_INT(fpal_enroll(dev, &id, 0, NULL, NULL), FPAL_E_NOTSUP);
+	T_EQ_INT(fpal_enroll(dev, &id, FPAL_ENROLL_DRY_RUN, NULL, NULL),
+		 FPAL_E_NOTSUP);
+	T_EQ_INT(m.n_out, sent); /* nothing was sent */
+	T_EQ_INT(fpal_template_id_generate(&id), FPAL_E_NOTSUP);
+	fpal_device_close(dev);
+}
+#endif
+
 int main(void) {
 	T_RUN(test_open_reads_fw_version);
 	T_RUN(test_open_busy_does_not_reset);
@@ -275,5 +253,8 @@ int main(void) {
 	T_RUN(test_identify_cancel);
 	T_RUN(test_identify_empty_sensor);
 	T_RUN(test_bad_checksum_rejected);
+#ifndef FPAL_ENABLE_ENROLL
+	T_RUN(test_default_build_cannot_enroll);
+#endif
 	return T_DONE();
 }

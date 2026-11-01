@@ -34,6 +34,32 @@ const struct egis_cmd egis_cmd_sensor_check = { sensor_check,
 const struct egis_cmd egis_cmd_arm_identify = { arm_identify,
 						sizeof(arm_identify) };
 
+#ifdef FPAL_ENABLE_ENROLL
+static const uint8_t arm_enroll[] = { 0x00, 0x00, 0x00, 0x04,
+				      0x50, 0x17, 0x01, 0x00 };
+static const uint8_t enroll_start[] = { 0x00, 0x00, 0x00, 0x07, 0x50, 0x16,
+					0x01, 0x00, 0x00, 0x00, 0x20 };
+static const uint8_t start_capture[] = { 0x00, 0x00, 0x00, 0x04,
+					 0x50, 0x16, 0x02, 0x01 };
+static const uint8_t read_capture[] = { 0x00, 0x00, 0x00, 0x07, 0x50, 0x16,
+					0x02, 0x02, 0x00, 0x00, 0x02 };
+static const uint8_t commit_start[] = { 0x00, 0x00, 0x00, 0x07, 0x50, 0x16,
+					0x05, 0x00, 0x00, 0x00, 0x20 };
+/* Header of the store command: 7 byte APDU head + 32 byte id = 0x27. */
+static const uint8_t commit_prefix[] = { 0x00, 0x00, 0x00, 0x27, 0x50, 0x16,
+					 0x03, 0x00, 0x00, 0x00, 0x20 };
+
+const struct egis_cmd egis_cmd_arm_enroll = { arm_enroll, sizeof(arm_enroll) };
+const struct egis_cmd egis_cmd_enroll_start = { enroll_start,
+						sizeof(enroll_start) };
+const struct egis_cmd egis_cmd_start_capture = { start_capture,
+						 sizeof(start_capture) };
+const struct egis_cmd egis_cmd_read_capture = { read_capture,
+						sizeof(read_capture) };
+const struct egis_cmd egis_cmd_commit_start = { commit_start,
+						sizeof(commit_start) };
+#endif
+
 /* "check" command header: CLA INS P1 P2 P3 for both prefix variants. */
 static const uint8_t check_prefix_type1[] = { 0x50, 0x17, 0x03, 0x00, 0x00 };
 static const uint8_t check_prefix_type2[] = { 0x50, 0x17, 0x03, 0x80, 0x00 };
@@ -143,6 +169,37 @@ int egis_build_check(const struct fpal_template_id *ids, size_t n,
 	*out_len = len;
 	return FPAL_OK;
 }
+
+#ifdef FPAL_ENABLE_ENROLL
+/*
+ * Status words seen in the enrol loop (libfprint egismoc): an accepted scan
+ * answers 90 00 with a 2 byte body, an off-centre finger 64 91 with a 2 byte
+ * body, a dirty sensor 64 xx with no body.
+ */
+enum egis_capture egis_classify_capture(const struct egis_rsp *rsp) {
+	if (rsp->body_len == 2 && rsp->sw == EGIS_SW_OK)
+		return EGIS_CAPTURE_OK;
+	if (rsp->body_len == 2 && rsp->sw == 0x6491u)
+		return EGIS_CAPTURE_CENTER;
+	if (rsp->body_len == 0 && (rsp->sw >> 8) == 0x64u)
+		return EGIS_CAPTURE_DIRTY;
+	return EGIS_CAPTURE_RETRY;
+}
+
+int egis_build_commit(const struct fpal_template_id *id, uint8_t *out,
+		      size_t cap, size_t *out_len) {
+	const size_t len = sizeof(commit_prefix) + FPAL_TEMPLATE_ID_LEN;
+
+	if (!id || !out || !out_len)
+		return FPAL_E_INVAL;
+	if (len > cap)
+		return FPAL_E_OVERFLOW;
+	memcpy(out, commit_prefix, sizeof(commit_prefix));
+	memcpy(out + sizeof(commit_prefix), id->bytes, FPAL_TEMPLATE_ID_LEN);
+	*out_len = len;
+	return FPAL_OK;
+}
+#endif
 
 int egis_parse_list(const struct egis_rsp *rsp, struct fpal_template_id *out,
 		    size_t cap, size_t *n) {

@@ -98,6 +98,19 @@
 #define FPAL_FPALD_IDLE_MS 0u
 #endif
 
+/*
+ * Enrolling: scans the sensor may reject (finger off centre, dirty sensor)
+ * on top of the stages it needs, before the attempt is given up.
+ */
+#ifndef FPAL_ENROLL_MAX_RETRIES
+#define FPAL_ENROLL_MAX_RETRIES 30u
+#endif
+
+/* Template ids created by fpal enroll start with this and fill 32 bytes. */
+#ifndef FPAL_NEW_ID_PREFIX
+#define FPAL_NEW_ID_PREFIX "FPAL-"
+#endif
+
 /* Device name reported to D-Bus clients (the "name" property). */
 #ifndef FPAL_FPRINT_DEVICE_NAME
 #define FPAL_FPRINT_DEVICE_NAME "FPAL"

@@ -18,7 +18,9 @@
  * like body: CLA(0x50) INS P1 P2 [00 Lh Ll]. SW1 SW2 = 90 00 means success.
  *
  * The delete opcode (INS 0x18) is intentionally not defined anywhere in
- * this project.
+ * this project. The enrol opcodes (INS 0x16) exist only in builds made with
+ * "make ENROLL=1" (FPAL_ENABLE_ENROLL); the one that stores a template is
+ * egis_build_commit().
  */
 #ifndef FPAL_DRIVERS_EGIS_MOC_PROTO_H
 #define FPAL_DRIVERS_EGIS_MOC_PROTO_H
@@ -65,6 +67,14 @@ extern const struct egis_cmd egis_cmd_sensor_reset;
 extern const struct egis_cmd egis_cmd_sensor_check;
 extern const struct egis_cmd egis_cmd_arm_identify;
 
+#ifdef FPAL_ENABLE_ENROLL
+extern const struct egis_cmd egis_cmd_arm_enroll;
+extern const struct egis_cmd egis_cmd_enroll_start;
+extern const struct egis_cmd egis_cmd_start_capture;
+extern const struct egis_cmd egis_cmd_read_capture;
+extern const struct egis_cmd egis_cmd_commit_start;
+#endif
+
 /* A parsed response; @body points into the caller's receive buffer. */
 struct egis_rsp {
 	const uint8_t *body; /* data between length field and status word */
@@ -96,5 +106,24 @@ int egis_build_check(const struct fpal_template_id *ids, size_t n,
 /* Extract template ids from a list response body. */
 int egis_parse_list(const struct egis_rsp *rsp, struct fpal_template_id *out,
 		    size_t cap, size_t *n);
+
+#ifdef FPAL_ENABLE_ENROLL
+/* Answer to egis_cmd_read_capture, one per scan of the enrol loop. */
+enum egis_capture {
+	EGIS_CAPTURE_OK,     /* scan accepted: counts as one stage */
+	EGIS_CAPTURE_CENTER, /* finger off centre */
+	EGIS_CAPTURE_DIRTY,  /* sensor dirty */
+	EGIS_CAPTURE_RETRY,  /* anything else: touch again */
+};
+
+enum egis_capture egis_classify_capture(const struct egis_rsp *rsp);
+
+/*
+ * The command that STORES a new template under @id. This is the only chip
+ * write in the project; callers must have gone through the enrol sequence.
+ */
+int egis_build_commit(const struct fpal_template_id *id, uint8_t *out,
+		      size_t cap, size_t *out_len);
+#endif
 
 #endif /* FPAL_DRIVERS_EGIS_MOC_PROTO_H */

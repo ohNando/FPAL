@@ -5,7 +5,10 @@ AR       ?= ar
 PREFIX   ?= /usr/local
 # Directory libpam loads modules from; differs between distros.
 PAMDIR   ?= $(firstword $(wildcard /usr/lib64/security /usr/lib/x86_64-linux-gnu/security /usr/lib/security /lib/security))
-BUILD    := build
+# "make ENROLL=1" adds the code that stores new fingerprints on the sensor. It
+# builds into its own directory so the two variants never mix.
+ENROLL   ?= 0
+BUILD    ?= $(if $(filter 1,$(ENROLL)),build-enroll,build)
 # Distributions with a merged /usr (Fedora, Arch) set SBINDIR to /usr/bin.
 SBINDIR  ?= $(PREFIX)/sbin
 DOCDIR   ?= $(PREFIX)/share/doc/fpal
@@ -21,11 +24,15 @@ CFLAGS   += -std=c17 -Wall -Wextra -Wpedantic -Werror \
             -Wshadow -Wstrict-prototypes -Wmissing-prototypes \
             -fstack-protector-strong -fPIC $(CFLAGS_EXTRA)
 CPPFLAGS += -D_GNU_SOURCE -Iinclude -Isrc -MMD -MP
+ifeq ($(ENROLL),1)
+CPPFLAGS += -DFPAL_ENABLE_ENROLL
+endif
 
 LIB_SRCS := src/core/device.c \
             src/core/err.c \
             src/core/lock.c \
             src/core/log.c \
+            src/core/newid.c \
             src/core/registry.c \
             src/core/trace.c \
             src/dbus/conn.c \
@@ -44,6 +51,9 @@ DAEMON_SRCS := daemon/fprint_service.c
 
 TEST_NAMES := test_proto test_egis_moc test_bindings test_pam_opts test_dbus \
               test_dbus_conn test_fprint_service
+ifeq ($(ENROLL),1)
+TEST_NAMES += test_enroll
+endif
 
 LIB      := $(BUILD)/libfpal.a
 LIB_OBJS := $(LIB_SRCS:%.c=$(BUILD)/%.o)

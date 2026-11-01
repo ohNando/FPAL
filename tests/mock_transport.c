@@ -74,6 +74,8 @@ static int m_wait_interrupt(void *ctx, uint8_t ep, uint8_t *buf, size_t cap,
 
 	(void)ep, (void)timeout_ms;
 	m->irqs++;
+	if (m->irq_fail_at && m->irqs == m->irq_fail_at)
+		return m->irq_fail_rc;
 	if (m->irq_rc)
 		return m->irq_rc;
 	memset(buf, 0, cap);
@@ -117,7 +119,8 @@ void mock_push_egis(struct mock *m, const uint8_t *body, size_t body_len,
 						       0, 0, 0, 1 };
 	struct mock_frame *f;
 
-	if (m->n_in >= MOCK_MAX_FRAMES)
+	if (m->n_in >= MOCK_MAX_FRAMES ||
+	    EGIS_RSP_BODY_OFF + body_len + EGIS_SW_LEN > MOCK_FRAME_MAX)
 		return;
 	f = &m->in[m->n_in++];
 	memcpy(f->data, magic, sizeof(magic));
