@@ -288,7 +288,8 @@ static int egis_identify(struct fpal_device *dev, uint32_t timeout_ms,
 /*
  * Enrolling, as the Windows driver does it. Everything before the commit
  * (enrol mode, 20 scans) lives in the sensor's working memory; only
- * egis_build_commit() stores a template. Nothing here deletes anything.
+ * egis_build_commit() stores a template. Enrolling never modifies or deletes
+ * an existing template.
  */
 
 static void emit(fpal_enroll_cb cb, void *ud, enum fpal_enroll_event ev,

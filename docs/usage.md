@@ -43,18 +43,33 @@ Only root can open the sensor. This is on purpose: with a world-accessible udev 
 | Command | What it does |
 |---|---|
 | `sudo fpal info` | Sensor, driver, serial number and firmware version |
-| `sudo fpal list` | Template IDs stored on the sensor |
+| `sudo fpal list` | Fingers stored on the sensor: number, id and name |
 | `sudo fpal identify [-t ms]` | Touch the sensor and show the matching ID |
 | `sudo fpal bind [-t ms] USER` | Bind the touched finger to a Linux user |
 | `sudo fpal bindings USER` | Show the IDs bound to a user |
 | `sudo fpal unbind USER` | Remove the bindings. Deletes only the file on the computer, the sensor is untouched |
+| `sudo fpal label FINGER [NAME\|--clear]` | Show, set or remove the name of a finger |
 | `fpal version` | Show the version |
 
-Fingers enrolled in Windows Hello work on Linux as they are. Enrolling from Linux exists too, but it writes to the sensor, so it is not part of the normal build (see below). Bindings are stored in `/var/lib/fpal/<user>` (root, `0600`).
+Fingers enrolled in Windows Hello work on Linux as they are. Enrolling from Linux, and deleting a finger, exist too, but they write to the sensor, so they are not part of the normal build (see below). Bindings are stored in `/var/lib/fpal/<user>` (root, `0600`).
 
-## Enrolling from Linux (optional)
+## Naming fingers
 
-Storing a new fingerprint is the only thing in FPAL that writes to the sensor. It adds a template and never touches, replaces or deletes the existing ones. Three locks guard it:
+The sensor stores only an opaque 32 byte id per finger, so names are kept on this computer in `/var/lib/fpal/.labels` (root, `0600`). They are visible to this installation only; Windows and other systems do not see them.
+
+```sh
+sudo fpal list                                   # [0] ... [1] ...
+sudo fpal label 0 "Windows finger"
+sudo fpal label 1 "Linux finger"
+sudo fpal label 1                                # show the name
+sudo fpal label 1 --clear                        # remove it
+```
+
+A name is 1 to 48 bytes (UTF-8 is fine, so `"Sağ işaret"` works), with no control characters and no leading or trailing space. Anywhere a finger is asked for (`label`, `delete`) you can give its number, its exact name, or the start of its id (at least 8 hex digits or 6 characters of text such as `FPAL-7b51`). If that matches more than one finger, nothing happens.
+
+## Enrolling and deleting from Linux (optional)
+
+Storing a new fingerprint and deleting one are the only things in FPAL that write to the sensor. Enrolling adds a template and never touches, replaces or deletes the existing ones. Three locks guard both:
 
 1. Build it in on purpose: `make ENROLL=1` (output goes to `build-enroll/`). Packages and the default build cannot enroll.
 2. Ask for it: `--allow-chip-write`.
@@ -66,7 +81,23 @@ sudo build-enroll/fpal enroll --dry-run $USER              # every step, nothing
 sudo build-enroll/fpal enroll --allow-chip-write $USER     # 20 scans, then stored and bound
 ```
 
-`--dry-run` is the way to try it first: it goes through the whole scan sequence, skips the two commands that store the template, resets the sensor and checks that the list on the sensor did not change. The sensor keeps at most 10 fingerprints; a finger that is already enrolled is refused.
+`--dry-run` is the way to try it first: it goes through the whole scan sequence, skips the two commands that store the template, resets the sensor and checks that the list on the sensor did not change. The sensor keeps at most 10 fingerprints; a finger that is already enrolled is refused. Give it a name while enrolling with `--name`:
+
+```sh
+sudo build-enroll/fpal enroll --allow-chip-write --name "Linux finger" $USER
+```
+
+### Deleting one finger
+
+```sh
+sudo build-enroll/fpal delete --dry-run 1                 # show what would be deleted
+sudo build-enroll/fpal delete --allow-chip-write 1        # then type yes
+sudo build-enroll/fpal delete --allow-chip-write "Linux finger"
+```
+
+Deleting removes a fingerprint from the sensor for good and **cannot be undone**. It removes exactly the finger you picked: afterwards the sensor's list is read back, and if anything other than that one finger changed, the command reports an error. There is no way to delete several fingers or clear the sensor, on purpose. The finger is also dropped from every user's bindings and its name is forgotten.
+
+A finger FPAL did not create (its id does not start with `FPAL-`, so it most likely comes from Windows Hello) is refused unless you add `--allow-foreign`, and then you must type `DELETE` instead of `yes`. Deleting such a finger removes it for every system that uses the sensor.
 
 ## Login with sudo and su
 

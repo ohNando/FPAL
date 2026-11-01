@@ -21,7 +21,7 @@ Read from GNOME Shell 50's own source (`js/gdm/util.js`):
 | `Claim`, `Verify*`, `Enroll*`, `DeleteEnrolledFingers*` | `NotSupported` |
 | `ListEnrolledFingers` | `NoEnrolledPrints` |
 
-The delete methods are refused on purpose, like everywhere else in FPAL.
+The delete methods are refused on purpose: deleting is done with `fpal delete`, in a build made for it.
 
 ## Installing
 

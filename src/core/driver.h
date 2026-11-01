@@ -4,8 +4,10 @@
  * is listed in the registry (src/core/registry.c). Adding a sensor never
  * requires touching the core.
  *
- * Deliberately there is no delete operation: templates stored on the sensor
- * (for example by Windows Hello) are never removed by fpal.
+ * The only operations that change what the sensor stores are enroll and
+ * delete_template, and both are NULL unless the build was made with
+ * "make ENROLL=1". delete_template removes exactly one template; no driver
+ * operation clears the sensor.
  */
 #ifndef FPAL_CORE_DRIVER_H
 #define FPAL_CORE_DRIVER_H

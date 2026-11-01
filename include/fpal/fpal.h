@@ -55,9 +55,10 @@ int fpal_identify(struct fpal_device *dev, uint32_t timeout_ms,
 		 struct fpal_template_id *match);
 
 /*
- * Enrolling stores a NEW template on the sensor. It exists only when fpal is
- * built with "make ENROLL=1"; otherwise both functions return FPAL_E_NOTSUP.
- * No function of this library ever deletes a template.
+ * Enrolling stores a NEW template on the sensor and deleting removes one. Both
+ * exist only when fpal is built with "make ENROLL=1"; otherwise they return
+ * FPAL_E_NOTSUP. Nothing in this library clears the sensor or deletes more
+ * than one template at a time.
  */
 
 /* What fpal_enroll() reports while it runs. @stage counts accepted scans. */
