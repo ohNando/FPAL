@@ -98,7 +98,7 @@ The body starts with `17 01`, an echo of the `INS P1` bytes of the "arm identify
 
 ## Enrolling
 
-Taken from libfprint's `egismoc` driver (`libfprint/drivers/egismoc`, 1.94.100). The `0587` uses 20 scans (`EGIS_FLAG_ENROLL_STAGES_20`), other family members 10. These commands exist only in builds made with `make ENROLL=1`.
+Taken from libfprint's `egismoc` driver (`libfprint/drivers/egismoc`, 1.94.100). The `0587` uses 20 scans (`EGIS_FLAG_ENROLL_STAGES_20`), other family members 10. These commands are compiled out of the PAM module and `fpald` (and of `fpal` itself when built with `make ENROLL=0`).
 
 A ✅ marks what a full `fpal enroll --dry-run` on 1c7a:0587 (fw `9050.6.4.67`, 20 scans, 6 of them retried) showed with `FPAL_TRACE=1`. Commit start and store were never sent in that run. A real `fpal enroll` on the same device then stored a new template: the sensor's list grew from 1 to 2 entries, the new id was there and the existing one untouched ✅. The status words of those two commands were not traced.
 
@@ -131,7 +131,7 @@ The command libfprint and the Windows driver use to remove templates, from libfp
 00 00 | BE16(7 + 32n) | 50 18 04 00 00 | BE16(32n) | id_1 ... id_n
 ```
 
-Success is a bare answer: `00 00 00 02 90 00` (length 2, no body, SW `90 00`). Verified on 1c7a:0587: deleting the template FPAL had enrolled left the list at exactly the other template ✅. The chip accepts a list of ids, and libfprint sends all of them to "clear" the sensor. **FPAL only ever builds the command for n = 1** (`egis_build_delete()` takes a single id), and after the answer reads the template list back to check that exactly that id is gone and every other one is still there. Like the enrol commands it exists only in builds made with `make ENROLL=1`.
+Success is a bare answer: `00 00 00 02 90 00` (length 2, no body, SW `90 00`). Verified on 1c7a:0587: deleting the template FPAL had enrolled left the list at exactly the other template ✅. The chip accepts a list of ids, and libfprint sends all of them to "clear" the sensor. **FPAL only ever builds the command for n = 1** (`egis_build_delete()` takes a single id), and after the answer reads the template list back to check that exactly that id is gone and every other one is still there. Like the enrol commands it is compiled out of the PAM module, `fpald` and read-only builds.
 
 ## Identify flow ✅
 

@@ -67,32 +67,32 @@ sudo fpal label 1 --clear                        # remove it
 
 A name is 1 to 48 bytes (UTF-8 is fine, so `"Sağ işaret"` works), with no control characters and no leading or trailing space. Anywhere a finger is asked for (`label`, `delete`) you can give its number, its exact name, or the start of its id (at least 8 hex digits or 6 characters of text such as `FPAL-7b51`). If that matches more than one finger, nothing happens.
 
-## Enrolling and deleting from Linux (optional)
+## Enrolling and deleting from Linux
 
-Storing a new fingerprint and deleting one are the only things in FPAL that write to the sensor. Enrolling adds a template and never touches, replaces or deletes the existing ones. Three locks guard both:
+Storing a new fingerprint and deleting one are the only things in FPAL that write to the sensor. Enrolling adds a template and never touches, replaces or deletes the existing ones. Two locks guard both, so a typo cannot do it:
 
-1. Build it in on purpose: `make ENROLL=1` (output goes to `build-enroll/`). Packages and the default build cannot enroll.
-2. Ask for it: `--allow-chip-write`.
-3. Confirm by typing `yes` at a terminal.
+1. Ask for it: `--allow-chip-write` (or `--dry-run` to try without writing).
+2. Confirm by typing `yes` at a terminal. Nothing can be confirmed from a script.
 
 ```sh
-make ENROLL=1
-sudo build-enroll/fpal enroll --dry-run $USER              # every step, nothing stored
-sudo build-enroll/fpal enroll --allow-chip-write $USER     # 20 scans, then stored and bound
+sudo fpal enroll --dry-run $USER              # every step, nothing stored
+sudo fpal enroll --allow-chip-write $USER     # 20 scans, then stored and bound
 ```
+
+The PAM module and `fpald` never write, whatever `fpal` can do: they are linked against a build of the library without the code that stores and deletes, and `make test` checks the binaries for it. If you want an `fpal` that cannot write either, build it with `make ENROLL=0` (output goes to `build-readonly/`).
 
 `--dry-run` is the way to try it first: it goes through the whole scan sequence, skips the two commands that store the template, resets the sensor and checks that the list on the sensor did not change. The sensor keeps at most 10 fingerprints; a finger that is already enrolled is refused. Give it a name while enrolling with `--name`:
 
 ```sh
-sudo build-enroll/fpal enroll --allow-chip-write --name "Linux finger" $USER
+sudo fpal enroll --allow-chip-write --name "Linux finger" $USER
 ```
 
 ### Deleting one finger
 
 ```sh
-sudo build-enroll/fpal delete --dry-run 1                 # show what would be deleted
-sudo build-enroll/fpal delete --allow-chip-write 1        # then type yes
-sudo build-enroll/fpal delete --allow-chip-write "Linux finger"
+sudo fpal delete --dry-run 1                 # show what would be deleted
+sudo fpal delete --allow-chip-write 1        # then type yes
+sudo fpal delete --allow-chip-write "Linux finger"
 ```
 
 Deleting removes a fingerprint from the sensor for good and **cannot be undone**. It removes exactly the finger you picked: afterwards the sensor's list is read back, and if anything other than that one finger changed, the command reports an error. There is no way to delete several fingers or clear the sensor, on purpose. The finger is also dropped from every user's bindings and its name is forgotten.

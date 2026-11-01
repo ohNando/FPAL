@@ -42,7 +42,7 @@ make test CFLAGS_EXTRA=-Wno-error
 %make_install PREFIX=%{_prefix} SBINDIR=%{_sbindir} PAMDIR=%{_libdir}/security \
     DOCDIR=%{_docdir}/%{name} DATADIR=%{_datadir}/%{name} \
     LIBEXECDIR=%{_libexecdir} UNITDIR=%{_unitdir} \
-    POLICYDIR=%{_datadir}/dbus-1/system.d
+    POLICYDIR=%{_datadir}/dbus-1/system.d MANDIR=%{_mandir}
 
 %post
 %systemd_post fpald.service
@@ -66,6 +66,9 @@ exit 0
 %{_libexecdir}/fpald
 %{_unitdir}/fpald.service
 %{_datadir}/dbus-1/system.d/fpald.conf
+%{_mandir}/man8/fpal.8*
+%{_mandir}/man8/pam_fpal.8*
+%{_mandir}/man8/fpald.8*
 %{_datadir}/%{name}/
 %{_docdir}/%{name}/
 

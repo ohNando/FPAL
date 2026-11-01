@@ -1,0 +1,54 @@
+.\" SPDX-License-Identifier: Apache-2.0
+.TH PAM_FPAL 8 "November 2026" "fpal @VERSION@" "System Administration"
+.SH NAME
+pam_fpal \- PAM module for fingerprint authentication
+.SH SYNOPSIS
+.B auth sufficient pam_fpal.so
+.RI [ options ]
+.SH DESCRIPTION
+.B pam_fpal
+verifies the user with the fingerprint sensor, for every program that uses PAM
+(sudo, su, login, GDM). It accepts a finger that is bound to the user with
+.BR "fpal bind" .
+Use it as
+.BR sufficient :
+if the fingerprint does not work the password is asked as usual, so a missing
+or dirty sensor never locks anyone out.
+.PP
+Remote sessions (those with PAM_RHOST) and users without a bound fingerprint are
+skipped without touching the sensor. The module only reads: it cannot store or
+delete fingerprints.
+.SH OPTIONS
+.TP
+.BI timeout= ms
+How long to wait for a finger on each attempt (default 10000).
+.TP
+.BI retries= n
+How many times to retry after a wrong finger (default 3, at most 10).
+.TP
+.B debug
+Write verbose messages to the system log.
+.TP
+.B quiet
+Do not show the prompt and result messages. They are shown even when the
+calling program passes PAM_SILENT, because sudo does, and without a prompt the
+user cannot tell that a finger is expected.
+.SH RETURN VALUES
+.TP
+.B PAM_SUCCESS
+The finger matched a fingerprint bound to the user.
+.TP
+.B PAM_AUTH_ERR
+A wrong finger on every attempt.
+.TP
+.B PAM_AUTHINFO_UNAVAIL
+No binding, no sensor, sensor busy, remote session, or timeout.
+.SH EXAMPLES
+On Fedora the authselect profile is switched with
+.nf
+sudo /usr/share/fpal/authselect\-fpal.sh install
+.fi
+.SH SEE ALSO
+.BR fpal (8),
+.BR fpald (8),
+.BR pam (8)
