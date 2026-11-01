@@ -493,7 +493,7 @@ static int next_key(struct input *in, struct fpal_key *k) {
 			in->len -= used;
 			return 1;
 		}
-		if (in->len == sizeof(in->buf))
+		if (in->len >= sizeof(in->buf))
 			in->len = 0; /* never happens with real keys; do not wedge */
 		r = read(in->fd, in->buf + in->len, sizeof(in->buf) - in->len);
 		if (r > 0)
