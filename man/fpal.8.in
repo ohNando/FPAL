@@ -1,0 +1,188 @@
+.\" SPDX-License-Identifier: Apache-2.0
+.TH FPAL 8 "November 2026" "fpal @VERSION@" "System Administration"
+.SH NAME
+fpal \- fingerprint sensor tool: list, name, bind, enrol and delete fingers
+.SH SYNOPSIS
+.B fpal
+.I command
+.RI [ options ]
+.SH DESCRIPTION
+.B fpal
+talks to a Match-on-Chip fingerprint sensor (EgisTec / LighTuning, for example
+USB id 1c7a:0587) through usbdevfs, without libusb or libfprint. The sensor
+stores the fingerprints and does the matching itself.
+.B fpal
+lists them, gives them names, binds them to local users, and can store a new
+fingerprint or delete one.
+.PP
+Only root can open the sensor, so run it with
+.BR sudo (8).
+Fingerprints enrolled in Windows Hello are recognised as they are.
+.SH COMMANDS
+.TP
+.B info
+Show the sensor, driver, serial number and firmware version.
+.TP
+.BR list " [" \-\-raw ]
+List the fingerprints on the sensor. On a terminal this is a table with the
+number, name, kind (\fBFPAL\fR for fingers fpal enrolled, \fBother\fR for the
+rest, such as Windows Hello), whether the finger is bound to you, and a short
+form of the id. When the output is a pipe or a file, or with
+.BR \-\-raw ,
+it prints one plain line per fingerprint with the full id, a format scripts can
+rely on. Colours are left out when
+.B NO_COLOR
+is set or the terminal is not UTF-8.
+.TP
+.BR identify " [" \-t " \fIms\fR]"
+Wait for a finger and show which fingerprint matched.
+.TP
+.BR bind " [" \-t " \fIms\fR] \fIuser\fR"
+Bind the touched finger to a local user, so that
+.BR pam_fpal (8)
+accepts it for that user.
+.TP
+.BI unbind " user"
+Forget the bindings of a user. Only the file on the computer is removed; the
+sensor is not touched.
+.TP
+.BI bindings " user"
+Show the fingerprints bound to a user.
+.TP
+.BR label " \fIfinger\fR [\fIname\fR|" \-\-clear ]
+Show, set or remove the name of a finger. The sensor cannot store a name, so
+names are kept on this computer and are not visible to other systems. A name is
+1 to 48 bytes (UTF-8 is fine) without control characters or leading or trailing
+space.
+.TP
+.BR enroll " [" \-\-dry\-run "] [" \-\-allow\-chip\-write "] [" \-\-name " \fIname\fR] \fIuser\fR"
+Enrol a NEW finger: one touch to check that the finger is not enrolled yet,
+then 20 scans, then the template is stored on the sensor and bound to
+.IR user .
+Existing fingerprints are never changed.
+.B \-\-dry\-run
+goes through every step except the commands that store the template and
+checks that the sensor's list did not change.
+.TP
+.BR delete " [" \-\-dry\-run "] [" \-\-allow\-chip\-write "] [" \-\-allow\-foreign "] \fIfinger\fR"
+Delete ONE fingerprint from the sensor. This cannot be undone. See
+.BR SAFETY .
+.TP
+.BR status " [\fIuser\fR]"
+Say whether fingerprint login is set up: the sensor, the fingerprints and the
+user's bindings (run it with
+.BR sudo (8)
+to read those), whether
+.B pam_fpal.so
+is in the PAM stack, whether
+.BR fpald (8)
+answers for GNOME, and whether
+.B fprintd
+is masked. Anything missing is listed with what to do about it. The exit
+status is 1 if something is missing.
+.TP
+.BR setup " [" \-\-revert ]
+Make
+.BR sudo (8),
+.BR su (1)
+and the GNOME login and lock screens use the fingerprint: select the
+authselect profile with
+.BR pam_fpal ,
+mask
+.BR fprintd ,
+and start
+.BR fpald (8).
+.B \-\-revert
+goes back. It runs
+.IR authselect\-fpal.sh ,
+which is installed next to
+.BR fpal ,
+and needs root. Only authselect systems (Fedora, RHEL) are supported so far.
+.TP
+.B version
+Show the version.
+.PP
+A
+.I finger
+is its number in
+.BR "fpal list" ,
+its exact name, or the start of its id (at least 8 hex digits, or 6 characters
+of text such as
+.BR FPAL\-7b51 ).
+If that matches more than one finger, nothing happens.
+.SH SAFETY
+Reading, naming and binding never change what the sensor stores.
+.B enroll
+and
+.B delete
+do, so they are guarded:
+.IP \(bu 2
+.B \-\-allow\-chip\-write
+is required (or
+.BR \-\-dry\-run ),
+and you must type
+.B yes
+at a terminal. Nothing can be confirmed from a script.
+.IP \(bu 2
+.B delete
+handles exactly one fingerprint. There is no command to delete several or to
+clear the sensor. Afterwards the sensor's list is read back and the command
+fails if anything other than that one fingerprint changed.
+.IP \(bu 2
+A fingerprint that
+.B fpal
+did not create (its id does not start with
+.BR FPAL\- ,
+so it most likely comes from Windows Hello) is refused unless
+.B \-\-allow\-foreign
+is given, and then you must type
+.B DELETE
+instead of
+.BR yes .
+Deleting it removes it for every system that uses the sensor.
+.IP \(bu 2
+A deleted fingerprint is removed from every user's bindings and its name is
+forgotten.
+.PP
+Binaries built with
+.B make ENROLL=0
+cannot enrol or delete at all. The PAM module and
+.BR fpald (8)
+never can, whatever
+.B fpal
+is built with.
+.SH FILES
+.TP
+.I /var/lib/fpal/USER
+Fingerprints bound to a user (root only, mode 0600).
+.TP
+.I /var/lib/fpal/.labels
+Names of fingerprints (root only, mode 0600).
+.TP
+.I /run/fpal.lock
+Keeps two processes from using the sensor at once.
+.SH ENVIRONMENT
+.TP
+.B FPAL_TRACE=1
+Print every USB packet exchanged with the sensor, as hex.
+.TP
+.B FPAL_DEBUG=1
+Verbose messages.
+.SH EXIT STATUS
+0 on success, 1 on an error or a refused operation, 2 on a usage error.
+.SH EXAMPLES
+.nf
+sudo fpal list
+sudo fpal label 0 "Windows finger"
+sudo fpal setup
+fpal status
+sudo fpal bind $USER
+sudo fpal enroll \-\-dry\-run $USER
+sudo fpal enroll \-\-allow\-chip\-write \-\-name "Linux finger" $USER
+sudo fpal delete \-\-allow\-chip\-write "Linux finger"
+.fi
+.SH SEE ALSO
+.BR pam_fpal (8),
+.BR fpald (8),
+.UR https://github.com/ohNando/fpal
+.UE

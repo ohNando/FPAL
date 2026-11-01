@@ -1,0 +1,46 @@
+.\" SPDX-License-Identifier: Apache-2.0
+.TH FPALD 8 "November 2026" "fpal @VERSION@" "System Administration"
+.SH NAME
+fpald \- tells GNOME that a fingerprint sensor exists
+.SH SYNOPSIS
+.B fpald
+.RB [ \-d ]
+.RB [ \-t
+.IR ms ]
+.RB [ \-s
+.IR socket ]
+.SH DESCRIPTION
+GNOME's login and lock screens ask the D-Bus service
+.B net.reactivated.Fprint
+whether a fingerprint reader exists before they offer one.
+.B fpald
+answers that question: it reports one reader of type
+.B press
+when a supported sensor is plugged in, and nothing otherwise.
+.PP
+It never opens the sensor, and it refuses every method that would claim,
+verify, enrol or delete. The verification itself runs through the PAM service
+.B gdm-fingerprint
+and
+.BR pam_fpal (8).
+.PP
+It is started by systemd (\c
+.BR fpald.service ),
+which
+.B authselect\-fpal.sh install
+enables. Only one program can own the D-Bus name, so
+.B fprintd
+is masked at the same time.
+.SH OPTIONS
+.TP
+.B \-d
+Verbose log messages.
+.TP
+.BI \-t " ms"
+Exit after this many milliseconds without traffic (default 0: never).
+.TP
+.BI \-s " socket"
+Connect to this bus socket instead of the system bus.
+.SH SEE ALSO
+.BR fpal (8),
+.BR pam_fpal (8)

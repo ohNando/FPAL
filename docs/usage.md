@@ -43,12 +43,14 @@ Only root can open the sensor. This is on purpose: with a world-accessible udev 
 | Command | What it does |
 |---|---|
 | `sudo fpal info` | Sensor, driver, serial number and firmware version |
-| `sudo fpal list` | Fingers stored on the sensor: number, id and name |
+| `sudo fpal list [--raw]` | Fingers on the sensor as a table (number, name, kind, whether it is yours, id). In a pipe or with `--raw` it prints one plain line per finger with the full id, for scripts |
 | `sudo fpal identify [-t ms]` | Touch the sensor and show the matching ID |
 | `sudo fpal bind [-t ms] USER` | Bind the touched finger to a Linux user |
 | `sudo fpal bindings USER` | Show the IDs bound to a user |
 | `sudo fpal unbind USER` | Remove the bindings. Deletes only the file on the computer, the sensor is untouched |
 | `sudo fpal label FINGER [NAME\|--clear]` | Show, set or remove the name of a finger |
+| `fpal status [USER]` | Is fingerprint login set up? Shows the sensor, the fingers, the PAM and GNOME state, and what to do if something is missing (run it with `sudo` to see the fingers and bindings) |
+| `sudo fpal setup [--revert]` | Make sudo, su and the GNOME screens use the fingerprint, or go back |
 | `fpal version` | Show the version |
 
 Fingers enrolled in Windows Hello work on Linux as they are. Enrolling from Linux, and deleting a finger, exist too, but they write to the sensor, so they are not part of the normal build (see below). Bindings are stored in `/var/lib/fpal/<user>` (root, `0600`).
@@ -67,32 +69,32 @@ sudo fpal label 1 --clear                        # remove it
 
 A name is 1 to 48 bytes (UTF-8 is fine, so `"Sağ işaret"` works), with no control characters and no leading or trailing space. Anywhere a finger is asked for (`label`, `delete`) you can give its number, its exact name, or the start of its id (at least 8 hex digits or 6 characters of text such as `FPAL-7b51`). If that matches more than one finger, nothing happens.
 
-## Enrolling and deleting from Linux (optional)
+## Enrolling and deleting from Linux
 
-Storing a new fingerprint and deleting one are the only things in FPAL that write to the sensor. Enrolling adds a template and never touches, replaces or deletes the existing ones. Three locks guard both:
+Storing a new fingerprint and deleting one are the only things in FPAL that write to the sensor. Enrolling adds a template and never touches, replaces or deletes the existing ones. Two locks guard both, so a typo cannot do it:
 
-1. Build it in on purpose: `make ENROLL=1` (output goes to `build-enroll/`). Packages and the default build cannot enroll.
-2. Ask for it: `--allow-chip-write`.
-3. Confirm by typing `yes` at a terminal.
+1. Ask for it: `--allow-chip-write` (or `--dry-run` to try without writing).
+2. Confirm by typing `yes` at a terminal. Nothing can be confirmed from a script.
 
 ```sh
-make ENROLL=1
-sudo build-enroll/fpal enroll --dry-run $USER              # every step, nothing stored
-sudo build-enroll/fpal enroll --allow-chip-write $USER     # 20 scans, then stored and bound
+sudo fpal enroll --dry-run $USER              # every step, nothing stored
+sudo fpal enroll --allow-chip-write $USER     # 20 scans, then stored and bound
 ```
+
+The PAM module and `fpald` never write, whatever `fpal` can do: they are linked against a build of the library without the code that stores and deletes, and `make test` checks the binaries for it. If you want an `fpal` that cannot write either, build it with `make ENROLL=0` (output goes to `build-readonly/`).
 
 `--dry-run` is the way to try it first: it goes through the whole scan sequence, skips the two commands that store the template, resets the sensor and checks that the list on the sensor did not change. The sensor keeps at most 10 fingerprints; a finger that is already enrolled is refused. Give it a name while enrolling with `--name`:
 
 ```sh
-sudo build-enroll/fpal enroll --allow-chip-write --name "Linux finger" $USER
+sudo fpal enroll --allow-chip-write --name "Linux finger" $USER
 ```
 
 ### Deleting one finger
 
 ```sh
-sudo build-enroll/fpal delete --dry-run 1                 # show what would be deleted
-sudo build-enroll/fpal delete --allow-chip-write 1        # then type yes
-sudo build-enroll/fpal delete --allow-chip-write "Linux finger"
+sudo fpal delete --dry-run 1                 # show what would be deleted
+sudo fpal delete --allow-chip-write 1        # then type yes
+sudo fpal delete --allow-chip-write "Linux finger"
 ```
 
 Deleting removes a fingerprint from the sensor for good and **cannot be undone**. It removes exactly the finger you picked: afterwards the sensor's list is read back, and if anything other than that one finger changed, the command reports an error. There is no way to delete several fingers or clear the sensor, on purpose. The finger is also dropped from every user's bindings and its name is forgotten.
@@ -103,10 +105,11 @@ A finger FPAL did not create (its id does not start with `FPAL-`, so it most lik
 
 ```sh
 sudo fpal bind $USER
-sudo scripts/authselect-fpal.sh install   # Fedora / RHEL (authselect)
+sudo fpal setup            # Fedora / RHEL (authselect)
+fpal status                # check that it is all in place
 ```
 
-The script masks `fprintd`, selects an authselect profile called `custom/fpal` and starts `fpald` for GNOME (see [gnome.md](gnome.md)); `revert` undoes it. For the PAM options (`timeout=`, `retries=`, `quiet`, `debug`), the messages and safe testing steps see [pam.md](pam.md).
+`fpal setup` masks `fprintd`, selects an authselect profile called `custom/fpal` and starts `fpald` for GNOME (see [gnome.md](gnome.md)); `sudo fpal setup --revert` undoes it. It runs `authselect-fpal.sh`, which is installed next to `fpal` (`/usr/share/fpal/`, or `scripts/` in a checkout). For the PAM options (`timeout=`, `retries=`, `quiet`, `debug`), the messages and safe testing steps see [pam.md](pam.md).
 
 ## Troubleshooting
 

@@ -33,7 +33,7 @@ Your laptop's fingerprint sensor works on Windows but does nothing for you on Li
 
 - **Written from scratch.** The sensor's USB protocol was captured and verified on real hardware, and every step is [documented](docs/protocol-egis-moc.md). The code base is about 3,000 lines of C that you can read end to end.
 - **No dependencies.** No `libusb`, no `libfprint`, no D-Bus library (the small D-Bus client is part of the project), no build system. At runtime it needs only libc and `libpam`. Building takes nothing but `make`.
-- **Leaves Windows enrolments alone.** Fingers you enrolled in Windows Hello work on Linux as they are, so a dual-boot machine keeps both. The normal build cannot write to the sensor at all; enrolling and deleting a fingerprint exist only in a build made on purpose (`make ENROLL=1`), delete one fingerprint at a time, and refuse fingers FPAL did not create unless you insist.
+- **Leaves Windows enrolments alone.** Fingers you enrolled in Windows Hello work on Linux as they are, so a dual-boot machine keeps both. Enrolling and deleting a fingerprint are guarded: they need `--allow-chip-write` and a typed confirmation, deleting works on one fingerprint at a time, and it refuses fingers FPAL did not create unless you insist. The code that runs at login (the PAM module and `fpald`) cannot write to the sensor at all, and `make ENROLL=0` builds a fully read-only `fpal`.
 - **Safe defaults.** The password is always the fallback, only root can open the sensor, corrupt responses are rejected, and binding files go through symlink and permission checks.
 - **Ready for more sensors.** Drivers sit behind a small interface (`struct fpal_driver`); supporting a new sensor means adding a folder, not touching the core.
 
@@ -48,24 +48,28 @@ Your laptop's fingerprint sensor works on Windows but does nothing for you on Li
 | 🖥 **GNOME login and lock screen** | `fpald` answers the question GNOME asks `fprintd`, so the fingerprint option appears |
 | 🖐 **Per-user binding** | Each Linux user gets their own fingers (`fpal bind`), and you can name them (`fpal label 0 "Windows finger"`) |
 | 🔍 **Transparent** | `FPAL_TRACE=1` prints every USB packet exchanged with the sensor as hex |
-| 🧪 **Testable** | 82 unit tests run against a mock USB device and a fake D-Bus, no hardware needed |
+| 🧪 **Testable** | 115 unit tests run against a mock USB device and a fake D-Bus, no hardware needed |
 | 🧩 **Extensible** | New sensor = new driver folder, the core stays the same |
 | 🪶 **Lightweight** | The only service, `fpald`, uses about 400 KB and never touches the sensor; it is opened only while you log in |
 
 ## Quick start
 
 ```sh
-sudo dnf install gcc make pam-devel      # Fedora; see docs/usage.md for others
-make && sudo make install
+# Fedora: download the RPM from the latest release, then
+sudo dnf install ./fpal-*.x86_64.rpm
+# (other systems: sudo dnf install gcc make pam-devel; make && sudo make install)
 
-sudo fpal info                           # see the sensor
-sudo fpal bind $USER                     # touch the sensor and bind the finger to yourself
-sudo scripts/authselect-fpal.sh install  # sudo, su and the GNOME screens now ask for a fingerprint
+sudo fpal info                                    # see the sensor
+sudo fpal bind $USER                              # touch the sensor, bind that finger to yourself
+sudo fpal setup                                   # sudo, su and the GNOME screens now ask for a fingerprint
+fpal status                                       # is everything in place? tells you what to do if not
 ```
+
+Then `man fpal`, or: `sudo fpal list`, `sudo fpal label 0 "Windows finger"`, `sudo fpal enroll --dry-run $USER`.
 
 All commands, PAM setup and troubleshooting: [docs/usage.md](docs/usage.md), [docs/pam.md](docs/pam.md).
 
-FPAL reads the fingers you enrolled in Windows Hello from the chip and binds them to a Linux user. Enrolling new fingers from Linux is possible too, but only in a build made on purpose (`make ENROLL=1`), see [docs/usage.md](docs/usage.md).
+FPAL reads the fingers you enrolled in Windows Hello from the chip and binds them to a Linux user. Enrolling new fingers from Linux works too (`fpal enroll`), and so does deleting one; see [docs/usage.md](docs/usage.md).
 
 ## Status
 
@@ -74,7 +78,7 @@ FPAL reads the fingers you enrolled in Windows Hello from the chip and binds the
 | ✅ | Detect the sensor, list templates, identify a finger, bind it to a user |
 | ✅ | PAM login for `sudo` and `su` |
 | ✅ | GNOME login and lock screen (`fpald`, which stands in for fprintd on D-Bus) |
-| ✅ | Enrolling and deleting single fingers from Linux (optional, only in a build made with `make ENROLL=1`) |
+| ✅ | Enrolling new fingers and deleting single ones from Linux (`fpal enroll`, `fpal delete`) |
 | ✅ | Naming fingers |
 | 🔜 | More sensors, plus packages for Debian and Arch |
 

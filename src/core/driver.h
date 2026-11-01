@@ -5,9 +5,9 @@
  * requires touching the core.
  *
  * The only operations that change what the sensor stores are enroll and
- * delete_template, and both are NULL unless the build was made with
- * "make ENROLL=1". delete_template removes exactly one template; no driver
- * operation clears the sensor.
+ * delete_template. Both are NULL unless the build defines FPAL_ENABLE_ENROLL
+ * (left out by "make ENROLL=0"). delete_template removes exactly one
+ * template; no driver operation clears the sensor.
  */
 #ifndef FPAL_CORE_DRIVER_H
 #define FPAL_CORE_DRIVER_H
@@ -37,11 +37,11 @@ struct fpal_driver {
 		    size_t cap, size_t *n);
 	int (*identify)(struct fpal_device *dev, uint32_t timeout_ms,
 			struct fpal_template_id *match);
-	/* Optional, NULL unless built with ENROLL=1. */
+	/* Optional, NULL in read-only builds. */
 	int (*enroll)(struct fpal_device *dev,
 		      const struct fpal_template_id *new_id, uint32_t flags,
 		      fpal_enroll_cb cb, void *ud);
-	/* Optional, NULL unless built with ENROLL=1. Deletes ONE template. */
+	/* Optional, NULL in read-only builds. Deletes ONE template. */
 	int (*delete_template)(struct fpal_device *dev,
 			       const struct fpal_template_id *id);
 };

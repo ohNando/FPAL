@@ -56,9 +56,10 @@ int fpal_identify(struct fpal_device *dev, uint32_t timeout_ms,
 
 /*
  * Enrolling stores a NEW template on the sensor and deleting removes one. Both
- * exist only when fpal is built with "make ENROLL=1"; otherwise they return
- * FPAL_E_NOTSUP. Nothing in this library clears the sensor or deletes more
- * than one template at a time.
+ * are compiled out of read-only builds ("make ENROLL=0", and the copy of this
+ * library that pam_fpal.so and fpald link), where they return FPAL_E_NOTSUP.
+ * Nothing in this library clears the sensor or deletes more than one template
+ * at a time.
  */
 
 /* What fpal_enroll() reports while it runs. @stage counts accepted scans. */
@@ -87,9 +88,8 @@ int fpal_enroll(struct fpal_device *dev, const struct fpal_template_id *new_id,
 		uint32_t flags, fpal_enroll_cb cb, void *ud);
 
 /*
- * Delete the ONE template @id from the sensor. This cannot be undone. Only
- * builds made with "make ENROLL=1" can do it (FPAL_E_NOTSUP otherwise), and
- * the library has no function that deletes several templates or clears the
+ * Delete the ONE template @id from the sensor. This cannot be undone. Read-only
+ * builds return FPAL_E_NOTSUP, and the library has no function that deletes several templates or clears the
  * sensor. FPAL_E_NODATA if @id is not stored on the sensor. After the
  * command the sensor's own list is read back: exactly @id must be gone and
  * every other template still there, otherwise FPAL_E_PROTO.

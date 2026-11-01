@@ -4,7 +4,7 @@ Thanks for helping. This file covers the workflow, the code style and how to add
 
 ## Ground rules
 
-- **Writing to the sensor is opt-in and narrow.** Enrolling and deleting (`INS 0x16` and `INS 0x18` for Egis) may only exist behind `make ENROLL=1`, `--allow-chip-write` and a typed confirmation; the default build must stay unable to write (a test checks it). Deleting handles exactly one template and reads the list back to confirm; a patch that deletes several templates, clears the sensor, or deletes without confirmation will not be accepted. Fingerprints FPAL did not create need `--allow-foreign`.
+- **Writing to the sensor is narrow and guarded.** Enrolling and deleting (`INS 0x16` and `INS 0x18` for Egis) need `--allow-chip-write` (or `--dry-run`) and a typed confirmation, and live only behind `#ifdef FPAL_ENABLE_ENROLL`, which `make ENROLL=0` leaves out. The code that runs at login (`pam_fpal.so`, `fpald`) links a library built without it, and `make test` checks the binaries (`scripts/check-readonly.sh`). Deleting handles exactly one template and reads the list back to confirm; a patch that deletes several templates, clears the sensor, or deletes without confirmation will not be accepted. Fingerprints FPAL did not create need `--allow-foreign`.
 - **No new runtime dependencies.** libc and `libpam` only. No libusb, no D-Bus library.
 - **The password stays a fallback.** PAM integration must be `sufficient`.
 - Only root opens the sensor. Do not add a world-accessible udev rule.
@@ -26,7 +26,7 @@ Thanks for helping. This file covers the workflow, the code style and how to add
 
 A driver is one `struct fpal_driver` ([src/core/driver.h](src/core/driver.h)):
 
-1. Create `src/drivers/<name>/` and implement `open`, `close`, `list` and `identify` on top of the transport (`dev->tr`). `enroll` stays `NULL` unless built with `ENROLL=1`.
+1. Create `src/drivers/<name>/` and implement `open`, `close`, `list` and `identify` on top of the transport (`dev->tr`). `enroll` and `delete_template` may stay `NULL`; they are only filled in `#ifdef FPAL_ENABLE_ENROLL`.
 2. List the USB ids in an array terminated by `vid == 0` and add the driver to `fpal_drivers[]` in `src/core/registry.c`.
 3. Document the wire protocol in `docs/protocol-<name>.md`, marking what you verified on real hardware.
 4. Test it without hardware: `tests/mock_transport.c` replays scripted USB exchanges (see `tests/test_egis_moc.c`). Use made-up template ids, never ones from a real device.

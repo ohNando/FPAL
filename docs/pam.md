@@ -66,17 +66,17 @@ While editing PAM files, **keep a root shell open in a separate terminal with `s
 
 ```sh
 sudo make install                         # /usr/local/sbin/fpal + /usr/lib64/security/pam_fpal.so
-sudo scripts/authselect-fpal.sh install   # select the profile, mask fprintd
+sudo fpal setup                           # select the profile, mask fprintd
 ```
 
-The script backs up the previous settings (`authselect backup-list`). It also masks `fprintd`; otherwise fprintd could grab the sensor and keep pam_fpal from opening it.
+`fpal setup` runs `authselect-fpal.sh` (installed next to `fpal`). It backs up the previous settings (`authselect backup-list`). It also masks `fprintd`; otherwise fprintd could grab the sensor and keep pam_fpal from opening it.
 
 Then try it in a new terminal with `sudo -k; sudo true`. If no finger is presented, the password is asked after 10 seconds.
 
 To undo it:
 
 ```sh
-sudo scripts/authselect-fpal.sh revert
+sudo fpal setup --revert
 ```
 
 The GNOME login and lock screens first ask `net.reactivated.Fprint` over D-Bus whether a reader exists. `fpald` answers that, and the same script starts it; see [gnome.md](gnome.md).

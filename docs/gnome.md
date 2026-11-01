@@ -25,18 +25,19 @@ The delete methods are refused on purpose: deleting is done with `fpal delete`, 
 
 ## Installing
 
-With the RPM everything is in place; the helper script starts the service and switches the PAM profile:
+With the RPM everything is in place; `fpal setup` starts the service and switches the PAM profile:
 
 ```sh
-sudo /usr/share/fpal/authselect-fpal.sh install
+sudo fpal setup
+fpal status          # "GNOME screens: fpald announces the sensor"
 ```
 
 From a checkout, install just the service first:
 
 ```sh
 make
-sudo make install-fpald            # /usr/local/libexec/fpald, systemd unit, bus policy
-sudo scripts/authselect-fpal.sh install
+sudo make install                  # includes fpald, its systemd unit and the bus policy
+sudo fpal setup
 ```
 
 The script reloads the bus (so it reads the policy file), enables `fpald.service` and masks `fprintd` so the two never fight over the bus name. Only one of them can own `net.reactivated.Fprint`; if `fprintd` is running, `fpald` exits with status 3 and is not restarted.
@@ -52,7 +53,7 @@ busctl get-property net.reactivated.Fprint /net/reactivated/Fprint/Device/0 \
 
 Then lock the screen (Super+L). The password box should show a fingerprint hint; touch the sensor to unlock. The password keeps working.
 
-To undo it: `sudo scripts/authselect-fpal.sh revert` (stops `fpald`, unmasks `fprintd`).
+To undo it: `sudo fpal setup --revert` (stops `fpald`, unmasks `fprintd`).
 
 ## Troubleshooting
 
