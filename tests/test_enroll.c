@@ -13,9 +13,8 @@ static const struct fpal_template_id new_id = {
 };
 
 struct events {
-	unsigned touch, done, center, dirty, retry;
+	unsigned check, touch, done, center, dirty, retry;
 	uint8_t last_stage, total;
-	unsigned first_touch_stage_zero;
 };
 
 static void on_event(enum fpal_enroll_event ev, uint8_t stage, uint8_t total,
@@ -25,9 +24,10 @@ static void on_event(enum fpal_enroll_event ev, uint8_t stage, uint8_t total,
 	e->last_stage = stage;
 	e->total = total;
 	switch (ev) {
+	case FPAL_ENROLL_CHECK_TOUCH:
+		e->check++;
+		break;
 	case FPAL_ENROLL_TOUCH:
-		if (!e->touch && stage == 0)
-			e->first_touch_stage_zero = 1;
 		e->touch++;
 		break;
 	case FPAL_ENROLL_STAGE_DONE:
@@ -156,7 +156,8 @@ static void test_full_enroll(void) {
 	T_EQ_INT(m.irqs, 1 + STAGES);
 	T_EQ_INT(ev.done, STAGES);
 	T_EQ_INT(ev.total, STAGES);
-	T_EQ_INT(ev.first_touch_stage_zero, 1);
+	T_EQ_INT(ev.check, 1);
+	T_EQ_INT(ev.touch, STAGES);
 	fpal_device_close(dev);
 }
 
@@ -205,7 +206,8 @@ static void test_retries_do_not_count(void) {
 	T_EQ_INT(ev.dirty, 1);
 	T_EQ_INT(ev.retry, 1);
 	T_EQ_INT(ev.done, STAGES);
-	T_EQ_INT(ev.touch, 1 + STAGES + 3);
+	T_EQ_INT(ev.check, 1);
+	T_EQ_INT(ev.touch, STAGES + 3);
 	fpal_device_close(dev);
 }
 
@@ -387,6 +389,10 @@ static void test_classify_capture(void) {
 	r.sw = 0x6a80;
 	T_EQ_INT(egis_classify_capture(&r), EGIS_CAPTURE_RETRY);
 	r.body_len = 2;
+	r.sw = 0x6493; /* seen on 1c7a:0587, meaning unknown */
+	T_EQ_INT(egis_classify_capture(&r), EGIS_CAPTURE_RETRY);
+	r.sw = 0x6495;
+	T_EQ_INT(egis_classify_capture(&r), EGIS_CAPTURE_RETRY);
 	r.sw = 0x9004;
 	T_EQ_INT(egis_classify_capture(&r), EGIS_CAPTURE_RETRY);
 }

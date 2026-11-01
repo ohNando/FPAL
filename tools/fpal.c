@@ -296,13 +296,12 @@ static void on_enroll_event(enum fpal_enroll_event ev, uint8_t stage,
 			    uint8_t total, void *ud) {
 	(void)ud;
 	switch (ev) {
+	case FPAL_ENROLL_CHECK_TOUCH:
+		puts("Touch the sensor once so it can check that this finger "
+		     "is new...");
+		break;
 	case FPAL_ENROLL_TOUCH:
-		if (stage == 0)
-			puts("Touch the sensor once so it can check that this "
-			     "finger is new...");
-		else
-			printf("Scan %u of %u: touch the sensor...\n", stage + 1u,
-			       total);
+		printf("Scan %u of %u: touch the sensor...\n", stage + 1u, total);
 		break;
 	case FPAL_ENROLL_STAGE_DONE:
 		printf("  accepted (%u/%u)\n", stage, total);

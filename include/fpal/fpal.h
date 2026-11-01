@@ -62,7 +62,8 @@ int fpal_identify(struct fpal_device *dev, uint32_t timeout_ms,
 
 /* What fpal_enroll() reports while it runs. @stage counts accepted scans. */
 enum fpal_enroll_event {
-	FPAL_ENROLL_TOUCH,	  /* waiting for a touch (stage 0: duplicate check) */
+	FPAL_ENROLL_CHECK_TOUCH,  /* first touch: is this finger new? */
+	FPAL_ENROLL_TOUCH,	  /* waiting for scan number @stage + 1 */
 	FPAL_ENROLL_STAGE_DONE,	  /* a scan was accepted */
 	FPAL_ENROLL_RETRY_CENTER, /* finger off centre, touch again */
 	FPAL_ENROLL_RETRY_DIRTY,  /* sensor looks dirty, clean it */

@@ -413,7 +413,7 @@ static int egis_enroll(struct fpal_device *dev,
 	if (!err)
 		err = egis_exec_simple(dev, &egis_cmd_arm_enroll);
 	if (!err) {
-		emit(cb, ud, FPAL_ENROLL_TOUCH, 0, stages);
+		emit(cb, ud, FPAL_ENROLL_CHECK_TOUCH, 0, stages);
 		err = egis_wait_finger(dev, FPAL_FINGER_WAIT_TIMEOUT_MS);
 	}
 	if (!err)
