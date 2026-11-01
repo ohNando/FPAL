@@ -4,7 +4,7 @@ Thanks for helping. This file covers the workflow, the code style and how to add
 
 ## Ground rules
 
-- **Never delete templates from a sensor.** There is no delete command in the code base (`INS 0x18` for Egis) and a patch adding one will not be accepted. Writes to the chip (enrolment) may only exist behind `make ENROLL=1`, `--allow-chip-write` and an explicit confirmation; the default build must stay unable to write (a test checks it).
+- **Writing to the sensor is opt-in and narrow.** Enrolling and deleting (`INS 0x16` and `INS 0x18` for Egis) may only exist behind `make ENROLL=1`, `--allow-chip-write` and a typed confirmation; the default build must stay unable to write (a test checks it). Deleting handles exactly one template and reads the list back to confirm; a patch that deletes several templates, clears the sensor, or deletes without confirmation will not be accepted. Fingerprints FPAL did not create need `--allow-foreign`.
 - **No new runtime dependencies.** libc and `libpam` only. No libusb, no D-Bus library.
 - **The password stays a fallback.** PAM integration must be `sufficient`.
 - Only root opens the sensor. Do not add a world-accessible udev rule.

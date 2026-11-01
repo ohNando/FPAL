@@ -123,6 +123,16 @@ list → (full? id taken?) → reset → arm enrol → [finger event] → sensor
 
 Everything up to the last scan lives in the sensor's working memory; **only the store command writes a template**, and the project never sends a delete. FPAL ids are 32 printable bytes: `FPAL-` followed by 27 random hex digits. `fpal enroll --dry-run` runs the whole sequence except commit start and store, then resets the sensor.
 
+## Deleting
+
+The command libfprint and the Windows driver use to remove templates, from libfprint 1.94.100 (`egismoc_get_delete_cmd`):
+
+```
+00 00 | BE16(7 + 32n) | 50 18 04 00 00 | BE16(32n) | id_1 ... id_n
+```
+
+Success is a bare answer: `00 00 00 02 90 00` (length 2, no body, SW `90 00`). Verified on 1c7a:0587: deleting the template FPAL had enrolled left the list at exactly the other template ✅. The chip accepts a list of ids, and libfprint sends all of them to "clear" the sensor. **FPAL only ever builds the command for n = 1** (`egis_build_delete()` takes a single id), and after the answer reads the template list back to check that exactly that id is gone and every other one is still there. Like the enrol commands it exists only in builds made with `make ENROLL=1`.
+
 ## Identify flow ✅
 
 ```

@@ -230,12 +230,14 @@ static void test_default_build_cannot_enroll(void) {
 	dev = open_dev(&m);
 	T_CHECK(dev != NULL);
 	T_CHECK(drv != NULL && drv->enroll == NULL);
+	T_CHECK(drv->delete_template == NULL);
 	T_CHECK(!(drv->caps & FPAL_CAP_ENROLL));
 
 	sent = m.n_out;
 	T_EQ_INT(fpal_enroll(dev, &id, 0, NULL, NULL), FPAL_E_NOTSUP);
 	T_EQ_INT(fpal_enroll(dev, &id, FPAL_ENROLL_DRY_RUN, NULL, NULL),
 		 FPAL_E_NOTSUP);
+	T_EQ_INT(fpal_delete(dev, &id), FPAL_E_NOTSUP);
 	T_EQ_INT(m.n_out, sent); /* nothing was sent */
 	T_EQ_INT(fpal_template_id_generate(&id), FPAL_E_NOTSUP);
 	fpal_device_close(dev);

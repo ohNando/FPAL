@@ -201,6 +201,35 @@ int egis_build_commit(const struct fpal_template_id *id, uint8_t *out,
 }
 #endif
 
+#ifdef FPAL_ENABLE_ENROLL
+/*
+ * 00 00 | BE16(7 + 32) | 50 18 04 00 00 | BE16(32) | id, as the Windows
+ * driver and libfprint send it for a single template.
+ */
+static const uint8_t delete_prefix[] = { 0x50, 0x18, 0x04, 0x00, 0x00 };
+
+int egis_build_delete(const struct fpal_template_id *id, uint8_t *out,
+		      size_t cap, size_t *out_len) {
+	const size_t body = sizeof(delete_prefix) + 2 + FPAL_TEMPLATE_ID_LEN;
+	const size_t len = 4 + body;
+	uint8_t *p = out;
+
+	if (!id || !out || !out_len)
+		return FPAL_E_INVAL;
+	if (len > cap)
+		return FPAL_E_OVERFLOW;
+	fpal_put_be32(p, (uint32_t)body);
+	p += 4;
+	memcpy(p, delete_prefix, sizeof(delete_prefix));
+	p += sizeof(delete_prefix);
+	fpal_put_be16(p, FPAL_TEMPLATE_ID_LEN);
+	p += 2;
+	memcpy(p, id->bytes, FPAL_TEMPLATE_ID_LEN);
+	*out_len = len;
+	return FPAL_OK;
+}
+#endif
+
 int egis_parse_list(const struct egis_rsp *rsp, struct fpal_template_id *out,
 		    size_t cap, size_t *n) {
 	size_t count;

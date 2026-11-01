@@ -136,6 +136,14 @@ int fpal_enroll(struct fpal_device *dev, const struct fpal_template_id *new_id,
 	return dev->drv->enroll(dev, new_id, flags, cb, ud);
 }
 
+int fpal_delete(struct fpal_device *dev, const struct fpal_template_id *id) {
+	if (!dev || !id)
+		return FPAL_E_INVAL;
+	if (!dev->drv->delete_template)
+		return FPAL_E_NOTSUP;
+	return dev->drv->delete_template(dev, id);
+}
+
 void fpal_cancel(struct fpal_device *dev) {
 	if (dev)
 		dev->tr.ops->cancel(dev->tr.ctx);

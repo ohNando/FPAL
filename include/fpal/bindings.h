@@ -27,6 +27,13 @@ int fpal_bindings_add(const char *dir, const char *user,
 /* Remove every binding of @user (host side only). */
 int fpal_bindings_clear(const char *dir, const char *user);
 
+/* Drop @id from @user's bindings (host side only; no error if absent). */
+int fpal_bindings_remove(const char *dir, const char *user,
+			 const struct fpal_template_id *id);
+
+/* Drop @id from the bindings of every user, e.g. after it was deleted. */
+int fpal_bindings_forget(const char *dir, const struct fpal_template_id *id);
+
 /* True if @id is bound to @user. */
 bool fpal_bindings_contains(const char *dir, const char *user,
 			   const struct fpal_template_id *id);

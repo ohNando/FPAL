@@ -408,6 +408,130 @@ static void test_generated_ids(void) {
 	T_CHECK(memcmp(a.bytes, b.bytes, FPAL_TEMPLATE_ID_LEN) != 0);
 }
 
+/* ---- delete -------------------------------------------------------------- */
+
+static unsigned deletes_sent(const struct mock *m) {
+	unsigned n = 0;
+
+	for (size_t i = 0; i < m->n_out; i++)
+		if (out_payload(m, i)[4] == 0x50 && out_ins(m, i) == 0x18)
+			n++;
+	return n;
+}
+
+static void test_delete_command_bytes(void) {
+	static const uint8_t head[] = { 0x00, 0x00, 0x00, 0x27, 0x50, 0x18,
+					0x04, 0x00, 0x00, 0x00, 0x20 };
+	uint8_t out[64];
+	size_t n;
+
+	T_EQ_INT(egis_build_delete(&new_id, out, sizeof(out), &n), 0);
+	T_EQ_INT(n, sizeof(head) + FPAL_TEMPLATE_ID_LEN); /* one id, 43 bytes */
+	T_EQ_MEM(out, head, sizeof(head));
+	T_EQ_MEM(out + sizeof(head), new_id.bytes, FPAL_TEMPLATE_ID_LEN);
+	T_EQ_INT(egis_build_delete(&new_id, out, 10, &n), FPAL_E_OVERFLOW);
+	T_EQ_INT(egis_build_delete(NULL, out, sizeof(out), &n), FPAL_E_INVAL);
+}
+
+static void test_delete_one_template(void) {
+	struct fpal_template_id ids[3], rest[2];
+	struct fpal_device *dev;
+	uint8_t payload[64];
+	struct mock m;
+	size_t plen;
+
+	make_ids(ids, 3);
+	rest[0] = ids[0];
+	rest[1] = ids[2];
+	mock_init(&m);
+	dev = open_dev(&m);
+	push_list(&m, ids, 3);
+	push_ok(&m);
+	push_list(&m, rest, 2);
+
+	m.n_out = 0;
+	T_EQ_INT(fpal_delete(dev, &ids[1]), FPAL_OK);
+	T_EQ_INT(m.n_out, 3);
+	T_CHECK(out_is(&m, 0, &egis_cmd_list));
+	T_EQ_INT(egis_build_delete(&ids[1], payload, sizeof(payload), &plen), 0);
+	T_EQ_INT(m.out[1].len, EGIS_HDR_LEN + plen);
+	T_EQ_MEM(out_payload(&m, 1), payload, plen);
+	T_CHECK(out_is(&m, 2, &egis_cmd_list));
+	T_EQ_INT(deletes_sent(&m), 1);
+	fpal_device_close(dev);
+}
+
+static void test_delete_unknown_id_sends_nothing(void) {
+	struct fpal_template_id ids[2];
+	struct fpal_device *dev;
+	struct mock m;
+
+	make_ids(ids, 2);
+	mock_init(&m);
+	dev = open_dev(&m);
+	push_list(&m, ids, 2);
+
+	m.n_out = 0;
+	T_EQ_INT(fpal_delete(dev, &new_id), FPAL_E_NODATA);
+	T_EQ_INT(deletes_sent(&m), 0);
+	fpal_device_close(dev);
+}
+
+static void test_delete_refused_by_the_sensor(void) {
+	struct fpal_template_id ids[2];
+	struct fpal_device *dev;
+	struct mock m;
+
+	make_ids(ids, 2);
+	mock_init(&m);
+	dev = open_dev(&m);
+	push_list(&m, ids, 2);
+	push_status(&m, 0x6a80);
+
+	T_EQ_INT(fpal_delete(dev, &ids[0]), FPAL_E_PROTO);
+	fpal_device_close(dev);
+}
+
+/* The read back must show exactly the requested template gone. */
+static void test_delete_checks_what_really_happened(void) {
+	struct fpal_template_id ids[3], other[3], d;
+	struct fpal_device *dev;
+	struct mock m;
+
+	make_ids(ids, 3);
+	make_ids(other, 3);
+	memset(d.bytes, 'Z', FPAL_TEMPLATE_ID_LEN);
+
+	/* nothing was removed */
+	mock_init(&m);
+	dev = open_dev(&m);
+	push_list(&m, ids, 3);
+	push_ok(&m);
+	push_list(&m, ids, 3);
+	T_EQ_INT(fpal_delete(dev, &ids[1]), FPAL_E_PROTO);
+	fpal_device_close(dev);
+
+	/* more than the requested one was removed */
+	mock_init(&m);
+	dev = open_dev(&m);
+	push_list(&m, ids, 3);
+	push_ok(&m);
+	push_list(&m, &ids[0], 1);
+	T_EQ_INT(fpal_delete(dev, &ids[1]), FPAL_E_PROTO);
+	fpal_device_close(dev);
+
+	/* the right count, but a different template vanished */
+	other[1] = ids[0];
+	other[0] = d;
+	mock_init(&m);
+	dev = open_dev(&m);
+	push_list(&m, ids, 3);
+	push_ok(&m);
+	push_list(&m, other, 2); /* d and ids[0]: ids[2] is missing */
+	T_EQ_INT(fpal_delete(dev, &ids[1]), FPAL_E_PROTO);
+	fpal_device_close(dev);
+}
+
 int main(void) {
 	T_RUN(test_full_enroll);
 	T_RUN(test_dry_run_never_writes);
@@ -423,5 +547,10 @@ int main(void) {
 	T_RUN(test_enrol_command_bytes);
 	T_RUN(test_classify_capture);
 	T_RUN(test_generated_ids);
+	T_RUN(test_delete_command_bytes);
+	T_RUN(test_delete_one_template);
+	T_RUN(test_delete_unknown_id_sends_nothing);
+	T_RUN(test_delete_refused_by_the_sensor);
+	T_RUN(test_delete_checks_what_really_happened);
 	return T_DONE();
 }
