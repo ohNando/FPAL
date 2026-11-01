@@ -440,6 +440,51 @@ static int egis_enroll(struct fpal_device *dev,
 		return err;
 	return id_in_list(new_id, ids, n) ? FPAL_OK : FPAL_E_PROTO;
 }
+
+/*
+ * Delete one template. The command is the one the Windows driver sends; the
+ * answer to it is a bare success status, so the sensor's list is read back
+ * to make sure it removed exactly what was asked for.
+ */
+static int egis_delete(struct fpal_device *dev,
+		       const struct fpal_template_id *id) {
+	struct fpal_template_id before[FPAL_MAX_TEMPLATES];
+	struct fpal_template_id after[FPAL_MAX_TEMPLATES];
+	struct egis_priv *p = priv(dev);
+	size_t n_before = 0, n_after = 0, plen;
+	struct egis_rsp rsp;
+	int err;
+
+	err = egis_list(dev, before, FPAL_MAX_TEMPLATES, &n_before);
+	if (err)
+		return err;
+	if (!id_in_list(id, before, n_before))
+		return FPAL_E_NODATA;
+
+	err = egis_build_delete(id, p->payload, sizeof(p->payload), &plen);
+	if (err)
+		return err;
+	err = egis_exec(dev, p->payload, plen, &rsp);
+	if (err)
+		return err;
+	if (rsp.sw != EGIS_SW_OK || rsp.body_len != 0) {
+		fpal_warn("delete answered status %04x", rsp.sw);
+		return FPAL_E_PROTO;
+	}
+
+	err = egis_list(dev, after, FPAL_MAX_TEMPLATES, &n_after);
+	if (err)
+		return err;
+	/* exactly @id gone, everything else untouched */
+	if (n_after != n_before - 1 || id_in_list(id, after, n_after))
+		return FPAL_E_PROTO;
+	for (size_t i = 0; i < n_before; i++) {
+		if (memcmp(before[i].bytes, id->bytes, FPAL_TEMPLATE_ID_LEN) &&
+		    !id_in_list(&before[i], after, n_after))
+			return FPAL_E_PROTO;
+	}
+	return FPAL_OK;
+}
 #endif
 
 const struct fpal_driver fpal_driver_egis_moc = {
@@ -457,7 +502,9 @@ const struct fpal_driver fpal_driver_egis_moc = {
 	.identify = egis_identify,
 #ifdef FPAL_ENABLE_ENROLL
 	.enroll = egis_enroll,
+	.delete_template = egis_delete,
 #else
 	.enroll = NULL,
+	.delete_template = NULL,
 #endif
 };

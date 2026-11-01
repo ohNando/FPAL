@@ -39,6 +39,9 @@ struct fpal_driver {
 	int (*enroll)(struct fpal_device *dev,
 		      const struct fpal_template_id *new_id, uint32_t flags,
 		      fpal_enroll_cb cb, void *ud);
+	/* Optional, NULL unless built with ENROLL=1. Deletes ONE template. */
+	int (*delete_template)(struct fpal_device *dev,
+			       const struct fpal_template_id *id);
 };
 
 /* NULL terminated table of all built-in drivers. */

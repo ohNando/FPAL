@@ -17,10 +17,11 @@
  * The payload starts with a 4-byte big-endian length followed by an APDU
  * like body: CLA(0x50) INS P1 P2 [00 Lh Ll]. SW1 SW2 = 90 00 means success.
  *
- * The delete opcode (INS 0x18) is intentionally not defined anywhere in
- * this project. The enrol opcodes (INS 0x16) exist only in builds made with
- * "make ENROLL=1" (FPAL_ENABLE_ENROLL); the one that stores a template is
- * egis_build_commit().
+ * Everything that writes to the sensor exists only in builds made with
+ * "make ENROLL=1" (FPAL_ENABLE_ENROLL): the enrol opcodes (INS 0x16), the one
+ * that stores a template (egis_build_commit()) and the one that deletes
+ * (INS 0x18, egis_build_delete()). The delete builder takes ONE id: the
+ * chip's "delete these ids" command is never used to clear the sensor.
  */
 #ifndef FPAL_DRIVERS_EGIS_MOC_PROTO_H
 #define FPAL_DRIVERS_EGIS_MOC_PROTO_H
@@ -123,6 +124,13 @@ enum egis_capture egis_classify_capture(const struct egis_rsp *rsp);
  * write in the project; callers must have gone through the enrol sequence.
  */
 int egis_build_commit(const struct fpal_template_id *id, uint8_t *out,
+		      size_t cap, size_t *out_len);
+
+/*
+ * The command that DELETES the template @id. One id only; there is no
+ * variant for several ids or for "everything".
+ */
+int egis_build_delete(const struct fpal_template_id *id, uint8_t *out,
 		      size_t cap, size_t *out_len);
 #endif
 
