@@ -50,7 +50,23 @@ Only root can open the sensor. This is on purpose: with a world-accessible udev 
 | `sudo fpal unbind USER` | Remove the bindings. Deletes only the file on the computer, the sensor is untouched |
 | `fpal version` | Show the version |
 
-Enrolling from Linux is not available yet: enrol the finger with Windows Hello (or the sensor's own tool) first. The chip matches those templates on Linux as well. Bindings are stored in `/var/lib/fpal/<user>` (root, `0600`).
+Fingers enrolled in Windows Hello work on Linux as they are. Enrolling from Linux exists too, but it writes to the sensor, so it is not part of the normal build (see below). Bindings are stored in `/var/lib/fpal/<user>` (root, `0600`).
+
+## Enrolling from Linux (optional)
+
+Storing a new fingerprint is the only thing in FPAL that writes to the sensor. It adds a template and never touches, replaces or deletes the existing ones. Three locks guard it:
+
+1. Build it in on purpose: `make ENROLL=1` (output goes to `build-enroll/`). Packages and the default build cannot enroll.
+2. Ask for it: `--allow-chip-write`.
+3. Confirm by typing `yes` at a terminal.
+
+```sh
+make ENROLL=1
+sudo build-enroll/fpal enroll --dry-run $USER              # every step, nothing stored
+sudo build-enroll/fpal enroll --allow-chip-write $USER     # 20 scans, then stored and bound
+```
+
+`--dry-run` is the way to try it first: it goes through the whole scan sequence, skips the two commands that store the template, resets the sensor and checks that the list on the sensor did not change. The sensor keeps at most 10 fingerprints; a finger that is already enrolled is refused.
 
 ## Login with sudo and su
 
