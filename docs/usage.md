@@ -43,6 +43,7 @@ Only root can open the sensor. This is on purpose: with a world-accessible udev 
 | Command | What it does |
 |---|---|
 | `sudo fpal info` | Sensor, driver, serial number and firmware version |
+| `sudo fpal manage` | A full-screen list: pick a finger with the arrow keys, `r` renames it, `d` deletes it, `n` adds a new finger, `q` quits |
 | `sudo fpal list [--raw]` | Fingers on the sensor as a table (number, name, kind, whether it is yours, id). In a pipe or with `--raw` it prints one plain line per finger with the full id, for scripts |
 | `sudo fpal identify [-t ms]` | Touch the sensor and show the matching ID |
 | `sudo fpal bind [-t ms] USER` | Bind the touched finger to a Linux user |
@@ -54,6 +55,20 @@ Only root can open the sensor. This is on purpose: with a world-accessible udev 
 | `fpal version` | Show the version |
 
 Fingers enrolled in Windows Hello work on Linux as they are. Enrolling from Linux, and deleting a finger, exist too, but they write to the sensor, so they are not part of the normal build (see below). Bindings are stored in `/var/lib/fpal/<user>` (root, `0600`).
+
+## The manage screen
+
+`sudo fpal manage` is the easy way to look after your fingers. It shows the same table as `fpal list` and you move through it with the arrow keys (or `j` and `k`):
+
+| Key | What it does |
+|---|---|
+| `↑` `↓`, `j` `k`, Home, End | Pick a finger |
+| `r` | Rename it (the editor starts with the current name; Enter saves, an empty name removes it) |
+| `d` | Delete it. You are asked to type `yes` first; for a finger fpal did not create (most likely from Windows Hello) you must type `DELETE` |
+| `n` | Add a new finger bound to you: type `yes`, touch the sensor for the scans, then give it a name or press Enter to skip |
+| `q`, Esc | Quit |
+
+Nothing is deleted or stored by a single key press: `d` and `n` only open the question, and anything other than the exact word cancels it (Esc cancels too). It needs a terminal; in scripts use `fpal list` and the other commands. A read-only build (`make ENROLL=0`) leaves out `d` and `n`.
 
 ## Naming fingers
 
@@ -67,7 +82,7 @@ sudo fpal label 1                                # show the name
 sudo fpal label 1 --clear                        # remove it
 ```
 
-A name is 1 to 48 bytes (UTF-8 is fine, so `"Sağ işaret"` works), with no control characters and no leading or trailing space. Anywhere a finger is asked for (`label`, `delete`) you can give its number, its exact name, or the start of its id (at least 8 hex digits or 6 characters of text such as `FPAL-7b51`). If that matches more than one finger, nothing happens.
+A name is 1 to 48 bytes (UTF-8 is fine, so `"Sağ işaret"` works), with no control characters and no leading or trailing space. Anywhere a finger is asked for (`label`, `delete`; in `fpal manage` you just pick it) you can give its number, its exact name, or the start of its id (at least 8 hex digits or 6 characters of text such as `FPAL-7b51`). If that matches more than one finger, nothing happens.
 
 ## Enrolling and deleting from Linux
 

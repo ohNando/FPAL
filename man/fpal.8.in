@@ -68,6 +68,26 @@ checks that the sensor's list did not change.
 Delete ONE fingerprint from the sensor. This cannot be undone. See
 .BR SAFETY .
 .TP
+.B manage
+Full-screen list of the fingerprints: pick one with the arrow keys (or
+.B j
+and
+.BR k ),
+.B r
+renames it,
+.B d
+deletes it,
+.B n
+adds a new finger bound to you, and
+.B q
+quits. Deleting and adding ask for a typed confirmation first (\fByes\fR, or
+\fBDELETE\fR for a fingerprint fpal did not create); anything else cancels.
+It needs a terminal. In a read-only build
+.B d
+and
+.B n
+are not offered.
+.TP
 .BR status " [\fIuser\fR]"
 Say whether fingerprint login is set up: the sensor, the fingerprints and the
 user's bindings (run it with
