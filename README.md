@@ -31,8 +31,8 @@ If the finger is not read, the sensor is unplugged or you are logged in over SSH
 
 Your laptop's fingerprint sensor works on Windows but does nothing for you on Linux. FPAL ships the driver that talks to the sensor, a command line tool and a PAM module in one small package.
 
-- **Written from scratch.** The sensor's USB protocol was captured and verified on real hardware, and every step is [documented](docs/protocol-egis-moc.md). The code base is about 2,500 lines of C that you can read end to end.
-- **No dependencies.** No `libusb`, no `libfprint`, no D-Bus library, no build system. At runtime it needs only libc and `libpam`. Building takes nothing but `make`.
+- **Written from scratch.** The sensor's USB protocol was captured and verified on real hardware, and every step is [documented](docs/protocol-egis-moc.md). The code base is about 3,000 lines of C that you can read end to end.
+- **No dependencies.** No `libusb`, no `libfprint`, no D-Bus library (the small D-Bus client is part of the project), no build system. At runtime it needs only libc and `libpam`. Building takes nothing but `make`.
 - **Leaves Windows enrolments alone.** No command in the code can delete fingerprints from the sensor. Fingers you enrolled in Windows Hello work on Linux as they are, so a dual-boot machine keeps both.
 - **Safe defaults.** The password is always the fallback, only root can open the sensor, corrupt responses are rejected, and binding files go through symlink and permission checks.
 - **Ready for more sensors.** Drivers sit behind a small interface (`struct fpal_driver`); supporting a new sensor means adding a folder, not touching the core.
@@ -45,11 +45,12 @@ Your laptop's fingerprint sensor works on Windows but does nothing for you on Li
 | | |
 |---|---|
 | 🔐 **sudo, su, login** | `pam_fpal.so` gives fingerprint support to every program that uses PAM |
+| 🖥 **GNOME login and lock screen** | `fpald` answers the question GNOME asks `fprintd`, so the fingerprint option appears |
 | 🖐 **Per-user binding** | Each Linux user gets their own fingers (`fpal bind`) |
 | 🔍 **Transparent** | `FPAL_TRACE=1` prints every USB packet exchanged with the sensor as hex |
-| 🧪 **Testable** | 34 unit tests run against a mock USB device, no hardware needed |
+| 🧪 **Testable** | 68 unit tests run against a mock USB device and a fake D-Bus, no hardware needed |
 | 🧩 **Extensible** | New sensor = new driver folder, the core stays the same |
-| 🪶 **Lightweight** | No background service; the sensor is opened only while you log in |
+| 🪶 **Lightweight** | The only service, `fpald`, uses about 400 KB and never touches the sensor; it is opened only while you log in |
 
 ## Quick start
 
@@ -59,7 +60,7 @@ make && sudo make install
 
 sudo fpal info                           # see the sensor
 sudo fpal bind $USER                     # touch the sensor and bind the finger to yourself
-sudo scripts/authselect-fpal.sh install  # sudo and su now ask for a fingerprint
+sudo scripts/authselect-fpal.sh install  # sudo, su and the GNOME screens now ask for a fingerprint
 ```
 
 All commands, PAM setup and troubleshooting: [docs/usage.md](docs/usage.md), [docs/pam.md](docs/pam.md).
@@ -72,7 +73,7 @@ FPAL does not **enrol** fingerprints yet. It reads the fingers you enrolled in W
 |---|---|
 | ✅ | Detect the sensor, list templates, identify a finger, bind it to a user |
 | ✅ | PAM login for `sudo` and `su` |
-| 🔜 | GNOME login and lock screen (`fpald`, a daemon that mimics fprintd's D-Bus interface) |
+| ✅ | GNOME login and lock screen (`fpald`, which stands in for fprintd on D-Bus) |
 | 🔜 | Enrolling from Linux (optional, behind a separate flag) |
 | 🔜 | More sensors, plus packages for Debian and Arch |
 
