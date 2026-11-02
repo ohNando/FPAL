@@ -32,6 +32,12 @@ const struct fpal_driver *fpal_driver_lookup(uint16_t vid, uint16_t pid,
 	return NULL;
 }
 
+void fpal_text_sanitize(char *s) {
+	for (; *s; s++)
+		if ((unsigned char)*s < 0x20 || (unsigned char)*s > 0x7e)
+			*s = '?';
+}
+
 /* Read a one-line sysfs attribute into @buf, stripping the newline. */
 static bool read_attr(const char *dir, const char *name, char *buf,
 		      size_t cap) {
@@ -106,10 +112,13 @@ int fpal_scan(struct fpal_usb_info *out, size_t cap, size_t *n) {
 			info->vid = (uint16_t)vid;
 			info->pid = (uint16_t)pid;
 			info->driver_name = drv->name;
+			/* a device chooses these strings; they end up on terminals */
 			read_attr(dir, "product", info->product,
 				  sizeof(info->product));
 			read_attr(dir, "serial", info->serial,
 				  sizeof(info->serial));
+			fpal_text_sanitize(info->product);
+			fpal_text_sanitize(info->serial);
 		}
 		found++;
 	}

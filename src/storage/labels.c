@@ -23,6 +23,57 @@ struct entry {
 	char label[FPAL_LABEL_MAX + 1];
 };
 
+bool fpal_label_char_ok(uint32_t cp) {
+	if (cp < 0x20 || (cp >= 0x7f && cp <= 0x9f))
+		return false; /* C0, DEL, C1 */
+	if (cp >= 0xd800 && cp <= 0xdfff)
+		return false; /* surrogates */
+	if (cp > 0x10ffff)
+		return false;
+	if ((cp >= 0x200b && cp <= 0x200f) ||	/* zero width, direction marks */
+	    (cp >= 0x2028 && cp <= 0x202e) ||	/* separators, bidi embeddings */
+	    (cp >= 0x2060 && cp <= 0x2069) ||	/* word joiner, bidi isolates */
+	    cp == 0xfeff ||			/* BOM */
+	    (cp >= 0xfff9 && cp <= 0xfffb))	/* interlinear annotation */
+		return false;
+	return true;
+}
+
+/* Strict UTF-8: no overlong forms, no continuation byte out of place. */
+static bool utf8_ok(const unsigned char *p) {
+	while (*p) {
+		uint32_t cp;
+		size_t n;
+
+		if (p[0] < 0x80) {
+			cp = p[0];
+			n = 1;
+		} else if (p[0] >= 0xc2 && p[0] <= 0xdf) {
+			cp = p[0] & 0x1f;
+			n = 2;
+		} else if (p[0] >= 0xe0 && p[0] <= 0xef) {
+			cp = p[0] & 0x0f;
+			n = 3;
+		} else if (p[0] >= 0xf0 && p[0] <= 0xf4) {
+			cp = p[0] & 0x07;
+			n = 4;
+		} else {
+			return false;
+		}
+		for (size_t i = 1; i < n; i++) {
+			if ((p[i] & 0xc0) != 0x80)
+				return false; /* also catches the string ending early */
+			cp = cp << 6 | (p[i] & 0x3f);
+		}
+		if ((n == 3 && cp < 0x800) || (n == 4 && cp < 0x10000))
+			return false; /* overlong */
+		if (!fpal_label_char_ok(cp))
+			return false;
+		p += n;
+	}
+	return true;
+}
+
 bool fpal_label_valid(const char *label) {
 	size_t len;
 
@@ -33,13 +84,7 @@ bool fpal_label_valid(const char *label) {
 		return false;
 	if (label[0] == ' ' || label[len - 1] == ' ')
 		return false;
-	for (size_t i = 0; i < len; i++) {
-		const unsigned char c = (unsigned char)label[i];
-
-		if (c < 0x20 || c == 0x7f)
-			return false;
-	}
-	return true;
+	return utf8_ok((const unsigned char *)label);
 }
 
 static int path_of(const char *dir, char *buf, size_t cap) {

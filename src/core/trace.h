@@ -12,6 +12,12 @@
 
 bool fpal_trace_enabled(void);
 
+/*
+ * Decide tracing in code instead of FPAL_TRACE: 1 on, 0 off, -1 (the
+ * default) read the environment. pam_fpal switches it off for good.
+ */
+void fpal_trace_set(int mode);
+
 /* @dir is a short tag such as "OUT", "IN", "CTRL", "IRQ". */
 void fpal_trace(const char *dir, uint8_t ep, const uint8_t *buf, size_t len);
 

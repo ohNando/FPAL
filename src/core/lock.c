@@ -8,7 +8,7 @@
 #include "lock.h"
 
 int fpal_lock_acquire(void) {
-	int fd = open(FPAL_LOCK_PATH, O_RDWR | O_CREAT | O_CLOEXEC, 0600);
+	int fd = open(FPAL_LOCK_PATH, O_RDWR | O_CREAT | O_CLOEXEC | O_NOFOLLOW, 0600);
 
 	if (fd < 0)
 		return (errno == EACCES || errno == EPERM) ? FPAL_E_PERM :

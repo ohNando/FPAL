@@ -22,6 +22,7 @@
 #include <syslog.h>
 
 #include "core/log.h"
+#include "core/trace.h"
 #include "fpal/bindings.h"
 #include "fpal/fpal.h"
 #include "opts.h"
@@ -133,6 +134,10 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t *pamh, int flags, int argc,
 		pam_syslog(pamh, LOG_WARNING, "ignoring bad option '%s'",
 			   argv[bad]);
 
+	/* The environment of a program like sudo is the user's: it must not
+	 * switch on dumps of the sensor traffic. Only the "debug" option does. */
+	fpal_trace_set(0);
+	fpal_log_use_env(false);
 	fpal_log_set_sink(log_to_syslog);
 	fpal_log_set_debug(o.debug);
 

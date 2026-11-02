@@ -123,6 +123,23 @@ static void test_line_editor(void) {
 	T_CHECK(!strcmp(l.text, "old"));
 }
 
+static void test_line_editor_ignores_characters_a_name_cannot_have(void) {
+	struct fpal_line l;
+	struct fpal_key k = { K_CHAR, 0 };
+	static const uint32_t bad[] = { 0x1b, 0x7f, 0x9b, 0xd800, 0x202e, 0x200b, 0xfeff,
+					0x110000 };
+
+	fpal_line_set(&l, "");
+	for (size_t i = 0; i < sizeof(bad) / sizeof(bad[0]); i++) {
+		k.ch = bad[i];
+		fpal_line_feed(&l, &k);
+	}
+	T_EQ_INT(l.len, 0);
+	k.ch = 0x11f; /* but a normal letter still goes in */
+	fpal_line_feed(&l, &k);
+	T_CHECK(!strcmp(l.text, "\xc4\x9f"));
+}
+
 static void test_line_editor_is_bounded(void) {
 	struct fpal_line l;
 	char big[400];
@@ -538,6 +555,7 @@ int main(void) {
 	T_RUN(test_keys_unknown_are_consumed);
 	T_RUN(test_keys_utf8);
 	T_RUN(test_line_editor);
+	T_RUN(test_line_editor_ignores_characters_a_name_cannot_have);
 	T_RUN(test_line_editor_is_bounded);
 	T_RUN(test_draw_shows_fingers_and_selection);
 	T_RUN(test_draw_read_only_has_no_delete_key);

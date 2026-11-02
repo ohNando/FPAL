@@ -165,7 +165,7 @@ enum fpal_line_state fpal_line_feed(struct fpal_line *l, const struct fpal_key *
 		}
 		break;
 	case K_CHAR:
-		if (k->ch < 0x20 || k->ch == 0x7f || k->ch > 0x10ffff)
+		if (!fpal_label_char_ok(k->ch))
 			break;
 		n = utf8_put(enc, k->ch);
 		if (l->len + n < sizeof(l->text)) {
