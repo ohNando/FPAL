@@ -20,7 +20,8 @@
 #include "fprint_service.h"
 
 /* The systemd unit lists this in RestartPreventExitStatus: retrying cannot
- * help while another service owns the name. */
+ * help while another service owns the name. Any other failure exits with 1 so
+ * that systemd restarts the service. */
 #define EXIT_NAME_TAKEN 3
 
 static volatile sig_atomic_t stop;
@@ -44,23 +45,6 @@ static void usage(void) {
 	      "  -t  exit after this many ms without traffic (0 = never)\n"
 	      "  -s  bus socket path (default " FPAL_DBUS_SYSTEM_SOCKET ")\n",
 	      stderr);
-}
-
-/* Handle every complete message that has arrived. */
-static int pump(struct fpal_dbus *c, const struct fpal_fprint_ops *ops) {
-	struct fpal_dmsg m;
-	int rc;
-
-	while ((rc = fpal_dbus_recv(c, 0, &m)) == FPAL_OK) {
-		if (m.type == FPAL_DMSG_SIGNAL && m.member &&
-		    !strcmp(m.member, "NameLost")) {
-			fpal_warn("lost the bus name, exiting");
-			return FPAL_E_BUSY;
-		}
-		if (m.type == FPAL_DMSG_CALL)
-			(void)fpal_fprint_handle(c, &m, ops);
-	}
-	return rc == FPAL_E_TIMEOUT ? FPAL_OK : rc;
 }
 
 int main(int argc, char **argv) {
@@ -120,9 +104,17 @@ int main(int argc, char **argv) {
 			fpal_dbg("idle, exiting");
 			break;
 		}
-		if (pump(&c, &ops) != FPAL_OK) {
-			fpal_warn("bus connection ended");
-			break;
+		rc = fpal_fprint_pump(&c, &ops);
+		if (rc == FPAL_E_BUSY) {
+			fpal_warn("lost the bus name, exiting");
+			fpal_dbus_close(&c);
+			return EXIT_NAME_TAKEN;
+		}
+		if (rc != FPAL_OK) {
+			/* a non-zero status makes systemd start us again */
+			fpal_err("bus connection ended: %s", fpal_strerror(rc));
+			fpal_dbus_close(&c);
+			return 1;
 		}
 	}
 	fpal_dbus_close(&c);

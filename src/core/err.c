@@ -35,6 +35,8 @@ const char *fpal_strerror(int err) {
 		return "the sensor cannot store more fingerprints";
 	case FPAL_E_EXISTS:
 		return "this finger is already enrolled";
+	case FPAL_E_DROPPED:
+		return "a message was dropped";
 	default:
 		return "unknown error";
 	}

@@ -32,6 +32,7 @@ enum fpal_err {
 	FPAL_E_OVERFLOW = -13, /* buffer too small */
 	FPAL_E_FULL = -14,     /* sensor storage is full */
 	FPAL_E_EXISTS = -15,   /* finger or id is already enrolled */
+	FPAL_E_DROPPED = -16,  /* a message was too big or malformed and was skipped */
 };
 
 /* Driver capability flags (struct fpal_driver.caps). */

@@ -35,4 +35,13 @@ struct fpal_fprint_ops {
 int fpal_fprint_handle(struct fpal_dbus *c, const struct fpal_dmsg *call,
 		       const struct fpal_fprint_ops *ops);
 
+/*
+ * Answer every call that has arrived. Oversize or malformed messages from a
+ * client are dropped and the loop goes on: one local user must not be able to
+ * stop the service. Returns FPAL_OK when the connection is still good,
+ * FPAL_E_BUSY if another service took the bus name, or the error that ended
+ * the connection.
+ */
+int fpal_fprint_pump(struct fpal_dbus *c, const struct fpal_fprint_ops *ops);
+
 #endif /* FPAL_DAEMON_FPRINT_SERVICE_H */
