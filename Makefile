@@ -75,7 +75,7 @@ DAEMON_OBJS := $(DAEMON_SRCS:%.c=$(BUILD)/%.o)
 PAM_MOD  := $(BUILD)/pam_fpal.so
 TESTS    := $(TEST_NAMES:%=$(BUILD)/tests/%)
 
-.PHONY: all pam test fuzz check-login-code clean install install-fpald uninstall uninstall-fpald dist
+.PHONY: all pam test fuzz check-login-code check-install clean install install-fpald uninstall uninstall-fpald dist
 
 all: $(BUILD)/fpal $(BUILD)/fpald $(PAM_MOD)
 
@@ -137,7 +137,7 @@ $(BUILD)/tests/test_fprint_service: $(BUILD)/daemon/fprint_service.o
 # PAM option parsing is plain C and tested without libpam.
 $(BUILD)/tests/test_pam_opts: $(BUILD)/pam/opts.o
 
-test: $(TESTS) check-login-code
+test: $(TESTS) check-login-code check-install
 	@set -e; for t in $(TESTS); do echo "== $$t"; $$t; done
 
 # The code that runs at login must not contain the commands that write to the
@@ -155,6 +155,65 @@ ifeq ($(ENROLL),0)
 else
 	sh scripts/check-readonly.sh --symbols --present $(LIB)
 endif
+
+install: $(BUILD)/fpal $(PAM_MOD) install-fpald
+	@test -n "$(PAMDIR)" || { echo "PAMDIR not found, set PAMDIR=..."; exit 1; }
+	install -D -m 0755 $(BUILD)/fpal $(DESTDIR)$(SBINDIR)/fpal
+	install -D -m 0755 $(PAM_MOD) $(DESTDIR)$(PAMDIR)/pam_fpal.so
+	install -D -m 0755 scripts/authselect-fpal.sh $(DESTDIR)$(DATADIR)/authselect-fpal.sh
+	install -D -m 0644 README.md $(DESTDIR)$(DOCDIR)/README.md
+	install -D -m 0644 docs/usage.md $(DESTDIR)$(DOCDIR)/usage.md
+	install -D -m 0644 docs/pam.md $(DESTDIR)$(DOCDIR)/pam.md
+	install -D -m 0644 docs/gnome.md $(DESTDIR)$(DOCDIR)/gnome.md
+	install -D -m 0644 docs/protocol-egis-moc.md $(DESTDIR)$(DOCDIR)/protocol-egis-moc.md
+	install -D -m 0644 docs/adding-a-sensor.md $(DESTDIR)$(DOCDIR)/adding-a-sensor.md
+	install -D -m 0644 docs/architecture.md $(DESTDIR)$(DOCDIR)/architecture.md
+	for p in fpal pam_fpal fpald; do \
+		install -d $(DESTDIR)$(MANDIR)/man8; \
+		sed 's|@VERSION@|$(VERSION)|' man/$$p.8.in > $(DESTDIR)$(MANDIR)/man8/$$p.8; \
+		chmod 0644 $(DESTDIR)$(MANDIR)/man8/$$p.8; \
+	done
+
+# The GNOME presence service alone (daemon, systemd unit, bus policy).
+install-fpald: $(BUILD)/fpald
+	install -D -m 0755 $(BUILD)/fpald $(DESTDIR)$(LIBEXECDIR)/fpald
+	install -d $(DESTDIR)$(UNITDIR)
+	sed 's|@LIBEXECDIR@|$(LIBEXECDIR)|' data/systemd/fpald.service.in \
+		> $(DESTDIR)$(UNITDIR)/fpald.service
+	chmod 0644 $(DESTDIR)$(UNITDIR)/fpald.service
+	install -D -m 0644 data/dbus/fpald.conf $(DESTDIR)$(POLICYDIR)/fpald.conf
+
+uninstall: uninstall-fpald
+	rm -f $(DESTDIR)$(SBINDIR)/fpal
+	rm -f $(DESTDIR)$(PAMDIR)/pam_fpal.so
+	rm -rf $(DESTDIR)$(DATADIR) $(DESTDIR)$(DOCDIR)
+	rm -f $(DESTDIR)$(MANDIR)/man8/fpal.8 $(DESTDIR)$(MANDIR)/man8/pam_fpal.8 \
+		$(DESTDIR)$(MANDIR)/man8/fpald.8
+
+uninstall-fpald:
+	rm -f $(DESTDIR)$(LIBEXECDIR)/fpald $(DESTDIR)$(UNITDIR)/fpald.service
+	rm -f $(DESTDIR)$(POLICYDIR)/fpald.conf
+
+# Source tarball of the committed tree: build/fpal-<version>.tar.gz
+dist:
+	@mkdir -p $(BUILD)
+	git archive --format=tar.gz --prefix=fpal-$(VERSION)/ \
+		-o $(BUILD)/fpal-$(VERSION).tar.gz HEAD
+	@echo $(BUILD)/fpal-$(VERSION).tar.gz
+
+# "make install" into a scratch directory must produce the files the packages
+# list; a broken or missing install rule is caught here, not by a package build.
+CHECK_INSTALL_FILES := usr/sbin/fpal usr/lib64/security/pam_fpal.so \
+	usr/libexec/fpald usr/lib/systemd/system/fpald.service \
+	etc/dbus-1/system.d/fpald.conf usr/share/fpal/authselect-fpal.sh \
+	usr/share/man/man8/fpal.8 usr/share/doc/fpal/usage.md
+check-install: $(BUILD)/fpal $(BUILD)/fpald $(PAM_MOD)
+	@d=$$(mktemp -d) && trap 'rm -rf "$$d"' EXIT && \
+	$(MAKE) --no-print-directory install DESTDIR="$$d" PREFIX=/usr \
+		PAMDIR=/usr/lib64/security >/dev/null && \
+	for f in $(CHECK_INSTALL_FILES); do \
+		test -f "$$d/$$f" || { echo "check-install: $$f was not installed"; exit 1; }; \
+	done && echo "check-install: ok"
 
 clean:
 	rm -rf build build-readonly build-enroll
