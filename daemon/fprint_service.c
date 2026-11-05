@@ -266,3 +266,23 @@ int fpal_fprint_handle(struct fpal_dbus *c, const struct fpal_dmsg *call,
 	return err(c, call, ERR_UNKNOWN_IFACE,
 		   call->iface ? call->iface : "");
 }
+
+int fpal_fprint_pump(struct fpal_dbus *c, const struct fpal_fprint_ops *ops) {
+	struct fpal_dmsg m;
+	int rc;
+
+	for (;;) {
+		rc = fpal_dbus_recv(c, 0, &m);
+		if (rc == FPAL_E_TIMEOUT)
+			return FPAL_OK; /* nothing more waiting */
+		if (rc == FPAL_E_DROPPED)
+			continue;
+		if (rc)
+			return rc;
+		if (m.type == FPAL_DMSG_SIGNAL && m.member &&
+		    !strcmp(m.member, "NameLost"))
+			return FPAL_E_BUSY;
+		if (m.type == FPAL_DMSG_CALL)
+			(void)fpal_fprint_handle(c, &m, ops);
+	}
+}

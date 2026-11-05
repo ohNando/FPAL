@@ -46,6 +46,9 @@ struct fpal_driver {
 			       const struct fpal_template_id *id);
 };
 
+/* Make @s printable: anything outside 0x20..0x7e becomes '?'. */
+void fpal_text_sanitize(char *s);
+
 /* NULL terminated table of all built-in drivers. */
 extern const struct fpal_driver *const fpal_drivers[];
 

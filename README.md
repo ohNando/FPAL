@@ -48,7 +48,7 @@ Your laptop's fingerprint sensor works on Windows but does nothing for you on Li
 | 🖥 **GNOME login and lock screen** | `fpald` answers the question GNOME asks `fprintd`, so the fingerprint option appears |
 | 🖐 **Per-user binding** | Each Linux user gets their own fingers (`fpal bind`), and you can name them (`fpal label 0 "Windows finger"`) |
 | 🔍 **Transparent** | `FPAL_TRACE=1` prints every USB packet exchanged with the sensor as hex |
-| 🧪 **Testable** | 138 unit tests run against a mock USB device and a fake D-Bus, no hardware needed |
+| 🧪 **Testable** | 150 unit tests run against a mock USB device and a fake D-Bus, no hardware needed; the parsers are fuzzed and CI runs everything under sanitizers |
 | 🧩 **Extensible** | New sensor = new driver folder, the core stays the same |
 | 🪶 **Lightweight** | The only service, `fpald`, uses about 400 KB and never touches the sensor; it is opened only while you log in |
 
@@ -86,6 +86,8 @@ FPAL reads the fingers you enrolled in Windows Hello from the chip and binds the
 The driver also recognises the other members of the family (`0582`–`0588`, `05a1`), but those are not verified on real hardware. If you own another sensor, trying it and sharing the result would help a lot.
 
 ## Security
+
+See [SECURITY.md](SECURITY.md) for the threat model and how to report a problem.
 
 - Use the fingerprint to **complement the password, not replace it** (`sufficient` in PAM). With a Match-on-Chip sensor, trust rests on the "matched" answer arriving over USB, and someone with physical access to the sensor's USB lines could forge it. Do not use it for disk encryption (LUKS).
 - Logging in with a fingerprint means no password is typed, so GNOME Keyring stays locked (the same limitation as with fprintd).

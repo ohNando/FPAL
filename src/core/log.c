@@ -7,6 +7,7 @@
 
 static fpal_log_sink log_sink;
 static bool log_debug;
+static bool log_env = true;
 
 void fpal_log_set_sink(fpal_log_sink sink) {
 	log_sink = sink;
@@ -16,8 +17,12 @@ void fpal_log_set_debug(bool on) {
 	log_debug = on;
 }
 
+void fpal_log_use_env(bool on) {
+	log_env = on;
+}
+
 static enum fpal_log_level max_level(void) {
-	const char *env = getenv(FPAL_ENV_DEBUG);
+	const char *env = log_env ? getenv(FPAL_ENV_DEBUG) : NULL;
 
 	if (log_debug)
 		return FPAL_LOG_DEBUG;

@@ -12,9 +12,20 @@
 
 #include "types.h"
 
-/* A usable name: 1..FPAL_LABEL_MAX bytes, no control characters, and no
- * leading or trailing space. UTF-8 is fine. */
+/*
+ * A usable name: 1..FPAL_LABEL_MAX bytes of well formed UTF-8 with no leading
+ * or trailing space and none of the characters that would let a name play
+ * tricks on a terminal (see fpal_label_char_ok).
+ */
 bool fpal_label_valid(const char *label);
+
+/*
+ * May this Unicode code point appear in a name? No control characters (C0,
+ * DEL and C1), no surrogates, nothing above U+10FFFF, and none of the
+ * invisible or direction changing characters (zero width marks, line and
+ * paragraph separators, bidirectional overrides, BOM).
+ */
+bool fpal_label_char_ok(uint32_t cp);
 
 /* Copy the name of @id into @out (empty string if it has none). */
 int fpal_labels_get(const char *dir, const struct fpal_template_id *id,

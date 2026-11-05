@@ -24,6 +24,7 @@ struct fpal_dbus {
 	uint8_t rx[FPAL_DBUS_MSG_MAX];
 	size_t rx_len;	  /* bytes buffered */
 	size_t rx_handed; /* bytes of the last returned message, to drop */
+	uint64_t skip;	  /* bytes of an oversize message still to discard */
 };
 
 /*
@@ -46,6 +47,11 @@ int fpal_dbus_send(struct fpal_dbus *c, const struct fpal_dmsg *m);
  * Wait up to @timeout_ms for the next complete message. FPAL_E_TIMEOUT if
  * none arrived (partial data stays buffered). The returned message points
  * into the connection and is valid until the next fpal_dbus_recv().
+ *
+ * A message that is too big to hold, or whose contents are malformed, is
+ * thrown away and reported once as FPAL_E_DROPPED; the connection is still
+ * good and the caller just asks again. Any other error (the bus hung up, or
+ * the bytes stopped being messages at all) ends the connection.
  */
 int fpal_dbus_recv(struct fpal_dbus *c, uint32_t timeout_ms,
 		   struct fpal_dmsg *m);

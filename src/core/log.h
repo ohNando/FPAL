@@ -23,6 +23,12 @@ void fpal_log_set_sink(fpal_log_sink sink);
 /* Force debug messages on, regardless of FPAL_DEBUG. */
 void fpal_log_set_debug(bool on);
 
+/*
+ * Whether FPAL_DEBUG is read at all. pam_fpal turns it off: it runs inside
+ * programs like sudo whose environment belongs to the user who started them.
+ */
+void fpal_log_use_env(bool on);
+
 void fpal_log(enum fpal_log_level level, const char *fmt, ...)
 	__attribute__((format(printf, 2, 3)));
 

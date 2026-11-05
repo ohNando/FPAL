@@ -1,3 +1,11 @@
+fpal (0.6.1-1) unstable; urgency=medium
+
+  * Security: a local user could stop fpald with one oversize D-Bus message.
+  * fpald exits non-zero when the bus connection is lost, so it is restarted.
+  * pam_fpal ignores FPAL_TRACE and FPAL_DEBUG from the caller's environment.
+
+ -- ohNando <emirhanbuldurucu12@gmail.com>  Thu, 05 Nov 2026 12:00:00 +0300
+
 fpal (0.6.0-1) unstable; urgency=medium
 
   * Add fpal manage, a full-screen list to rename, delete and add fingers.

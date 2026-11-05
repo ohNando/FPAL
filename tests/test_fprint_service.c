@@ -4,6 +4,7 @@
  * its replies are read back from the fake bus.
  */
 #include "../daemon/fprint_service.h"
+#include "core/bytes.h"
 #include "fake_bus.h"
 
 static bool sensor_plugged;
@@ -307,6 +308,107 @@ static void test_introspect_and_ping(void) {
 	teardown(&f);
 }
 
+/* ---- the daemon's loop --------------------------------------------------- */
+
+static size_t call_bytes(uint8_t *out, size_t cap, uint32_t serial, const char *member,
+			 const char *path, const char *iface) {
+	struct fpal_dmsg c = { .type = FPAL_DMSG_CALL, .serial = serial,
+			       .sender = ":1.9", .path = path, .iface = iface,
+			       .member = member, .dest = "net.reactivated.Fprint" };
+	size_t n;
+
+	T_EQ_INT(fpal_dmsg_build(out, cap, &n, &c), FPAL_OK);
+	return n;
+}
+
+static void test_pump_answers_every_waiting_call(void) {
+	struct fake f;
+	uint8_t in[512], rx[1024];
+	struct fpal_dmsg r;
+	size_t n1, n2, got;
+
+	setup(&f);
+	sensor_plugged = true;
+	n1 = call_bytes(in, sizeof(in), 31, "GetDefaultDevice", MGR, MGR_IF);
+	n2 = call_bytes(in + n1, sizeof(in) - n1, 32, "GetDevices", MGR, MGR_IF);
+	srv_write(f.peer, in, n1 + n2);
+
+	T_EQ_INT(fpal_fprint_pump(&f.c, &ops), FPAL_OK);
+	got = srv_read(f.peer, rx, sizeof(rx));
+	T_CHECK(got > 0);
+	/* two replies, back to back */
+	{
+		size_t total;
+
+		T_EQ_INT(fpal_dmsg_total_len(rx, &total), FPAL_OK);
+		T_EQ_INT(fpal_dmsg_parse(rx, total, &r), FPAL_OK);
+		T_EQ_INT(r.reply_serial, 31);
+		T_EQ_INT(fpal_dmsg_parse(rx + total, got - total, &r), FPAL_OK);
+		T_EQ_INT(r.reply_serial, 32);
+	}
+	teardown(&f);
+}
+
+/*
+ * One local user must not be able to stop the service: a message far beyond
+ * our limit is skipped and the next client's call is still answered.
+ */
+static void test_pump_survives_an_oversize_message(void) {
+	struct fake f;
+	uint8_t hdr[256], filler[4096], in[512], rx[1024];
+	struct fpal_dmsg big = { .type = FPAL_DMSG_CALL, .serial = 40, .sender = ":1.66",
+				 .path = DEV, .iface = PROPS, .member = "GetAll",
+				 .sig = "s" };
+	struct fpal_dmsg r;
+	size_t hn, n, got, sent = 0;
+	const uint32_t body = 2000000;
+
+	setup(&f);
+	sensor_plugged = true;
+	T_EQ_INT(fpal_dmsg_build(hdr, sizeof(hdr), &hn, &big), FPAL_OK);
+	fpal_put_le32(hdr + 4, body); /* the body is 2 MB, far over the limit */
+	srv_write(f.peer, hdr, hn);
+	memset(filler, 'A', sizeof(filler));
+
+	/* feed it while the daemon reads, like a real peer would */
+	while (sent < body) {
+		size_t k = body - sent > sizeof(filler) ? sizeof(filler) : body - sent;
+
+		srv_write(f.peer, filler, k);
+		sent += k;
+		T_EQ_INT(fpal_fprint_pump(&f.c, &ops), FPAL_OK);
+	}
+	n = call_bytes(in, sizeof(in), 41, "GetDefaultDevice", MGR, MGR_IF);
+	srv_write(f.peer, in, n);
+	T_EQ_INT(fpal_fprint_pump(&f.c, &ops), FPAL_OK);
+
+	got = srv_read(f.peer, rx, sizeof(rx));
+	T_EQ_INT(fpal_dmsg_parse(rx, got, &r), FPAL_OK);
+	T_EQ_INT(r.reply_serial, 41); /* the second client got its answer */
+	teardown(&f);
+}
+
+static void test_pump_reports_a_lost_name_and_a_lost_bus(void) {
+	struct fake f;
+	uint8_t b[256];
+	struct fpal_dmsg lost = { .type = FPAL_DMSG_SIGNAL, .serial = 50,
+				  .path = "/org/freedesktop/DBus",
+				  .iface = "org.freedesktop.DBus", .member = "NameLost",
+				  .sig = "s" };
+	size_t n;
+
+	setup(&f);
+	T_EQ_INT(fpal_dmsg_build(b, sizeof(b), &n, &lost) == FPAL_OK, 1);
+	srv_write(f.peer, b, n);
+	T_EQ_INT(fpal_fprint_pump(&f.c, &ops), FPAL_E_BUSY);
+	teardown(&f);
+
+	setup(&f);
+	close(f.peer); /* the bus hangs up */
+	T_CHECK(fpal_fprint_pump(&f.c, &ops) != FPAL_OK);
+	fpal_dbus_close(&f.c);
+}
+
 int main(void) {
 	T_RUN(test_default_device_when_plugged);
 	T_RUN(test_no_device_when_unplugged);
@@ -316,5 +418,8 @@ int main(void) {
 	T_RUN(test_get_all);
 	T_RUN(test_everything_else_is_refused);
 	T_RUN(test_introspect_and_ping);
+	T_RUN(test_pump_answers_every_waiting_call);
+	T_RUN(test_pump_survives_an_oversize_message);
+	T_RUN(test_pump_reports_a_lost_name_and_a_lost_bus);
 	return T_DONE();
 }

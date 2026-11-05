@@ -180,8 +180,11 @@ static int ud_wait_interrupt(void *ctx, uint8_t ep, uint8_t *buf, size_t cap,
 	if (cap > INT_MAX)
 		return FPAL_E_INVAL;
 
-	drain_cancel_pipe(c);
-
+	/*
+	 * No draining here: a cancel() that arrived while a command was in
+	 * flight (Ctrl-C between two transfers) is still in the pipe and must
+	 * end this wait at once. The pipe is emptied when a wait reports it.
+	 */
 	memset(&urb, 0, sizeof(urb));
 	urb.type = USBDEVFS_URB_TYPE_INTERRUPT;
 	urb.endpoint = ep;

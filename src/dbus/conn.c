@@ -12,6 +12,7 @@
 
 #include "core/log.h"
 #include "dbus/marshal.h"
+#include "fpal/fpal.h"
 
 #define BUS_NAME "org.freedesktop.DBus"
 #define BUS_PATH "/org/freedesktop/DBus"
@@ -152,22 +153,36 @@ int fpal_dbus_recv(struct fpal_dbus *c, uint32_t timeout_ms,
 		c->rx_handed = 0;
 	}
 	for (;;) {
-		uint64_t now;
+		uint64_t now, total;
 		uint32_t left;
 		int rc;
 
-		if (c->rx_len >= FPAL_DMSG_FIXED) {
-			size_t total;
+		/* the rest of a message that was too big to keep */
+		if (c->skip) {
+			size_t n = c->rx_len < c->skip ? c->rx_len : (size_t)c->skip;
 
-			rc = fpal_dmsg_total_len(c->rx, &total);
-
+			rx_drop(c, n);
+			c->skip -= n;
+		}
+		if (!c->skip && c->rx_len >= FPAL_DMSG_FIXED) {
+			rc = fpal_dmsg_frame_len(c->rx, &total);
 			if (rc)
-				return rc;
+				return rc; /* not a message: the stream is lost */
+			if (total > FPAL_DBUS_MSG_MAX) {
+				/* the header says how long it is: skip exactly that */
+				fpal_dbg("dropping a message of %llu bytes",
+					 (unsigned long long)total);
+				c->skip = total;
+				return FPAL_E_DROPPED;
+			}
 			if (c->rx_len >= total) {
-				rc = fpal_dmsg_parse(c->rx, total, m);
-				if (rc)
-					return rc;
-				c->rx_handed = total;
+				rc = fpal_dmsg_parse(c->rx, (size_t)total, m);
+				c->rx_handed = (size_t)total;
+				if (rc) {
+					fpal_dbg("dropping a malformed message: %s",
+						 fpal_strerror(rc));
+					return FPAL_E_DROPPED;
+				}
 				return FPAL_OK;
 			}
 		}
@@ -196,6 +211,8 @@ int fpal_dbus_call(struct fpal_dbus *c, const struct fpal_dmsg *call,
 		if (now >= deadline)
 			return FPAL_E_TIMEOUT;
 		rc = fpal_dbus_recv(c, (uint32_t)(deadline - now), reply);
+		if (rc == FPAL_E_DROPPED)
+			continue; /* somebody else's oversize or garbled message */
 		if (rc)
 			return rc;
 		if ((reply->type == FPAL_DMSG_RETURN ||

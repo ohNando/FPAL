@@ -27,15 +27,23 @@ static size_t pad8(size_t n) {
 	return (n + 7) & ~(size_t)7;
 }
 
-int fpal_dmsg_total_len(const uint8_t *hdr, size_t *total) {
+int fpal_dmsg_frame_len(const uint8_t *hdr, uint64_t *total) {
 	uint32_t body = fpal_get_le32(hdr + 4);
 	uint32_t fields = fpal_get_le32(hdr + 12);
-	uint64_t t;
 
 	if (hdr[0] != ENDIAN_LITTLE || hdr[3] != PROTO_VERSION ||
 	    hdr[1] < FPAL_DMSG_CALL || hdr[1] > FPAL_DMSG_SIGNAL)
 		return FPAL_E_PROTO;
-	t = FPAL_DMSG_FIXED + (uint64_t)pad8(fields) + body;
+	*total = FPAL_DMSG_FIXED + (uint64_t)pad8(fields) + body;
+	return FPAL_OK;
+}
+
+int fpal_dmsg_total_len(const uint8_t *hdr, size_t *total) {
+	uint64_t t;
+	int err = fpal_dmsg_frame_len(hdr, &t);
+
+	if (err)
+		return err;
 	if (t > FPAL_DBUS_MSG_MAX)
 		return FPAL_E_OVERFLOW;
 	*total = (size_t)t;

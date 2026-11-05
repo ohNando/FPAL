@@ -128,7 +128,7 @@ fpal status                # check that it is all in place
 
 ## Troubleshooting
 
-`FPAL_TRACE=1` prints every USB packet sent and received as hex, and `FPAL_DEBUG=1` enables verbose messages:
+`FPAL_TRACE=1` prints every USB packet sent and received as hex, each with the time in milliseconds since the first one (it shows where the time goes), and `FPAL_DEBUG=1` enables verbose messages:
 
 ```sh
 sudo FPAL_TRACE=1 fpal identify

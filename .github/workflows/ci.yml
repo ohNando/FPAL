@@ -16,5 +16,22 @@ jobs:
         run: make
       - name: Unit tests
         run: make test
+      - name: Fuzz the parsers (short run)
+        run: make fuzz FUZZ_PERCENT=5
       - name: Build and test the read-only variant
         run: make ENROLL=0 test
+
+  # AddressSanitizer, UndefinedBehaviorSanitizer and the leak checker over the
+  # whole test suite and a longer fuzz run.
+  sanitizers:
+    runs-on: ubuntu-latest
+    env:
+      SAN: -fsanitize=address,undefined -fno-sanitize-recover=undefined -fno-omit-frame-pointer -O1
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install dependencies
+        run: sudo apt-get update && sudo apt-get install -y libpam0g-dev
+      - name: Tests under the sanitizers
+        run: make CFLAGS_EXTRA="$SAN" test
+      - name: Fuzz under the sanitizers
+        run: make CFLAGS_EXTRA="$SAN" fuzz FUZZ_PERCENT=20

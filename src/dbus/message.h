@@ -43,8 +43,14 @@ struct fpal_dmsg {
 };
 
 /*
- * Total size of the message whose first FPAL_DMSG_FIXED bytes are @hdr.
- * Fails with FPAL_E_PROTO for a bad header and FPAL_E_OVERFLOW if it is
+ * Size of the message whose first FPAL_DMSG_FIXED bytes are @hdr, however big
+ * it is. FPAL_E_PROTO for a header that is not one: the byte stream cannot be
+ * trusted any more.
+ */
+int fpal_dmsg_frame_len(const uint8_t *hdr, uint64_t *total);
+
+/*
+ * The same, for a message we are willing to hold: FPAL_E_OVERFLOW if it is
  * larger than FPAL_DBUS_MSG_MAX.
  */
 int fpal_dmsg_total_len(const uint8_t *hdr, size_t *total);

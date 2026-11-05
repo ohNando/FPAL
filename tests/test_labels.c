@@ -31,6 +31,47 @@ static void test_valid_labels(void) {
 	T_CHECK(!fpal_label_valid("1234567890123456789012345678901234567890123456789"));
 }
 
+static void test_label_text_must_be_clean_utf8(void) {
+	/* well formed: Turkish, Greek, an emoji (4 bytes) */
+	T_CHECK(fpal_label_valid("\xc4\xb0\xc5\x9f" "aret"));
+	T_CHECK(fpal_label_valid("\xce\xb1\xce\xb2"));
+	T_CHECK(fpal_label_valid("hand \xf0\x9f\x91\x8d"));
+
+	/* broken or smuggled bytes */
+	T_CHECK(!fpal_label_valid("\xc0\x80"));		 /* overlong NUL */
+	T_CHECK(!fpal_label_valid("\xe0\x80\xaf"));	 /* overlong slash */
+	T_CHECK(!fpal_label_valid("\xed\xa0\x80"));	 /* a surrogate */
+	T_CHECK(!fpal_label_valid("\xf4\x90\x80\x80")); /* above U+10FFFF */
+	T_CHECK(!fpal_label_valid("\xff"));
+	T_CHECK(!fpal_label_valid("\x80"));		 /* stray continuation */
+	T_CHECK(!fpal_label_valid("ab\xc4"));		 /* ends inside a character */
+	T_CHECK(!fpal_label_valid("ab\xe2\x82"));
+
+	/* C1 controls: some terminals act on them (U+009B is CSI) */
+	T_CHECK(!fpal_label_valid("a\xc2\x9b" "b"));
+	T_CHECK(!fpal_label_valid("a\xc2\x80" "b"));
+	T_CHECK(fpal_label_valid("a\xc2\xa0" "b")); /* U+00A0 is a plain no-break space */
+
+	/* invisible or direction changing: a name must read as it looks */
+	T_CHECK(!fpal_label_valid("a\xe2\x80\xae" "b")); /* right-to-left override */
+	T_CHECK(!fpal_label_valid("a\xe2\x80\x8b" "b")); /* zero width space */
+	T_CHECK(!fpal_label_valid("a\xe2\x80\xa8" "b")); /* line separator */
+	T_CHECK(!fpal_label_valid("a\xef\xbb\xbf" "b")); /* BOM */
+	T_CHECK(!fpal_label_valid("a\xe2\x81\xa6" "b")); /* left-to-right isolate */
+}
+
+static void test_label_char_rules(void) {
+	T_CHECK(fpal_label_char_ok('a'));
+	T_CHECK(fpal_label_char_ok(0x11f));
+	T_CHECK(fpal_label_char_ok(0x1f44d));
+	T_CHECK(!fpal_label_char_ok(0x1b));
+	T_CHECK(!fpal_label_char_ok(0x7f));
+	T_CHECK(!fpal_label_char_ok(0x9b));
+	T_CHECK(!fpal_label_char_ok(0xd800));
+	T_CHECK(!fpal_label_char_ok(0x110000));
+	T_CHECK(!fpal_label_char_ok(0x202e));
+}
+
 static void test_set_get_replace_remove(void) {
 	struct fpal_template_id a, b;
 	char out[FPAL_LABEL_MAX + 1];
@@ -180,6 +221,8 @@ int main(void) {
 	snprintf(dir, sizeof(dir), "%s", tmpl);
 
 	T_RUN(test_valid_labels);
+	T_RUN(test_label_text_must_be_clean_utf8);
+	T_RUN(test_label_char_rules);
 	T_RUN(test_set_get_replace_remove);
 	T_RUN(test_find_by_label);
 	T_RUN(test_rejects_bad_input);

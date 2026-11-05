@@ -24,7 +24,10 @@ VERSION  := $(shell sed -n 's/^\#define FPAL_VERSION "\(.*\)"/\1/p' include/fpal
 CFLAGS   ?= -O2 -g
 CFLAGS   += -std=c17 -Wall -Wextra -Wpedantic -Werror \
             -Wshadow -Wstrict-prototypes -Wmissing-prototypes \
-            -fstack-protector-strong -fPIC $(CFLAGS_EXTRA)
+            -fstack-protector-strong -fstack-clash-protection -fPIC $(CFLAGS_EXTRA)
+# Executables: position independent, GOT read-only after start-up, no
+# executable stack. Distributions add the same; this keeps a plain "make" safe.
+HARDEN_LD := -pie -Wl,-z,relro,-z,now,-z,noexecstack
 CPPFLAGS += -D_GNU_SOURCE -Iinclude -Isrc -MMD -MP
 # Added for everything except the code that runs at login (see LIB_RO below).
 CPPFLAGS_WRITE := $(if $(filter 0,$(ENROLL)),,-DFPAL_ENABLE_ENROLL)
@@ -52,7 +55,7 @@ PAM_SRCS := pam/pam_fpal.c pam/opts.c
 DAEMON_SRCS := daemon/fprint_service.c
 
 TEST_NAMES := test_proto test_egis_moc test_bindings test_pam_opts test_dbus \
-              test_dbus_conn test_fprint_service test_labels test_finger test_setup test_status test_ui test_manage
+              test_dbus_conn test_fprint_service test_labels test_finger test_setup test_status test_ui test_manage test_core
 ifneq ($(ENROLL),0)
 TEST_NAMES += test_enroll
 endif
@@ -70,7 +73,7 @@ DAEMON_OBJS := $(DAEMON_SRCS:%.c=$(BUILD)/%.o)
 PAM_MOD  := $(BUILD)/pam_fpal.so
 TESTS    := $(TEST_NAMES:%=$(BUILD)/tests/%)
 
-.PHONY: all pam test check-login-code clean install install-fpald uninstall uninstall-fpald dist
+.PHONY: all pam test fuzz check-login-code clean install install-fpald uninstall uninstall-fpald dist
 
 all: $(BUILD)/fpal $(BUILD)/fpald $(PAM_MOD)
 
@@ -94,10 +97,10 @@ $(BUILD)/fpal: $(BUILD)/tools/fpal.o $(BUILD)/tools/finger.o \
                $(BUILD)/tools/setup.o $(BUILD)/tools/status.o $(BUILD)/tools/ui.o \
                $(BUILD)/tools/manage.o \
                $(USB_OBJS) $(LIB)
-	$(CC) $(CFLAGS) $^ -o $@ $(LDFLAGS)
+	$(CC) $(CFLAGS) $(HARDEN_LD) $^ -o $@ $(LDFLAGS)
 
 $(BUILD)/fpald: $(BUILD)/daemon/fpald.o $(DAEMON_OBJS) $(USB_OBJS) $(LIB_RO)
-	$(CC) $(CFLAGS) $^ -o $@ $(LDFLAGS)
+	$(CC) $(CFLAGS) $(HARDEN_LD) $^ -o $@ $(LDFLAGS)
 
 $(PAM_MOD): $(PAM_OBJS) $(USB_OBJS) $(LIB_RO) pam/pam_fpal.map
 	$(CC) $(CFLAGS) -shared -Wl,--version-script=pam/pam_fpal.map \
@@ -110,6 +113,10 @@ $(BUILD)/tests/%: $(BUILD)/tests/%.o $(BUILD)/tests/mock_transport.o $(LIB)
 
 # The finger picking of the command line tool is tested on its own.
 $(BUILD)/tests/test_finger: $(BUILD)/tools/finger.o
+
+# The fuzzer links the same objects as the tests of the pieces it exercises.
+$(BUILD)/tests/fuzz: $(BUILD)/daemon/fprint_service.o $(BUILD)/tools/manage.o \
+                     $(BUILD)/tools/status.o $(BUILD)/tools/finger.o $(BUILD)/tools/ui.o
 
 # Pieces of the command line tool that are tested on their own.
 $(BUILD)/tests/test_setup: $(BUILD)/tools/setup.o
@@ -128,6 +135,11 @@ test: $(TESTS) check-login-code
 
 # The code that runs at login must not contain the commands that write to the
 # sensor; a read-only fpal must not either.
+# Mutation fuzzing of the parsers (a few seconds). FUZZ_PERCENT=5 for a quick run.
+FUZZ_PERCENT ?= 100
+fuzz: $(BUILD)/tests/fuzz
+	$(BUILD)/tests/fuzz $(FUZZ_PERCENT)
+
 check-login-code: $(PAM_MOD) $(BUILD)/fpald $(BUILD)/fpal
 	sh scripts/check-readonly.sh $(PAM_MOD) $(BUILD)/fpald $(if $(filter 0,$(ENROLL)),$(BUILD)/fpal)
 

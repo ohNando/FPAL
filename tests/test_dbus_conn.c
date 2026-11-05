@@ -5,6 +5,7 @@
  * before the client asks, which works because the socket buffers them.
  */
 #include "fake_bus.h"
+#include "core/bytes.h"
 
 static void test_handshake_and_hello(void) {
 	struct fake f;
@@ -218,6 +219,113 @@ static void test_garbage_is_refused(void) {
 	close(f.peer);
 }
 
+/* A message header that claims a body of @body bytes (valid framing). */
+static size_t big_header(uint8_t *out, uint32_t body) {
+	struct fpal_dmsg m = { .type = FPAL_DMSG_SIGNAL, .serial = 77, .path = "/p",
+			       .iface = "a.b", .member = "Big", .sig = "ay" };
+	uint8_t tmp[256];
+	size_t n;
+
+	m.body = tmp;
+	m.body_len = 0;
+	T_EQ_INT(fpal_dmsg_build(out, 256, &n, &m), FPAL_OK);
+	/* patch the body length field: the bytes after the header are not sent here */
+	fpal_put_le32(out + 4, body);
+	(void)tmp;
+	return n;
+}
+
+static void test_oversize_message_is_skipped_not_fatal(void) {
+	struct fake f;
+	uint8_t hdr[256], filler[4096], b[256];
+	struct fpal_dmsg ok = { .type = FPAL_DMSG_SIGNAL, .serial = 8, .path = "/p",
+				.iface = "a.b", .member = "After" };
+	struct fpal_dmsg m;
+	size_t hn, n, sent = 0;
+	const uint32_t body = 100000;
+
+	T_EQ_INT(fake_open(&f), FPAL_OK);
+	hn = big_header(hdr, body);
+	memset(filler, 0x41, sizeof(filler));
+
+	/* the header alone is enough to know it is too big */
+	srv_write(f.peer, hdr, hn);
+	T_EQ_INT(fpal_dbus_recv(&f.c, 100, &m), FPAL_E_DROPPED);
+	T_CHECK(f.c.skip > 0);
+
+	/* its body arrives in pieces, none of it is kept */
+	while (sent < body) {
+		size_t k = body - sent > sizeof(filler) ? sizeof(filler) : body - sent;
+
+		srv_write(f.peer, filler, k);
+		sent += k;
+		T_EQ_INT(fpal_dbus_recv(&f.c, 0, &m) == FPAL_E_TIMEOUT ||
+				 f.c.skip == 0,
+			 1);
+	}
+	/* and the next message is read normally */
+	T_EQ_INT(fpal_dmsg_build(b, sizeof(b), &n, &ok), FPAL_OK);
+	srv_write(f.peer, b, n);
+	T_EQ_INT(fpal_dbus_recv(&f.c, 100, &m), FPAL_OK);
+	T_CHECK(!strcmp(m.member, "After"));
+	T_EQ_INT(f.c.skip, 0);
+	T_CHECK(f.c.rx_len < FPAL_DBUS_MSG_MAX); /* nothing piled up */
+
+	fpal_dbus_close(&f.c);
+	close(f.peer);
+}
+
+static void test_malformed_message_is_dropped_not_fatal(void) {
+	struct fake f;
+	uint8_t b[256];
+	/* well framed, but a call needs a member */
+	struct fpal_dmsg bad = { .type = FPAL_DMSG_CALL, .serial = 5, .path = "/p" };
+	struct fpal_dmsg ok = { .type = FPAL_DMSG_SIGNAL, .serial = 6, .path = "/p",
+				.iface = "a.b", .member = "Fine" };
+	struct fpal_dmsg m;
+	size_t n1, n2;
+
+	T_EQ_INT(fake_open(&f), FPAL_OK);
+	T_EQ_INT(fpal_dmsg_build(b, sizeof(b), &n1, &bad), FPAL_OK);
+	T_EQ_INT(fpal_dmsg_build(b + n1, sizeof(b) - n1, &n2, &ok), FPAL_OK);
+	srv_write(f.peer, b, n1 + n2);
+
+	T_EQ_INT(fpal_dbus_recv(&f.c, 100, &m), FPAL_E_DROPPED);
+	T_EQ_INT(fpal_dbus_recv(&f.c, 100, &m), FPAL_OK);
+	T_CHECK(!strcmp(m.member, "Fine"));
+
+	fpal_dbus_close(&f.c);
+	close(f.peer);
+}
+
+static void test_call_ignores_dropped_messages(void) {
+	struct fake f;
+	uint8_t hdr[256], filler[2048], b[256];
+	struct fpal_dmsg call = { .type = FPAL_DMSG_CALL, .path = "/p", .member = "M",
+				  .dest = "x.y" };
+	struct fpal_dmsg reply = { .type = FPAL_DMSG_RETURN, .serial = 30,
+				   .reply_serial = 2 };
+	struct fpal_dmsg got;
+	size_t hn, n;
+
+	T_EQ_INT(fake_open(&f), FPAL_OK);
+	/* something huge arrives first, then the answer to our call (serial 2) */
+	hn = big_header(hdr, 30000);
+	srv_write(f.peer, hdr, hn);
+	memset(filler, 0, sizeof(filler));
+	for (size_t sent = 0; sent < 30000; sent += sizeof(filler))
+		srv_write(f.peer, filler, 30000 - sent < sizeof(filler) ? 30000 - sent
+									: sizeof(filler));
+	T_EQ_INT(fpal_dmsg_build(b, sizeof(b), &n, &reply), FPAL_OK);
+	srv_write(f.peer, b, n);
+
+	T_EQ_INT(fpal_dbus_call(&f.c, &call, 500, &got), FPAL_OK);
+	T_EQ_INT(got.type, FPAL_DMSG_RETURN);
+
+	fpal_dbus_close(&f.c);
+	close(f.peer);
+}
+
 int main(void) {
 	T_RUN(test_handshake_and_hello);
 	T_RUN(test_auth_rejected);
@@ -228,5 +336,8 @@ int main(void) {
 	T_RUN(test_reply_and_error_helpers);
 	T_RUN(test_bus_closed);
 	T_RUN(test_garbage_is_refused);
+	T_RUN(test_oversize_message_is_skipped_not_fatal);
+	T_RUN(test_malformed_message_is_dropped_not_fatal);
+	T_RUN(test_call_ignores_dropped_messages);
 	return T_DONE();
 }
