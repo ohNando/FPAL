@@ -139,6 +139,9 @@ services_status() {
 # ---- authselect (Fedora, RHEL) -----------------------------------------------
 
 AS_DIR=$ROOT/etc/authselect/custom/$PROFILE
+# Present while with-fingerprint was added by "fpal setup" (it was not selected
+# before), so that --revert can take it out again.
+AS_ADDED=$ROOT/var/lib/fpal/.authselect-added-fingerprint
 
 # "local with-a with-b" -> "with-a with-b"
 as_features() {
@@ -166,14 +169,22 @@ as_install() {
 	fi
 
 	feats=$(as_features)
+	added=0
 	case " $feats " in
 	*" with-fingerprint "*) ;;
-	*) feats="$feats with-fingerprint" ;;
+	*)
+		feats="$feats with-fingerprint"
+		added=1
+		;;
 	esac
 
 	# shellcheck disable=SC2086 # feature list is split on purpose
 	run authselect select "custom/$PROFILE" $feats -b
 	run authselect apply-changes
+	if [ "$added" = 1 ] && [ "$DRY_RUN" = 0 ]; then
+		mkdir -p "$(dirname "$AS_ADDED")"
+		: >"$AS_ADDED"
+	fi
 	services_install
 	[ "$DRY_RUN" = 1 ] || say "custom/$PROFILE active ($feats)"
 }
@@ -182,8 +193,15 @@ as_revert() {
 	need_root
 	have authselect || die "authselect not found"
 	feats=$(as_features)
+	if [ -e "$AS_ADDED" ]; then
+		# we added with-fingerprint; leave the system as it was
+		feats=$(echo " $feats " | sed 's/ with-fingerprint / /g')
+	fi
 	# shellcheck disable=SC2086
 	run authselect select "$BASE" $feats -b
+	if [ "$DRY_RUN" = 0 ]; then
+		rm -f "$AS_ADDED"
+	fi
 	services_revert
 	[ "$DRY_RUN" = 1 ] || say "$BASE active again, fprintd unmasked, fpald stopped"
 }

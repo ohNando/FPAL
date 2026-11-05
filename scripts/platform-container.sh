@@ -28,7 +28,7 @@ trap 'rm -f "$snap"' EXIT
 case $1 in
 fedora)
 	script='
-dnf -y -q install gcc make pam-devel authselect tar findutils >/dev/null
+dnf -y -q install gcc make pam-devel authselect tar findutils diffutils >/dev/null
 mkdir /work && tar -xf /src.tar -C /work && cd /work
 make >/dev/null && make install PREFIX=/usr PAMDIR=/usr/lib64/security >/dev/null
 # a known starting point, as on a freshly installed Fedora

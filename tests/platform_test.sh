@@ -40,7 +40,7 @@ new_world() {
 	mkdir -p "$ROOT/usr/lib64/security" "$ROOT/etc/pam.d" "$BIN"
 	: >"$ROOT/usr/lib64/security/pam_fpal.so"
 	: >"$LOG"
-	for tool in sed grep cut head dirname install id cat mkdir; do
+	for tool in sed grep cut head dirname install id cat mkdir rm; do
 		ln -s "$(command -v $tool)" "$BIN/$tool"
 	done
 	for fake in $1; do "fake_$fake"; done
@@ -142,6 +142,25 @@ new_world "authselect systemctl"
 echo "custom/fpal with-fingerprint with-mkhomedir" >"$W/current"
 script authselect install
 check "an already selected feature is not added twice" logged 'select custom/fpal with-fingerprint with-mkhomedir -b'
+
+new_world "authselect systemctl"
+script authselect install --no-services
+check "install notes that it added with-fingerprint" test -e "$ROOT/var/lib/fpal/.authselect-added-fingerprint"
+echo "custom/fpal with-fingerprint with-mkhomedir" >"$W/current"
+script authselect revert --no-services
+check "revert takes out the feature install added" logged 'select local with-mkhomedir -b'
+check "... and forgets the note" test ! -e "$ROOT/var/lib/fpal/.authselect-added-fingerprint"
+
+new_world "authselect systemctl"
+echo "custom/fpal with-fingerprint with-mkhomedir" >"$W/current"
+script authselect install --no-services
+check "no note when with-fingerprint was already selected" test ! -e "$ROOT/var/lib/fpal/.authselect-added-fingerprint"
+script authselect revert --no-services
+check "revert keeps a feature the system had" logged 'select local with-fingerprint with-mkhomedir -b'
+
+new_world "authselect systemctl"
+script authselect install --dry-run
+check "a dry run leaves no note" test ! -e "$ROOT/var/lib/fpal"
 
 new_world "authselect systemctl"
 script authselect revert
