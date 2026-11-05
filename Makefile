@@ -55,7 +55,8 @@ PAM_SRCS := pam/pam_fpal.c pam/opts.c
 DAEMON_SRCS := daemon/fprint_service.c
 
 TEST_NAMES := test_proto test_egis_moc test_bindings test_pam_opts test_dbus \
-              test_dbus_conn test_fprint_service test_labels test_finger test_setup test_status test_ui test_manage test_core
+              test_dbus_conn test_fprint_service test_labels test_finger test_setup test_status test_ui test_manage test_core \
+              test_golden_egis
 ifneq ($(ENROLL),0)
 TEST_NAMES += test_enroll
 endif
@@ -142,6 +143,7 @@ fuzz: $(BUILD)/tests/fuzz
 
 check-login-code: $(PAM_MOD) $(BUILD)/fpald $(BUILD)/fpal
 	sh scripts/check-readonly.sh $(PAM_MOD) $(BUILD)/fpald $(if $(filter 0,$(ENROLL)),$(BUILD)/fpal)
+	$(if $(filter 0,$(ENROLL)),,sh scripts/check-readonly.sh --present $(BUILD)/fpal)
 
 install: $(BUILD)/fpal $(PAM_MOD) install-fpald
 	@test -n "$(PAMDIR)" || { echo "PAMDIR not found, set PAMDIR=..."; exit 1; }

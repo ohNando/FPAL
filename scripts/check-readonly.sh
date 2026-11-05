@@ -1,31 +1,58 @@
 #!/bin/sh
 # SPDX-License-Identifier: Apache-2.0
 #
-# Fail if a binary contains one of the Egis commands that write to the
-# sensor: store a template, start a commit, start enrolling, delete.
+# Every driver lists the byte patterns of its commands that write to the
+# sensor in src/drivers/<name>/readonly.patterns. Login code must not contain
+# any of them:
 #
 #   sh scripts/check-readonly.sh build/pam_fpal.so build/fpald
+#
+# Positive control: with --present the same patterns MUST all be there (the
+# full fpal), so a typo or a stale pattern file cannot make the check pass
+# silently:
+#
+#   sh scripts/check-readonly.sh --present build/fpal
 set -eu
 
 export LC_ALL=C
+root=$(cd "$(dirname "$0")/.." && pwd)
+mode=absent
 bad=0
 
-# command bytes as grep -P escapes (see src/drivers/egis_moc/proto.c)
-check() {
-	file=$1 name=$2 pattern=$3
-	if grep -qaP "$pattern" "$file"; then
-		echo "check-readonly: $file contains the $name command" >&2
-		bad=1
-	fi
-}
+if [ "${1:-}" = "--present" ]; then
+	mode=present
+	shift
+fi
+[ "$#" -gt 0 ] || { echo "usage: $0 [--present] FILE..." >&2; exit 2; }
+
+files=$(ls "$root"/src/drivers/*/readonly.patterns 2>/dev/null || true)
+[ -n "$files" ] || { echo "check-readonly: no readonly.patterns found" >&2; exit 2; }
 
 for f in "$@"; do
 	[ -f "$f" ] || { echo "check-readonly: $f not found" >&2; exit 2; }
-	check "$f" "store"        '\x00\x00\x00\x27\x50\x16\x03\x00\x00\x00\x20'
-	check "$f" "commit start" '\x00\x00\x00\x07\x50\x16\x05\x00\x00\x00\x20'
-	check "$f" "enrol start"  '\x00\x00\x00\x07\x50\x16\x01\x00\x00\x00\x20'
-	check "$f" "delete"       '\x50\x18\x04\x00\x00'
+	for pf in $files; do
+		driver=$(basename "$(dirname "$pf")")
+		while IFS='|' read -r name pattern; do
+			case $name in '' | '#'*) continue ;; esac
+			found=no
+			grep -qaP "$pattern" "$f" && found=yes
+			if [ "$mode" = absent ] && [ "$found" = yes ]; then
+				echo "check-readonly: $f contains the $driver '$name' command" >&2
+				bad=1
+			elif [ "$mode" = present ] && [ "$found" = no ]; then
+				echo "check-readonly: $f is missing the $driver '$name' pattern" \
+					"(stale pattern file?)" >&2
+				bad=1
+			fi
+		done <"$pf"
+	done
 done
 
-[ "$bad" = 0 ] && echo "check-readonly: $* has no write commands"
+if [ "$bad" = 0 ]; then
+	if [ "$mode" = present ]; then
+		echo "check-readonly: $* has every write pattern (positive control ok)"
+	else
+		echo "check-readonly: $* has no write commands"
+	fi
+fi
 exit "$bad"
