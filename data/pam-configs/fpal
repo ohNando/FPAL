@@ -1,0 +1,8 @@
+Name: FPAL fingerprint authentication
+Default: no
+Priority: 260
+Auth-Type: Primary
+Auth:
+	[success=end default=ignore]	pam_fpal.so
+Auth-Initial:
+	[success=end default=ignore]	pam_fpal.so
