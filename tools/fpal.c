@@ -30,6 +30,7 @@
 #include "finger.h"
 #include "manage.h"
 #include "setup.h"
+#include "report.h"
 #include "status.h"
 #include "ui.h"
 
@@ -55,6 +56,8 @@ static void usage(FILE *f) {
 	      "                    show, set or clear the name of a finger\n"
 	      "  manage            pick fingers with the arrow keys: rename, delete, add\n"
 	      "  status [USER]     show whether fingerprint login is set up\n"
+	      "  report [--markdown] [--all]\n"
+	      "                    describe the USB sensor for a bug report (no root needed)\n"
 	      "  setup [--revert]  make sudo, su and the GNOME screens use the fingerprint\n"
 #ifdef FPAL_ENABLE_ENROLL
 	      "  enroll [--dry-run] [--allow-chip-write] [--name NAME] USER\n"
@@ -750,6 +753,8 @@ int main(int argc, char **argv) {
 		return fpal_cmd_manage(argc - 1, argv + 1);
 	if (strcmp(cmd, "status") == 0)
 		return fpal_cmd_status(argc - 1, argv + 1);
+	if (strcmp(cmd, "report") == 0)
+		return fpal_cmd_report(argc - 1, argv + 1);
 	if (strcmp(cmd, "setup") == 0)
 		return fpal_cmd_setup(argc - 1, argv + 1);
 	if (strcmp(cmd, "label") == 0)

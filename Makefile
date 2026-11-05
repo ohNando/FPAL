@@ -57,7 +57,7 @@ DAEMON_SRCS := daemon/fprint_service.c
 
 TEST_NAMES := test_proto test_egis_moc test_bindings test_pam_opts test_dbus \
               test_dbus_conn test_fprint_service test_labels test_finger test_setup test_status test_ui test_manage test_core \
-              test_golden_egis test_id test_conformance
+              test_golden_egis test_id test_conformance test_report
 ifneq ($(ENROLL),0)
 TEST_NAMES += test_enroll
 endif
@@ -97,7 +97,7 @@ $(LIB_RO): $(LIB_RO_OBJS)
 
 $(BUILD)/fpal: $(BUILD)/tools/fpal.o $(BUILD)/tools/finger.o \
                $(BUILD)/tools/setup.o $(BUILD)/tools/status.o $(BUILD)/tools/ui.o \
-               $(BUILD)/tools/manage.o \
+               $(BUILD)/tools/manage.o $(BUILD)/tools/report.o \
                $(USB_OBJS) $(LIB)
 	$(CC) $(CFLAGS) $(HARDEN_LD) $^ -o $@ $(LDFLAGS)
 
@@ -112,6 +112,8 @@ $(PAM_MOD): $(PAM_OBJS) $(USB_OBJS) $(LIB_RO) pam/pam_fpal.map
 # Objects first, archives last: a static library only supplies what is still missing.
 $(BUILD)/tests/%: $(BUILD)/tests/%.o $(BUILD)/tests/mock_transport.o $(LIB)
 	$(CC) $(CFLAGS) $(filter-out %.a,$^) $(filter %.a,$^) -o $@ $(LDFLAGS)
+
+$(BUILD)/tests/test_report: $(BUILD)/tools/report.o
 
 # The made-up sensor the conformance tests run against.
 $(BUILD)/tests/test_conformance: $(BUILD)/tests/drivers/fake_moc.o
