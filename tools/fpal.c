@@ -142,7 +142,7 @@ static int cmd_info(void) {
 static void print_table(const struct fpal_ui *ui,
 			const struct fpal_template_id *ids, size_t n, size_t max) {
 	static const char *const head[] = { "#", "Name", "Kind", "Yours", "Id" };
-	char num[FPAL_MAX_TEMPLATES][8], name[FPAL_MAX_TEMPLATES][FPAL_LABEL_MAX + 12];
+	char num[FPAL_MAX_TEMPLATES][24], name[FPAL_MAX_TEMPLATES][FPAL_LABEL_MAX + 12];
 	char sid[FPAL_MAX_TEMPLATES][40];
 	const char *cells[FPAL_MAX_TEMPLATES * 5];
 	const char *user = fpal_ui_invoking_user();
