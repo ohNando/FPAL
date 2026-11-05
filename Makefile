@@ -75,7 +75,7 @@ DAEMON_OBJS := $(DAEMON_SRCS:%.c=$(BUILD)/%.o)
 PAM_MOD  := $(BUILD)/pam_fpal.so
 TESTS    := $(TEST_NAMES:%=$(BUILD)/tests/%)
 
-.PHONY: all pam test fuzz check-login-code check-install clean install install-fpald uninstall uninstall-fpald dist
+.PHONY: all pam test fuzz check-login-code check-install check-platform clean install install-fpald uninstall uninstall-fpald dist
 
 all: $(BUILD)/fpal $(BUILD)/fpald $(PAM_MOD)
 
@@ -137,7 +137,7 @@ $(BUILD)/tests/test_fprint_service: $(BUILD)/daemon/fprint_service.o
 # PAM option parsing is plain C and tested without libpam.
 $(BUILD)/tests/test_pam_opts: $(BUILD)/pam/opts.o
 
-test: $(TESTS) check-login-code check-install
+test: $(TESTS) check-login-code check-install check-platform
 	@set -e; for t in $(TESTS); do echo "== $$t"; $$t; done
 
 # The code that runs at login must not contain the commands that write to the
@@ -162,6 +162,8 @@ install: $(BUILD)/fpal $(PAM_MOD) install-fpald
 	install -D -m 0755 $(PAM_MOD) $(DESTDIR)$(PAMDIR)/pam_fpal.so
 	install -D -m 0755 scripts/platform.sh $(DESTDIR)$(DATADIR)/platform.sh
 	install -D -m 0755 scripts/authselect-fpal.sh $(DESTDIR)$(DATADIR)/authselect-fpal.sh
+	install -D -m 0644 data/pam-configs/fpal $(DESTDIR)$(DATADIR)/pam-configs/fpal
+	$(if $(PAMCONFIGDIR),install -D -m 0644 data/pam-configs/fpal $(DESTDIR)$(PAMCONFIGDIR)/fpal)
 	install -D -m 0644 README.md $(DESTDIR)$(DOCDIR)/README.md
 	install -D -m 0644 docs/usage.md $(DESTDIR)$(DOCDIR)/usage.md
 	install -D -m 0644 docs/pam.md $(DESTDIR)$(DOCDIR)/pam.md
@@ -188,6 +190,7 @@ uninstall: uninstall-fpald
 	rm -f $(DESTDIR)$(SBINDIR)/fpal
 	rm -f $(DESTDIR)$(PAMDIR)/pam_fpal.so
 	rm -rf $(DESTDIR)$(DATADIR) $(DESTDIR)$(DOCDIR)
+	$(if $(PAMCONFIGDIR),rm -f $(DESTDIR)$(PAMCONFIGDIR)/fpal)
 	rm -f $(DESTDIR)$(MANDIR)/man8/fpal.8 $(DESTDIR)$(MANDIR)/man8/pam_fpal.8 \
 		$(DESTDIR)$(MANDIR)/man8/fpald.8
 
@@ -202,11 +205,16 @@ dist:
 		-o $(BUILD)/fpal-$(VERSION).tar.gz HEAD
 	@echo $(BUILD)/fpal-$(VERSION).tar.gz
 
+# The helper that "fpal setup" runs, against fake authselect and pam-auth-update.
+check-platform:
+	sh tests/platform_test.sh scripts/platform.sh
+
 # "make install" into a scratch directory must produce the files the packages
 # list; a broken or missing install rule is caught here, not by a package build.
 CHECK_INSTALL_FILES := usr/sbin/fpal usr/lib64/security/pam_fpal.so \
 	usr/libexec/fpald usr/lib/systemd/system/fpald.service \
 	etc/dbus-1/system.d/fpald.conf usr/share/fpal/platform.sh usr/share/fpal/authselect-fpal.sh \
+	usr/share/fpal/pam-configs/fpal \
 	usr/share/man/man8/fpal.8 usr/share/doc/fpal/usage.md
 check-install: $(BUILD)/fpal $(BUILD)/fpald $(PAM_MOD)
 	@d=$$(mktemp -d) && trap 'rm -rf "$$d"' EXIT && \
