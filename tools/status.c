@@ -205,7 +205,7 @@ int fpal_cmd_status(int argc, char **argv) {
 		"/etc/pam.d/system-auth", "/etc/pam.d/fingerprint-auth",
 		"/etc/pam.d/common-auth", "/etc/pam.d/sudo",
 	};
-	struct fpal_usb_info info[4];
+	struct fpal_sensor_info info[4];
 	char who[64], used[256] = "";
 	const char *user = NULL;
 	unsigned problems = 0;

@@ -111,7 +111,7 @@ static void close_device(struct fpal_device *dev) {
 }
 
 static int cmd_info(void) {
-	struct fpal_usb_info info[4];
+	struct fpal_sensor_info info[4];
 	struct fpal_device *dev;
 	size_t n = 0;
 	int err;

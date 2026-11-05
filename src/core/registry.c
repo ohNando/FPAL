@@ -71,7 +71,7 @@ static bool read_attr_ulong(const char *dir, const char *name, int base,
 	return end != buf && *end == '\0' && *out <= max;
 }
 
-int fpal_scan(struct fpal_usb_info *out, size_t cap, size_t *n) {
+int fpal_scan(struct fpal_sensor_info *out, size_t cap, size_t *n) {
 	DIR *d = opendir(FPAL_SYSFS_USB_DEVICES);
 	struct dirent *ent;
 	size_t found = 0;
@@ -83,7 +83,7 @@ int fpal_scan(struct fpal_usb_info *out, size_t cap, size_t *n) {
 		char dir[384];
 		unsigned long vid, pid, bus, dev;
 		const struct fpal_driver *drv;
-		struct fpal_usb_info *info;
+		struct fpal_sensor_info *info;
 
 		/* Skip ".", ".." and interface entries such as "3-6:1.0". */
 		if (ent->d_name[0] == '.' || strchr(ent->d_name, ':'))
@@ -107,6 +107,10 @@ int fpal_scan(struct fpal_usb_info *out, size_t cap, size_t *n) {
 		if (found < cap) {
 			info = &out[found];
 			memset(info, 0, sizeof(*info));
+			info->bus = FPAL_BUS_USB;
+			snprintf(info->location, sizeof(info->location), "%.*s",
+				 (int)sizeof(info->location) - 1, ent->d_name);
+			fpal_text_sanitize(info->location);
 			info->busnum = (uint8_t)bus;
 			info->devnum = (uint8_t)dev;
 			info->vid = (uint16_t)vid;

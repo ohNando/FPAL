@@ -50,22 +50,20 @@ err_nomem:
 	return FPAL_E_NOMEM;
 }
 
-int fpal_device_open_first(struct fpal_device **out) {
-	struct fpal_usb_info info;
+int fpal_device_open(const struct fpal_sensor_info *info,
+		     struct fpal_device **out) {
 	const struct fpal_usb_id *id;
 	const struct fpal_driver *drv;
 	struct fpal_transport tr;
 	struct fpal_device *dev;
-	size_t n = 0;
 	int lock_fd, err;
 
-	err = fpal_scan(&info, 1, &n);
-	if (err)
-		return err;
-	if (n == 0)
-		return FPAL_E_NODEV;
+	if (!info || !out)
+		return FPAL_E_INVAL;
+	if (info->bus != FPAL_BUS_USB)
+		return FPAL_E_NOTSUP;
 
-	drv = fpal_driver_lookup(info.vid, info.pid, &id);
+	drv = fpal_driver_lookup(info->vid, info->pid, &id);
 	if (!drv)
 		return FPAL_E_NODEV;
 
@@ -73,7 +71,7 @@ int fpal_device_open_first(struct fpal_device **out) {
 	if (lock_fd < 0)
 		return lock_fd;
 
-	err = fpal_usbdevfs_open(info.busnum, info.devnum, &tr);
+	err = fpal_usbdevfs_open(info->busnum, info->devnum, &tr);
 	if (err) {
 		fpal_lock_release(lock_fd);
 		return err;
@@ -85,10 +83,23 @@ int fpal_device_open_first(struct fpal_device **out) {
 
 	/* sysfs already decoded the USB serial string descriptor for us. */
 	if (!dev->serial[0])
-		memcpy(dev->serial, info.serial, sizeof(dev->serial));
+		memcpy(dev->serial, info->serial, sizeof(dev->serial));
 
 	*out = dev;
 	return FPAL_OK;
+}
+
+int fpal_device_open_first(struct fpal_device **out) {
+	struct fpal_sensor_info info;
+	size_t n = 0;
+	int err;
+
+	err = fpal_scan(&info, 1, &n);
+	if (err)
+		return err;
+	if (n == 0)
+		return FPAL_E_NODEV;
+	return fpal_device_open(&info, out);
 }
 
 void fpal_device_close(struct fpal_device *dev) {

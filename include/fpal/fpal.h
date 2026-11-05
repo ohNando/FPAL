@@ -11,9 +11,16 @@
 
 struct fpal_device;
 
-/* Location and identity of a supported sensor found on the USB bus. */
-struct fpal_usb_info {
-	uint8_t busnum;
+/* How a sensor is attached. Every sensor family so far is USB. */
+enum fpal_bus {
+	FPAL_BUS_USB,
+};
+
+/* Identity and location of a supported sensor that was found. */
+struct fpal_sensor_info {
+	enum fpal_bus bus;
+	char location[16]; /* where it sits, e.g. the USB port path "3-6" */
+	uint8_t busnum;	   /* USB bus and device number (FPAL_BUS_USB) */
 	uint8_t devnum;
 	uint16_t vid;
 	uint16_t pid;
@@ -29,7 +36,11 @@ const char *fpal_strerror(int err);
  * Scan the USB bus for supported sensors. Fills up to @cap entries of @out
  * and stores the number found in @n. Does not open the devices.
  */
-int fpal_scan(struct fpal_usb_info *out, size_t cap, size_t *n);
+int fpal_scan(struct fpal_sensor_info *out, size_t cap, size_t *n);
+
+/* Open the sensor that fpal_scan() described. Requires root. */
+int fpal_device_open(const struct fpal_sensor_info *info,
+		     struct fpal_device **out);
 
 /* Open the first supported sensor. Requires root. */
 int fpal_device_open_first(struct fpal_device **out);
