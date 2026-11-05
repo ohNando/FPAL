@@ -1,5 +1,5 @@
 Name:           fpal
-Version:        0.6.1
+Version:        0.7.0
 Release:        1%{?dist}
 Summary:        Fingerprint Auth for Linux
 License:        Apache-2.0
@@ -74,6 +74,16 @@ exit 0
 %{_docdir}/%{name}/
 
 %changelog
+* Thu Nov 05 2026 ohNando <emirhanbuldurucu12@gmail.com> - 0.7.0-1
+- A general driver interface for more sensors: variable-length template ids,
+  per-driver capacity, control-out transfers and a cancellable bulk wait; the
+  safety rules for enrolling and deleting now live in the core for every driver
+- fpal report describes an unknown USB sensor for a bug report (no root needed)
+- fpal setup also works on Debian and Ubuntu (pam-auth-update) and prints the
+  steps elsewhere; new --dry-run, --backend and --no-services options
+- Debian and Arch packages, a CI matrix of four distributions, docs on
+  architecture and on adding a sensor
+
 * Thu Nov 05 2026 ohNando <emirhanbuldurucu12@gmail.com> - 0.6.1-1
 - Security: a local user could stop fpald with one oversize D-Bus message, which
   removed the fingerprint option from the GNOME screens until the next boot

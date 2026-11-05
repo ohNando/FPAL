@@ -4,6 +4,8 @@ All notable changes to FPAL. The format follows [Keep a Changelog](https://keepa
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-11-05
+
 ### Added
 - A general driver interface for more sensors. Template ids are variable length (1 to 128 bytes, at least 16 for new ones) behind `fpal/id.h`; each driver states its own capacity and the length of the ids it creates; the transport can send control-out transfers and wait for the finger on a bulk IN endpoint (cancellable); sensors are described by `fpal_sensor_info` and opened with `fpal_device_open`. The binding and label files accept ids of any even hex length, so 64-character lines written by older versions keep working.
 - The safety rules for writing now live in the core and apply to every driver: the sensor is listed first, a full sensor or an id that already exists is refused before the sensor is touched, and after an enrol or delete the sensor's own list is read back and must show exactly the expected change.

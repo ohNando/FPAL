@@ -1,3 +1,13 @@
+fpal (0.7.0-1) unstable; urgency=medium
+
+  * General driver interface: variable-length ids, per-driver capacity, control
+    out and a cancellable bulk wait; the safety rules for writing live in the core.
+  * Add fpal report. fpal setup supports pam-auth-update (--dry-run, --backend,
+    --no-services). Install the PAM profile in /usr/share/pam-configs.
+  * Fix the multiarch PAM directory when building the package.
+
+ -- ohNando <emirhanbuldurucu12@gmail.com>  Thu, 05 Nov 2026 18:00:00 +0300
+
 fpal (0.6.1-1) unstable; urgency=medium
 
   * Security: a local user could stop fpald with one oversize D-Bus message.
