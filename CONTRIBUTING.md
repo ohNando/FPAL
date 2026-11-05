@@ -24,12 +24,6 @@ Thanks for helping. This file covers the workflow, the code style and how to add
 
 ## Adding a sensor
 
-A driver is one `struct fpal_driver` ([src/core/driver.h](src/core/driver.h)):
-
-1. Create `src/drivers/<name>/` and implement `open`, `close`, `list` and `identify` on top of the transport (`dev->tr`). `enroll` and `delete_template` may stay `NULL`; they are only filled in `#ifdef FPAL_ENABLE_ENROLL`.
-2. List the USB ids in an array terminated by `vid == 0` and add the driver to `fpal_drivers[]` in `src/core/registry.c`.
-3. Document the wire protocol in `docs/protocol-<name>.md`, marking what you verified on real hardware.
-4. Test it without hardware: `tests/mock_transport.c` replays scripted USB exchanges (see `tests/test_egis_moc.c`). Use made-up template ids, never ones from a real device.
-5. Run `sudo FPAL_TRACE=1 fpal identify` on your sensor and attach the trace to your pull request.
+The steps, the driver interface and a checklist are in [docs/adding-a-sensor.md](docs/adding-a-sensor.md); how the pieces fit together is in [docs/architecture.md](docs/architecture.md). In short: a driver is one `struct fpal_driver` ([src/core/driver.h](src/core/driver.h)), registered in `src/core/registry.c`, tested without hardware (the made-up sensor in `tests/drivers/fake_moc.c` is the example) and documented in `docs/protocol-<name>.md`. Run `fpal report --markdown` to describe a sensor in an issue.
 
 Only the sensor in the README's "Tested hardware" line has been verified by the maintainer; reports from other devices are very welcome.
