@@ -120,11 +120,11 @@ A finger FPAL did not create (its id does not start with `FPAL-`, so it most lik
 
 ```sh
 sudo fpal bind $USER
-sudo fpal setup            # Fedora / RHEL (authselect)
+sudo fpal setup            # Fedora / RHEL (authselect), Debian / Ubuntu (pam-auth-update)
 fpal status                # check that it is all in place
 ```
 
-`fpal setup` masks `fprintd`, selects an authselect profile called `custom/fpal` and starts `fpald` for GNOME (see [gnome.md](gnome.md)); `sudo fpal setup --revert` undoes it. It runs `authselect-fpal.sh`, which is installed next to `fpal` (`/usr/share/fpal/`, or `scripts/` in a checkout). For the PAM options (`timeout=`, `retries=`, `quiet`, `debug`), the messages and safe testing steps see [pam.md](pam.md).
+`fpal setup` masks `fprintd`, changes the PAM files the way the system does it (an authselect profile called `custom/fpal` on Fedora, the `fpal` profile of `pam-auth-update` on Debian and Ubuntu; elsewhere it only prints what to do) and starts `fpald` for GNOME (see [gnome.md](gnome.md)); `sudo fpal setup --revert` undoes it, and `fpal setup --dry-run` shows the steps without doing anything. It runs `platform.sh`, which is installed next to `fpal` (`/usr/share/fpal/`, or `scripts/` in a checkout). For the PAM options (`timeout=`, `retries=`, `quiet`, `debug`), the messages and safe testing steps see [pam.md](pam.md).
 
 ## Troubleshooting
 
