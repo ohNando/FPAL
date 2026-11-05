@@ -124,6 +124,9 @@ void fpal_ui_table(const struct fpal_ui *ui, FILE *f, size_t ncols,
 void fpal_ui_short_id(const struct fpal_ui *ui, const struct fpal_template_id *id,
 		      char *out, size_t cap) {
 	const char *dots = ui->utf8 ? "…" : "...";
+	const uint8_t *d = fpal_id_data(id);
+	const size_t len = fpal_id_len(id);
+	const size_t head = len < 16 ? len : 16;
 	bool text = true;
 
 	if (cap < 32) {
@@ -131,16 +134,16 @@ void fpal_ui_short_id(const struct fpal_ui *ui, const struct fpal_template_id *i
 			out[0] = '\0';
 		return;
 	}
-	for (size_t i = 0; i < 16; i++)
-		if (id->bytes[i] < 0x20 || id->bytes[i] > 0x7e)
+	for (size_t i = 0; i < head; i++)
+		if (d[i] < 0x20 || d[i] > 0x7e)
 			text = false;
 	if (text) {
-		snprintf(out, cap, "%.16s%s", (const char *)id->bytes, dots);
+		snprintf(out, cap, "%.*s%s", (int)head, (const char *)d, dots);
 		return;
 	}
-	for (size_t i = 0; i < 8; i++)
-		snprintf(out + 2 * i, 3, "%02x", id->bytes[i]);
-	snprintf(out + 16, cap - 16, "%s", dots);
+	for (size_t i = 0; i < head / 2; i++)
+		snprintf(out + 2 * i, 3, "%02x", d[i]);
+	snprintf(out + 2 * (head / 2), cap - 2 * (head / 2), "%s", dots);
 }
 
 const char *fpal_ui_invoking_user(void) {

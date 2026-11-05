@@ -442,7 +442,7 @@ static void do_new(struct app *a) {
 	err = fpal_bindings_add(a->state_dir, a->user, &a->fresh);
 	(void)refresh(a);
 	for (size_t i = 0; i < a->n; i++)
-		if (!memcmp(a->ids[i].bytes, a->fresh.bytes, FPAL_TEMPLATE_ID_LEN))
+		if (fpal_id_equal(&a->ids[i], &a->fresh))
 			a->sel = i;
 	if (err)
 		say(a, UI_WARN, "stored, but could not bind it to %s: %s", a->user,

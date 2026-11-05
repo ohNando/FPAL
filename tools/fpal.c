@@ -75,16 +75,11 @@ static void usage(FILE *f) {
 
 static void print_id(const struct fpal_template_id *id) {
 	char label[FPAL_LABEL_MAX + 1];
+	char hex[FPAL_ID_HEX_MAX + 1], text[FPAL_ID_HEX_MAX / 2 + 1];
 
-	for (size_t i = 0; i < FPAL_TEMPLATE_ID_LEN; i++)
-		printf("%02x", id->bytes[i]);
-	fputs("  \"", stdout);
-	for (size_t i = 0; i < FPAL_TEMPLATE_ID_LEN; i++) {
-		uint8_t c = id->bytes[i];
-
-		putchar(c >= 0x20 && c <= 0x7e ? c : '.');
-	}
-	putchar('"');
+	(void)fpal_id_to_hex(id, hex, sizeof(hex));
+	fpal_id_text(id, text, sizeof(text));
+	printf("%s  \"%s\"", hex, text);
 	if (!fpal_labels_get(FPAL_STATE_DIR, id, label, sizeof(label)) &&
 	    label[0])
 		printf("  %s", label);
