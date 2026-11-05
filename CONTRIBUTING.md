@@ -15,6 +15,8 @@ Thanks for helping. This file covers the workflow, the code style and how to add
 - Small commits with a conventional prefix and a one-line message: `feat:`, `fix:`, `docs:`, `test:`, `build:`, `chore:`, `refactor:`, `style:`.
 - `make && make test` must pass (`-Werror` is on). CI runs the same on Ubuntu with gcc.
 
+Please read the [code of conduct](CODE_OF_CONDUCT.md): in particular, never post real template ids, serial numbers or traces.
+
 ## Code style
 
 - C17, Linux kernel style: tabs, 80 columns, **opening brace on the same line, also for functions** (`int main(void) {`).
