@@ -13,6 +13,9 @@
 
 #include "types.h"
 
+/* Hex digits of the longest id: the size of a line in the bindings and labels files. */
+#define FPAL_ID_HEX_MAX (FPAL_TEMPLATE_ID_LEN * 2u)
+
 /* Number of bytes of @id and a pointer to them. */
 size_t fpal_id_len(const struct fpal_template_id *id);
 const uint8_t *fpal_id_data(const struct fpal_template_id *id);
