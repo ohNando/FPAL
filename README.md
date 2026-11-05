@@ -11,7 +11,7 @@ A from-scratch, dependency-free, small and readable C project.
 ![Language](https://img.shields.io/badge/language-C17-informational)
 ![Platform](https://img.shields.io/badge/platform-Linux-lightgrey)
 ![Runtime](https://img.shields.io/badge/runtime-libc%20%2B%20libpam-success)
-[![CI](https://github.com/ohNando/fpal/actions/workflows/ci.yml/badge.svg)](https://github.com/ohNando/fpal/actions/workflows/ci.yml)
+[![CI](https://github.com/ohNando/FPAL/actions/workflows/ci.yml/badge.svg)](https://github.com/ohNando/FPAL/actions/workflows/ci.yml)
 
 </div>
 

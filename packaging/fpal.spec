@@ -3,7 +3,7 @@ Version:        0.6.1
 Release:        1%{?dist}
 Summary:        Fingerprint Auth for Linux
 License:        Apache-2.0
-URL:            https://github.com/ohNando/fpal
+URL:            https://github.com/ohNando/FPAL
 Source0:        %{name}-%{version}.tar.gz
 
 BuildRequires:  gcc
@@ -18,7 +18,8 @@ Requires:       dbus-common
 FPAL is a from-scratch userspace fingerprint driver, command line tool and PAM
 module for Match-on-Chip fingerprint sensors (currently EgisTec / LighTuning
 1c7a:0587). It talks to the sensor through usbdevfs, needs no libusb or
-libfprint, and never deletes templates stored on the sensor. The fpald service
+libfprint, and only adds or deletes fingerprints one at a time, after an
+explicit command and a typed confirmation. The fpald service
 tells GNOME that a sensor exists so the login and lock screens offer it.
 
 Installing the package does not change the PAM stack and does not start

@@ -1,6 +1,6 @@
 [Unit]
 Description=FPAL fingerprint presence service (net.reactivated.Fprint)
-Documentation=https://github.com/ohNando/fpal
+Documentation=https://github.com/ohNando/FPAL
 # GNOME asks for the sensor when it draws the login screen.
 Before=display-manager.service
 # The bus can be gone for a moment (it is restarted on updates): keep trying.

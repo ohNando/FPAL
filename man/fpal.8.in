@@ -237,5 +237,5 @@ sudo fpal delete \-\-allow\-chip\-write "Linux finger"
 .SH SEE ALSO
 .BR pam_fpal (8),
 .BR fpald (8),
-.UR https://github.com/ohNando/fpal
+.UR https://github.com/ohNando/FPAL
 .UE

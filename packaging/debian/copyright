@@ -1,6 +1,6 @@
 Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
 Upstream-Name: fpal
-Source: https://github.com/ohNando/fpal
+Source: https://github.com/ohNando/FPAL
 
 Files: *
 Copyright: 2026 ohNando
