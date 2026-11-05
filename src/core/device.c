@@ -105,6 +105,14 @@ const char *fpal_device_driver_name(const struct fpal_device *dev) {
 	return dev->drv->name;
 }
 
+size_t fpal_device_max_templates(const struct fpal_device *dev) {
+	return dev->drv->max_templates;
+}
+
+size_t fpal_device_new_id_len(const struct fpal_device *dev) {
+	return dev->drv->new_id_len;
+}
+
 const char *fpal_device_serial(const struct fpal_device *dev) {
 	return dev->serial;
 }

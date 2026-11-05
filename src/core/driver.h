@@ -30,6 +30,15 @@ struct fpal_driver {
 	const struct fpal_usb_id *ids; /* terminated by vid == 0 */
 	uint32_t caps;		      /* FPAL_CAP_* */
 	size_t priv_size;
+	/* How many templates the chip holds; at most FPAL_MAX_TEMPLATES. */
+	size_t max_templates;
+	/*
+	 * Length of the ids fpal_template_id_new() makes for this sensor. The
+	 * ids must be unique to the sensor and unlikely to repeat (at least 16
+	 * bytes of random data), never a slot index that is reused after a
+	 * delete: a stale binding must not match another finger.
+	 */
+	size_t new_id_len;
 
 	int (*open)(struct fpal_device *dev);
 	void (*close)(struct fpal_device *dev);

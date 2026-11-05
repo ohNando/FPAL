@@ -241,7 +241,7 @@ static void test_default_build_cannot_enroll(void) {
 		 FPAL_E_NOTSUP);
 	T_EQ_INT(fpal_delete(dev, &id), FPAL_E_NOTSUP);
 	T_EQ_INT(m.n_out, sent); /* nothing was sent */
-	T_EQ_INT(fpal_template_id_generate(&id), FPAL_E_NOTSUP);
+	T_EQ_INT(fpal_template_id_new(dev, &id), FPAL_E_NOTSUP);
 	fpal_device_close(dev);
 }
 #endif

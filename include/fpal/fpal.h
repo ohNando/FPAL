@@ -37,6 +37,10 @@ int fpal_device_open_first(struct fpal_device **out);
 void fpal_device_close(struct fpal_device *dev);
 
 const char *fpal_device_driver_name(const struct fpal_device *dev);
+/* How many templates the sensor holds at most (never above FPAL_MAX_TEMPLATES). */
+size_t fpal_device_max_templates(const struct fpal_device *dev);
+/* Length of the ids fpal_template_id_new() makes for this sensor. */
+size_t fpal_device_new_id_len(const struct fpal_device *dev);
 const char *fpal_device_serial(const struct fpal_device *dev);
 const char *fpal_device_fw_version(const struct fpal_device *dev);
 
@@ -80,7 +84,7 @@ typedef void (*fpal_enroll_cb)(enum fpal_enroll_event ev, uint8_t stage,
 #define FPAL_ENROLL_DRY_RUN (1u << 0)
 
 /*
- * Enrol a finger under @new_id (see fpal_template_id_generate). Fails with
+ * Enrol a finger under @new_id (see fpal_template_id_new). Fails with
  * FPAL_E_FULL when the sensor holds the maximum number of templates, and
  * with FPAL_E_EXISTS when the id or the finger is already enrolled. Existing
  * templates are never modified.
@@ -97,8 +101,15 @@ int fpal_enroll(struct fpal_device *dev, const struct fpal_template_id *new_id,
  */
 int fpal_delete(struct fpal_device *dev, const struct fpal_template_id *id);
 
-/* A fresh random id: FPAL_NEW_ID_PREFIX followed by hex digits. */
-int fpal_template_id_generate(struct fpal_template_id *out);
+/*
+ * A fresh random id for @dev: FPAL_NEW_ID_PREFIX followed by hex digits, as
+ * long as the sensor's driver wants. FPAL_E_NOTSUP in read-only builds.
+ */
+int fpal_template_id_new(const struct fpal_device *dev,
+			 struct fpal_template_id *out);
+
+/* The same for a given length (16 + the prefix up to FPAL_ID_MAX bytes). */
+int fpal_template_id_make(size_t len, struct fpal_template_id *out);
 
 /*
  * Abort a pending finger wait. Async-signal-safe: may be called from a

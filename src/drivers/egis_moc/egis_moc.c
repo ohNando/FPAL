@@ -497,6 +497,8 @@ const struct fpal_driver fpal_driver_egis_moc = {
 	.caps = FPAL_CAP_MOC,
 #endif
 	.priv_size = sizeof(struct egis_priv),
+	.max_templates = EGIS_MAX_TEMPLATES,
+	.new_id_len = EGIS_ID_LEN,
 	.open = egis_open,
 	.close = egis_close,
 	.list = egis_list,

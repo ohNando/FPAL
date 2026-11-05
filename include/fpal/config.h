@@ -128,9 +128,12 @@
 #define FPAL_LABELS_MAX 64u
 #endif
 
-/* Maximum number of templates any supported sensor can store. */
+/*
+ * Upper bound on the templates any supported sensor can store; it sizes the
+ * arrays. Each driver states its own, smaller, capacity.
+ */
 #ifndef FPAL_MAX_TEMPLATES
-#define FPAL_MAX_TEMPLATES 10u
+#define FPAL_MAX_TEMPLATES 32u
 #endif
 
 /* Longest template id any driver may use, in bytes (libfprint's longest is 128). */

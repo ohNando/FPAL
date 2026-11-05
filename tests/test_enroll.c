@@ -397,13 +397,25 @@ static void test_classify_capture(void) {
 
 static void test_generated_ids(void) {
 	struct fpal_template_id a, b;
+	struct fpal_device *dev;
+	struct mock m;
 
-	T_EQ_INT(fpal_template_id_generate(&a), FPAL_OK);
-	T_EQ_INT(fpal_template_id_generate(&b), FPAL_OK);
+	mock_init(&m);
+	dev = open_dev(&m);
+	T_CHECK(dev != NULL);
+	if (!dev)
+		return;
+	T_EQ_INT(fpal_template_id_new(dev, &a), FPAL_OK);
+	T_EQ_INT(fpal_template_id_new(dev, &b), FPAL_OK);
+	T_EQ_INT(fpal_id_len(&a), EGIS_ID_LEN); /* the driver picks the length */
 	T_CHECK(fpal_id_has_prefix(&a, FPAL_NEW_ID_PREFIX));
 	for (size_t i = 0; i < EGIS_ID_LEN; i++)
 		T_CHECK(fpal_id_data(&a)[i] >= 0x20 && fpal_id_data(&a)[i] <= 0x7e);
 	T_CHECK(!fpal_id_equal(&a, &b));
+	T_EQ_INT(fpal_template_id_new(dev, NULL), FPAL_E_INVAL);
+	T_EQ_INT(fpal_template_id_new(NULL, &a), FPAL_E_INVAL);
+	T_EQ_INT(fpal_device_max_templates(dev), EGIS_MAX_TEMPLATES);
+	fpal_device_close(dev);
 }
 
 /* ---- delete -------------------------------------------------------------- */

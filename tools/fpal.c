@@ -140,7 +140,7 @@ static int cmd_info(void) {
 
 /* The list as a table, for a person at a terminal. */
 static void print_table(const struct fpal_ui *ui,
-			const struct fpal_template_id *ids, size_t n) {
+			const struct fpal_template_id *ids, size_t n, size_t max) {
 	static const char *const head[] = { "#", "Name", "Kind", "Yours", "Id" };
 	char num[FPAL_MAX_TEMPLATES][8], name[FPAL_MAX_TEMPLATES][FPAL_LABEL_MAX + 12];
 	char sid[FPAL_MAX_TEMPLATES][40];
@@ -162,9 +162,8 @@ static void print_table(const struct fpal_ui *ui,
 					   "";
 		cells[i * 5 + 4] = sid[i];
 	}
-	printf("\n  %s%zu fingerprint(s)%s on the sensor (it holds up to %u)\n\n",
-	       fpal_ui_style(ui, UI_BOLD), n, fpal_ui_style(ui, UI_RESET),
-	       FPAL_MAX_TEMPLATES);
+	printf("\n  %s%zu fingerprint(s)%s on the sensor (it holds up to %zu)\n\n",
+	       fpal_ui_style(ui, UI_BOLD), n, fpal_ui_style(ui, UI_RESET), max);
 	if (n)
 		fpal_ui_table(ui, stdout, 5, head, n, cells);
 	printf("\n  %s\"Yours\" = bound to %s. Kind \"other\" = not created by fpal, "
@@ -176,7 +175,7 @@ static int cmd_list(int argc, char **argv) {
 	struct fpal_template_id ids[FPAL_MAX_TEMPLATES];
 	struct fpal_ui ui = fpal_ui_init(stdout);
 	struct fpal_device *dev;
-	size_t n = 0;
+	size_t n = 0, max;
 	int err;
 
 	if (argc > 2 || (argc == 2 && strcmp(argv[1], "--raw") != 0)) {
@@ -192,16 +191,16 @@ static int cmd_list(int argc, char **argv) {
 		return report(err);
 
 	err = fpal_list(dev, ids, FPAL_MAX_TEMPLATES, &n);
+	max = fpal_device_max_templates(dev);
 	close_device(dev);
 	if (err)
 		return report(err);
 
 	if (ui.fancy) {
-		print_table(&ui, ids, n);
+		print_table(&ui, ids, n, max);
 		return 0;
 	}
-	printf("%zu template(s) stored on the sensor (max %u)\n", n,
-	       FPAL_MAX_TEMPLATES);
+	printf("%zu template(s) stored on the sensor (max %zu)\n", n, max);
 	for (size_t i = 0; i < n; i++) {
 		printf("  [%zu] ", i);
 		print_id(&ids[i]);
@@ -468,13 +467,13 @@ static bool confirm(const char *message, const char *phrase) {
 	return true;
 }
 
-static bool confirm_store(size_t used) {
+static bool confirm_store(size_t used, size_t max) {
 	char msg[256];
 
 	snprintf(msg, sizeof(msg),
-		 "This stores a NEW fingerprint on the sensor (%zu of %u slots in use).\n"
+		 "This stores a NEW fingerprint on the sensor (%zu of %zu slots in use).\n"
 		 "Fingerprints already stored, including those from Windows, are not touched.",
-		 used, FPAL_MAX_TEMPLATES);
+		 used, max);
 	return confirm(msg, "yes");
 }
 
@@ -533,11 +532,11 @@ static int cmd_enroll(int argc, char **argv) {
 	}
 	printf("%zu fingerprint(s) on the sensor before\n", before);
 
-	if (!dry_run && !confirm_store(before)) {
+	if (!dry_run && !confirm_store(before, fpal_device_max_templates(dev))) {
 		close_device(dev);
 		return 1;
 	}
-	err = fpal_template_id_generate(&id);
+	err = fpal_template_id_new(dev, &id);
 	if (!err)
 		err = fpal_enroll(dev, &id, dry_run ? FPAL_ENROLL_DRY_RUN : 0,
 				  on_enroll_event, NULL);

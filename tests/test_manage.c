@@ -195,7 +195,8 @@ static int f_remove(void *ud, const struct fpal_template_id *id) {
 	return FPAL_E_NODATA;
 }
 
-static int f_new_id(struct fpal_template_id *id) {
+static int f_new_id(void *ud, struct fpal_template_id *id) {
+	(void)ud;
 	char text[TEST_ID_LEN];
 
 	snprintf(text, sizeof(text), "FPAL-new-%u", ++sensor.next_new);
@@ -219,7 +220,7 @@ static int f_enroll(void *ud, const struct fpal_template_id *id, fpal_enroll_cb 
 
 static struct fpal_manage_ops ops = {
 	.can_write = true, .list = f_list, .remove = f_remove,
-	.new_id = f_new_id, .enroll = f_enroll,
+	.new_id = f_new_id, .enroll = f_enroll, .max = 10,
 };
 
 static void reset(void) {
@@ -281,7 +282,7 @@ static void test_draw_shows_fingers_and_selection(void) {
 	size_t len = 0;
 	FILE *f = open_memstream(&buf, &len);
 	struct fpal_manage_view v = {
-		.ids = sensor.ids, .n = 2, .sel = 1, .state_dir = dir,
+		.max = 10, .ids = sensor.ids, .n = 2, .sel = 1, .state_dir = dir,
 		.user = "alice", .can_write = true,
 	};
 
@@ -302,7 +303,7 @@ static void test_draw_read_only_has_no_delete_key(void) {
 	char *buf = NULL;
 	size_t len = 0;
 	FILE *f = open_memstream(&buf, &len);
-	struct fpal_manage_view v = { .ids = sensor.ids, .n = 2, .state_dir = dir,
+	struct fpal_manage_view v = { .max = 10, .ids = sensor.ids, .n = 2, .state_dir = dir,
 				      .user = "alice", .can_write = false };
 
 	reset();
@@ -318,7 +319,7 @@ static void test_draw_utf8_selection_is_reversed(void) {
 	char *buf = NULL;
 	size_t len = 0;
 	FILE *f = open_memstream(&buf, &len);
-	struct fpal_manage_view v = { .ids = sensor.ids, .n = 2, .sel = 0,
+	struct fpal_manage_view v = { .max = 10, .ids = sensor.ids, .n = 2, .sel = 0,
 				      .state_dir = dir, .user = "alice" };
 
 	reset();
@@ -511,7 +512,7 @@ static void test_new_finger_failures(void) {
 	free(out);
 
 	reset();
-	sensor.n = FPAL_MAX_TEMPLATES; /* a full sensor never even asks */
+	sensor.n = ops.max; /* a full sensor never even asks */
 	out = session("n" "q");
 	T_CHECK(has(out, "sensor is full"));
 	T_EQ_INT(sensor.enrolled, 0);
