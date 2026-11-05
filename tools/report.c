@@ -140,7 +140,8 @@ int fpal_report_scan(const char *sysfs_dir, bool all, struct fpal_report_dev *ou
 		dev->pid = (uint16_t)attr_num(dir, "idProduct", 16, 0xffff);
 		if (!dev->vid)
 			continue;
-		snprintf(dev->port, sizeof(dev->port), "%s", ent->d_name);
+		snprintf(dev->port, sizeof(dev->port), "%.*s",
+			 (int)sizeof(dev->port) - 1, ent->d_name);
 		dev->bcd = (uint16_t)attr_num(dir, "bcdDevice", 16, 0xffff);
 		dev->speed = (unsigned)attr_num(dir, "speed", 10, 100000);
 		dev->dev_class = (uint8_t)attr_num(dir, "bDeviceClass", 16, 0xff);
