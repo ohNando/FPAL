@@ -4,6 +4,8 @@ All notable changes to FPAL. The format follows [Keep a Changelog](https://keepa
 
 ## [Unreleased]
 
+## [0.6.1] - 2026-11-05
+
 ### Security
 - `fpald` no longer stops when a local user sends it an oversize or malformed D-Bus message. Before, one such call (for example a 20 KB argument) made the service exit with status 0, which systemd does not restart, so the fingerprint option vanished from the GNOME screens until the next boot. Such messages are now skipped, and the service exits non-zero when the bus connection is lost so that it is started again.
 - `pam_fpal.so` ignores `FPAL_TRACE` and `FPAL_DEBUG`: inside sudo the environment belongs to the user, who could otherwise make the module print sensor traffic to their terminal.
@@ -20,7 +22,11 @@ All notable changes to FPAL. The format follows [Keep a Changelog](https://keepa
 
 ## [0.6.0] - 2026-11-02
 ### Added
-- `fpal manage`: a full-screen list to pick a fingerprint with the arrow keys, rename it (`r`), delete it (`d`) or add a new one (`n`). Deleting and adding ask for a typed confirmation.
+- `fpal manage`: a full-screen list of the fingerprints. Pick one with the arrow keys (or `j`/`k`, Home, End), rename it (`r`), delete it (`d`), add a new one bound to you (`n`) or quit (`q`, Esc). It needs root and a terminal.
+- Deleting and adding ask for a typed confirmation first: `yes`, or `DELETE` for a fingerprint fpal did not create (for example from Windows Hello). Any other word, an empty line or Esc cancels, and keys pressed in the list never delete. A deleted finger is also removed from every user's bindings and its name is forgotten.
+- A read-only build (`make ENROLL=0`) does not offer `d` and `n`.
+### Changed
+- 138 unit tests (120 in the read-only build); CI now also catches warnings from Ubuntu's compiler.
 
 ## [0.5.0] - 2026-11-02
 ### Added

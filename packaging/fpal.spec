@@ -1,5 +1,5 @@
 Name:           fpal
-Version:        0.6.0
+Version:        0.6.1
 Release:        1%{?dist}
 Summary:        Fingerprint Auth for Linux
 License:        Apache-2.0
@@ -73,6 +73,14 @@ exit 0
 %{_docdir}/%{name}/
 
 %changelog
+* Thu Nov 05 2026 ohNando <emirhanbuldurucu12@gmail.com> - 0.6.1-1
+- Security: a local user could stop fpald with one oversize D-Bus message, which
+  removed the fingerprint option from the GNOME screens until the next boot
+- fpald exits with a non-zero status when the bus connection is lost, so
+  systemd starts it again
+- pam_fpal ignores FPAL_TRACE and FPAL_DEBUG from the caller's environment
+- Stricter fingerprint names, hardened link flags, a fuzzer and sanitizer CI
+
 * Mon Nov 02 2026 ohNando <emirhanbuldurucu12@gmail.com> - 0.6.0-1
 - Add fpal manage, a full-screen list to rename, delete and add fingers with
   the arrow keys; deleting and adding ask for a typed confirmation
