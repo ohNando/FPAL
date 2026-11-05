@@ -175,7 +175,7 @@ as_install() {
 	run authselect select "custom/$PROFILE" $feats -b
 	run authselect apply-changes
 	services_install
-	say "custom/$PROFILE active ($feats)"
+	[ "$DRY_RUN" = 1 ] || say "custom/$PROFILE active ($feats)"
 }
 
 as_revert() {
@@ -185,7 +185,7 @@ as_revert() {
 	# shellcheck disable=SC2086
 	run authselect select "$BASE" $feats -b
 	services_revert
-	say "$BASE active again, fprintd unmasked, fpald stopped"
+	[ "$DRY_RUN" = 1 ] || say "$BASE active again, fprintd unmasked, fpald stopped"
 }
 
 as_status() {
@@ -227,7 +227,7 @@ pau_install() {
 	fi
 	run pam-auth-update --enable "$PROFILE"
 	services_install
-	say "the fpal PAM profile is enabled; undo with: fpal setup --revert"
+	[ "$DRY_RUN" = 1 ] || say "the fpal PAM profile is enabled; undo with: fpal setup --revert"
 }
 
 pau_revert() {
@@ -235,7 +235,7 @@ pau_revert() {
 	have pam-auth-update || die "pam-auth-update not found"
 	run pam-auth-update --remove "$PROFILE"
 	services_revert
-	say "the fpal PAM profile is removed, fprintd unmasked, fpald stopped"
+	[ "$DRY_RUN" = 1 ] || say "the fpal PAM profile is removed, fprintd unmasked, fpald stopped"
 }
 
 pau_status() {
@@ -320,3 +320,7 @@ manual) manual "$action" ;;
 authselect) "as_$action" ;;
 pam-auth-update) "pau_$action" ;;
 esac
+
+if [ "$DRY_RUN" = 1 ]; then
+	say "dry run finished: nothing was changed"
+fi
