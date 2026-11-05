@@ -40,11 +40,11 @@ static void test_finds_the_installed_layout(void) {
 	path_in(bin, sizeof(bin), "bin");
 	(void)mkdir(bin, 0755);
 	(void)mkdir(dir, 0755);
-	path_in(script, sizeof(script), "share/fpal/authselect-fpal.sh");
+	path_in(script, sizeof(script), "share/fpal/platform.sh");
 	touch(script, 0755);
 
 	T_EQ_INT(fpal_setup_find_script(bin, found, sizeof(found)), FPAL_OK);
-	T_CHECK(strstr(found, "share/fpal/authselect-fpal.sh") != NULL);
+	T_CHECK(strstr(found, "share/fpal/platform.sh") != NULL);
 	T_CHECK(found[0] == '/'); /* resolved, no "../" left */
 	T_CHECK(strstr(found, "..") == NULL);
 }
@@ -58,11 +58,11 @@ static void test_finds_a_source_checkout(void) {
 	(void)mkdir(script, 0755);
 	(void)mkdir(dir, 0755);
 	(void)mkdir(build, 0755);
-	path_in(script, sizeof(script), "checkout/scripts/authselect-fpal.sh");
+	path_in(script, sizeof(script), "checkout/scripts/platform.sh");
 	touch(script, 0755);
 
 	T_EQ_INT(fpal_setup_find_script(build, found, sizeof(found)), FPAL_OK);
-	T_CHECK(strstr(found, "scripts/authselect-fpal.sh") != NULL);
+	T_CHECK(strstr(found, "scripts/platform.sh") != NULL);
 }
 
 static void test_missing_script(void) {

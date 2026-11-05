@@ -160,6 +160,7 @@ install: $(BUILD)/fpal $(PAM_MOD) install-fpald
 	@test -n "$(PAMDIR)" || { echo "PAMDIR not found, set PAMDIR=..."; exit 1; }
 	install -D -m 0755 $(BUILD)/fpal $(DESTDIR)$(SBINDIR)/fpal
 	install -D -m 0755 $(PAM_MOD) $(DESTDIR)$(PAMDIR)/pam_fpal.so
+	install -D -m 0755 scripts/platform.sh $(DESTDIR)$(DATADIR)/platform.sh
 	install -D -m 0755 scripts/authselect-fpal.sh $(DESTDIR)$(DATADIR)/authselect-fpal.sh
 	install -D -m 0644 README.md $(DESTDIR)$(DOCDIR)/README.md
 	install -D -m 0644 docs/usage.md $(DESTDIR)$(DOCDIR)/usage.md
@@ -205,7 +206,7 @@ dist:
 # list; a broken or missing install rule is caught here, not by a package build.
 CHECK_INSTALL_FILES := usr/sbin/fpal usr/lib64/security/pam_fpal.so \
 	usr/libexec/fpald usr/lib/systemd/system/fpald.service \
-	etc/dbus-1/system.d/fpald.conf usr/share/fpal/authselect-fpal.sh \
+	etc/dbus-1/system.d/fpald.conf usr/share/fpal/platform.sh usr/share/fpal/authselect-fpal.sh \
 	usr/share/man/man8/fpal.8 usr/share/doc/fpal/usage.md
 check-install: $(BUILD)/fpal $(BUILD)/fpald $(PAM_MOD)
 	@d=$$(mktemp -d) && trap 'rm -rf "$$d"' EXIT && \

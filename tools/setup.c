@@ -11,7 +11,7 @@
 
 #include "fpal/types.h"
 
-#define SCRIPT "authselect-fpal.sh"
+#define SCRIPT "platform.sh"
 
 int fpal_setup_find_script(const char *exe_dir, char *out, size_t cap) {
 	static const char *const layouts[] = {

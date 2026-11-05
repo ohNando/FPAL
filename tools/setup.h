@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /*
  * "fpal setup": switch the system so sudo, su and the GNOME screens use the
- * fingerprint, or back. The work is done by authselect-fpal.sh, which is
+ * fingerprint, or back. The work is done by platform.sh, which is
  * installed next to fpal; this command finds it and runs it.
  */
 #ifndef FPAL_TOOLS_SETUP_H
@@ -12,7 +12,7 @@
 #include <sys/types.h>
 
 /*
- * Where authselect-fpal.sh lives for an fpal found at @exe_dir: the install
+ * Where platform.sh lives for an fpal found at @exe_dir: the install
  * layout (<prefix>/bin/fpal -> <prefix>/share/fpal/) first, then a source
  * checkout (build/fpal -> scripts/). Copies the path into @out.
  */
