@@ -101,23 +101,56 @@ answers for GNOME, and whether
 is masked. Anything missing is listed with what to do about it. The exit
 status is 1 if something is missing.
 .TP
-.BR setup " [" \-\-revert ]
+.BR setup " [" \-\-revert "] [" \-\-dry\-run "] [" \-\-no\-services "] [" \-\-backend " \fIname\fR]"
 Make
 .BR sudo (8),
 .BR su (1)
-and the GNOME login and lock screens use the fingerprint: select the
-authselect profile with
-.BR pam_fpal ,
-mask
+and the GNOME login and lock screens use the fingerprint: put
+.B pam_fpal
+in the PAM stack the way the system does it, mask
 .BR fprintd ,
 and start
 .BR fpald (8).
+The backend is
+.B authselect
+(Fedora, RHEL: the
+.B custom/fpal
+profile),
+.B pam\-auth\-update
+(Debian, Ubuntu: the
+.B fpal
+profile) or
+.BR manual ,
+which changes nothing and prints what to do by hand; by default the first one
+the system has is used.
 .B \-\-revert
-goes back. It runs
-.IR authselect\-fpal.sh ,
+goes back.
+.B \-\-dry\-run
+only says what would be done and needs no root.
+.B \-\-no\-services
+leaves
+.B fprintd
+and
+.B fpald
+alone. The work is done by
+.IR platform.sh ,
 which is installed next to
-.BR fpal ,
-and needs root. Only authselect systems (Fedora, RHEL) are supported so far.
+.BR fpal ;
+a real run needs root.
+.TP
+.BR report " [" \-\-markdown "] [" \-\-all ]
+Describe the USB fingerprint sensor for a bug report or a request for a new
+sensor: its id, interfaces and endpoints, what libfprint calls the chip, and
+whether
+.B fpal
+supports it. It reads
+.I /sys
+only, needs no root, sends nothing to the device and leaves out the serial
+number.
+.B \-\-markdown
+fences the output for pasting into an issue;
+.B \-\-all
+lists every USB device, not only the likely sensors.
 .TP
 .B version
 Show the version.
@@ -204,5 +237,5 @@ sudo fpal delete \-\-allow\-chip\-write "Linux finger"
 .SH SEE ALSO
 .BR pam_fpal (8),
 .BR fpald (8),
-.UR https://github.com/ohNando/fpal
+.UR https://github.com/ohNando/FPAL
 .UE

@@ -32,7 +32,7 @@ static void on_signal(int sig) {
 }
 
 static bool sensor_present(void *ud) {
-	struct fpal_usb_info info[4];
+	struct fpal_sensor_info info[4];
 	size_t n = 0;
 
 	(void)ud;

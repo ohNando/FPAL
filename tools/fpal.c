@@ -30,6 +30,7 @@
 #include "finger.h"
 #include "manage.h"
 #include "setup.h"
+#include "report.h"
 #include "status.h"
 #include "ui.h"
 
@@ -55,6 +56,8 @@ static void usage(FILE *f) {
 	      "                    show, set or clear the name of a finger\n"
 	      "  manage            pick fingers with the arrow keys: rename, delete, add\n"
 	      "  status [USER]     show whether fingerprint login is set up\n"
+	      "  report [--markdown] [--all]\n"
+	      "                    describe the USB sensor for a bug report (no root needed)\n"
 	      "  setup [--revert]  make sudo, su and the GNOME screens use the fingerprint\n"
 #ifdef FPAL_ENABLE_ENROLL
 	      "  enroll [--dry-run] [--allow-chip-write] [--name NAME] USER\n"
@@ -75,16 +78,11 @@ static void usage(FILE *f) {
 
 static void print_id(const struct fpal_template_id *id) {
 	char label[FPAL_LABEL_MAX + 1];
+	char hex[FPAL_ID_HEX_MAX + 1], text[FPAL_ID_HEX_MAX / 2 + 1];
 
-	for (size_t i = 0; i < FPAL_TEMPLATE_ID_LEN; i++)
-		printf("%02x", id->bytes[i]);
-	fputs("  \"", stdout);
-	for (size_t i = 0; i < FPAL_TEMPLATE_ID_LEN; i++) {
-		uint8_t c = id->bytes[i];
-
-		putchar(c >= 0x20 && c <= 0x7e ? c : '.');
-	}
-	putchar('"');
+	(void)fpal_id_to_hex(id, hex, sizeof(hex));
+	fpal_id_text(id, text, sizeof(text));
+	printf("%s  \"%s\"", hex, text);
 	if (!fpal_labels_get(FPAL_STATE_DIR, id, label, sizeof(label)) &&
 	    label[0])
 		printf("  %s", label);
@@ -116,7 +114,7 @@ static void close_device(struct fpal_device *dev) {
 }
 
 static int cmd_info(void) {
-	struct fpal_usb_info info[4];
+	struct fpal_sensor_info info[4];
 	struct fpal_device *dev;
 	size_t n = 0;
 	int err;
@@ -145,9 +143,9 @@ static int cmd_info(void) {
 
 /* The list as a table, for a person at a terminal. */
 static void print_table(const struct fpal_ui *ui,
-			const struct fpal_template_id *ids, size_t n) {
+			const struct fpal_template_id *ids, size_t n, size_t max) {
 	static const char *const head[] = { "#", "Name", "Kind", "Yours", "Id" };
-	char num[FPAL_MAX_TEMPLATES][8], name[FPAL_MAX_TEMPLATES][FPAL_LABEL_MAX + 12];
+	char num[FPAL_MAX_TEMPLATES][24], name[FPAL_MAX_TEMPLATES][FPAL_LABEL_MAX + 12];
 	char sid[FPAL_MAX_TEMPLATES][40];
 	const char *cells[FPAL_MAX_TEMPLATES * 5];
 	const char *user = fpal_ui_invoking_user();
@@ -167,9 +165,8 @@ static void print_table(const struct fpal_ui *ui,
 					   "";
 		cells[i * 5 + 4] = sid[i];
 	}
-	printf("\n  %s%zu fingerprint(s)%s on the sensor (it holds up to %u)\n\n",
-	       fpal_ui_style(ui, UI_BOLD), n, fpal_ui_style(ui, UI_RESET),
-	       FPAL_MAX_TEMPLATES);
+	printf("\n  %s%zu fingerprint(s)%s on the sensor (it holds up to %zu)\n\n",
+	       fpal_ui_style(ui, UI_BOLD), n, fpal_ui_style(ui, UI_RESET), max);
 	if (n)
 		fpal_ui_table(ui, stdout, 5, head, n, cells);
 	printf("\n  %s\"Yours\" = bound to %s. Kind \"other\" = not created by fpal, "
@@ -181,7 +178,7 @@ static int cmd_list(int argc, char **argv) {
 	struct fpal_template_id ids[FPAL_MAX_TEMPLATES];
 	struct fpal_ui ui = fpal_ui_init(stdout);
 	struct fpal_device *dev;
-	size_t n = 0;
+	size_t n = 0, max;
 	int err;
 
 	if (argc > 2 || (argc == 2 && strcmp(argv[1], "--raw") != 0)) {
@@ -197,16 +194,16 @@ static int cmd_list(int argc, char **argv) {
 		return report(err);
 
 	err = fpal_list(dev, ids, FPAL_MAX_TEMPLATES, &n);
+	max = fpal_device_max_templates(dev);
 	close_device(dev);
 	if (err)
 		return report(err);
 
 	if (ui.fancy) {
-		print_table(&ui, ids, n);
+		print_table(&ui, ids, n, max);
 		return 0;
 	}
-	printf("%zu template(s) stored on the sensor (max %u)\n", n,
-	       FPAL_MAX_TEMPLATES);
+	printf("%zu template(s) stored on the sensor (max %zu)\n", n, max);
 	for (size_t i = 0; i < n; i++) {
 		printf("  [%zu] ", i);
 		print_id(&ids[i]);
@@ -473,13 +470,13 @@ static bool confirm(const char *message, const char *phrase) {
 	return true;
 }
 
-static bool confirm_store(size_t used) {
+static bool confirm_store(size_t used, size_t max) {
 	char msg[256];
 
 	snprintf(msg, sizeof(msg),
-		 "This stores a NEW fingerprint on the sensor (%zu of %u slots in use).\n"
+		 "This stores a NEW fingerprint on the sensor (%zu of %zu slots in use).\n"
 		 "Fingerprints already stored, including those from Windows, are not touched.",
-		 used, FPAL_MAX_TEMPLATES);
+		 used, max);
 	return confirm(msg, "yes");
 }
 
@@ -538,11 +535,11 @@ static int cmd_enroll(int argc, char **argv) {
 	}
 	printf("%zu fingerprint(s) on the sensor before\n", before);
 
-	if (!dry_run && !confirm_store(before)) {
+	if (!dry_run && !confirm_store(before, fpal_device_max_templates(dev))) {
 		close_device(dev);
 		return 1;
 	}
-	err = fpal_template_id_generate(&id);
+	err = fpal_template_id_new(dev, &id);
 	if (!err)
 		err = fpal_enroll(dev, &id, dry_run ? FPAL_ENROLL_DRY_RUN : 0,
 				  on_enroll_event, NULL);
@@ -756,6 +753,8 @@ int main(int argc, char **argv) {
 		return fpal_cmd_manage(argc - 1, argv + 1);
 	if (strcmp(cmd, "status") == 0)
 		return fpal_cmd_status(argc - 1, argv + 1);
+	if (strcmp(cmd, "report") == 0)
+		return fpal_cmd_report(argc - 1, argv + 1);
 	if (strcmp(cmd, "setup") == 0)
 		return fpal_cmd_setup(argc - 1, argv + 1);
 	if (strcmp(cmd, "label") == 0)

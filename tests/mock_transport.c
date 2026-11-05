@@ -36,6 +36,50 @@ static int m_control_in(void *ctx, uint8_t req_type, uint8_t req,
 	(void)req_type, (void)req, (void)value, (void)index, (void)timeout_ms;
 	m->ctrls++;
 	memset(buf, 0, len);
+	if (m->i_ctrl_in < m->n_ctrl_in) {
+		const struct mock_frame *f = &m->ctrl_in[m->i_ctrl_in++];
+
+		memcpy(buf, f->data, f->len < len ? f->len : len);
+	}
+	return FPAL_OK;
+}
+
+static int m_control_out(void *ctx, uint8_t req_type, uint8_t req,
+			 uint16_t value, uint16_t index, const uint8_t *buf,
+			 uint16_t len, uint32_t timeout_ms) {
+	struct mock *m = ctx;
+	struct mock_ctrl *c;
+
+	(void)timeout_ms;
+	if (m->n_ctrl_out >= MOCK_MAX_CTRL || len > MOCK_CTRL_DATA)
+		return FPAL_E_IO;
+	c = &m->ctrl_out[m->n_ctrl_out++];
+	c->req_type = req_type;
+	c->req = req;
+	c->value = value;
+	c->index = index;
+	c->len = len;
+	if (len)
+		memcpy(c->data, buf, len);
+	return m->ctrl_out_rc;
+}
+
+static int m_wait_bulk_in(void *ctx, uint8_t ep, uint8_t *buf, size_t cap,
+			  size_t *got, uint32_t timeout_ms) {
+	struct mock *m = ctx;
+	const struct mock_frame *f;
+
+	(void)ep, (void)timeout_ms;
+	m->bulk_waits++;
+	if (m->irq_rc == FPAL_E_CANCELLED)
+		return FPAL_E_CANCELLED;
+	if (m->i_wait_in >= m->n_wait_in)
+		return m->bulk_wait_rc ? m->bulk_wait_rc : FPAL_E_TIMEOUT;
+	f = &m->wait_in[m->i_wait_in++];
+	if (f->len > cap)
+		return FPAL_E_OVERFLOW;
+	memcpy(buf, f->data, f->len);
+	*got = f->len;
 	return FPAL_OK;
 }
 
@@ -100,6 +144,8 @@ static const struct fpal_transport_ops mock_ops = {
 	.control_in = m_control_in,
 	.bulk_out = m_bulk_out,
 	.bulk_in = m_bulk_in,
+	.control_out = m_control_out,
+	.wait_bulk_in = m_wait_bulk_in,
 	.wait_interrupt = m_wait_interrupt,
 	.cancel = m_cancel,
 	.close = m_close,
@@ -111,6 +157,20 @@ void mock_init(struct mock *m) {
 
 struct fpal_transport mock_transport(struct mock *m) {
 	return (struct fpal_transport){ .ops = &mock_ops, .ctx = m };
+}
+
+void mock_push_ctrl_in(struct mock *m, const void *data, size_t len) {
+	if (m->n_ctrl_in >= MOCK_MAX_CTRL || len > MOCK_FRAME_MAX)
+		return;
+	memcpy(m->ctrl_in[m->n_ctrl_in].data, data, len);
+	m->ctrl_in[m->n_ctrl_in++].len = len;
+}
+
+void mock_push_wait_in(struct mock *m, const void *data, size_t len) {
+	if (m->n_wait_in >= MOCK_MAX_CTRL || len > MOCK_FRAME_MAX)
+		return;
+	memcpy(m->wait_in[m->n_wait_in].data, data, len);
+	m->wait_in[m->n_wait_in++].len = len;
 }
 
 void mock_push_egis(struct mock *m, const uint8_t *body, size_t body_len,

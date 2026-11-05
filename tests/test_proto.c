@@ -6,6 +6,7 @@
 #include "core/bytes.h"
 #include "drivers/egis_moc/egis_moc_proto.h"
 #include "mock_transport.h"
+#include "id_util.h"
 #include "t.h"
 
 static void test_frame_sensor_reset(void) {
@@ -78,7 +79,7 @@ static void test_build_check_one_id(void) {
 	uint8_t out[256];
 	size_t len = 0;
 
-	memset(id.bytes, 0xab, sizeof(id.bytes));
+	id_fill(&id, 0xab, EGIS_ID_LEN);
 	T_EQ_INT(egis_build_check(&id, 1, 0, out, sizeof(out), &len), FPAL_OK);
 
 	/* 4 len + 5 prefix + 2 len + 32 separator + 32 id + 2 suffix */
@@ -88,7 +89,7 @@ static void test_build_check_one_id(void) {
 	T_EQ_INT(fpal_get_be16(out + 9), 0x40);
 	for (size_t i = 11; i < 43; i++)
 		T_EQ_INT(out[i], 0);
-	T_EQ_MEM(out + 43, id.bytes, 32);
+	T_EQ_MEM(out + 43, fpal_id_data(&id), 32);
 	T_EQ_MEM(out + 75, "\x00\x40", 2);
 }
 
@@ -98,7 +99,8 @@ static void test_build_check_seven_ids_type2(void) {
 	uint8_t out[512];
 	size_t len = 0;
 
-	memset(ids, 0x11, sizeof(ids));
+	for (size_t i = 0; i < 7; i++)
+		id_fill(&ids[i], 0x11, TEST_ID_LEN);
 	T_EQ_INT(egis_build_check(ids, 7, EGIS_FLAG_CHECK_PREFIX_TYPE2, out,
 				  sizeof(out), &len),
 		 FPAL_OK);
@@ -109,12 +111,12 @@ static void test_build_check_seven_ids_type2(void) {
 }
 
 static void test_build_check_too_many(void) {
-	struct fpal_template_id ids[FPAL_MAX_TEMPLATES + 1];
+	struct fpal_template_id ids[EGIS_MAX_TEMPLATES + 1];
 	uint8_t out[1024];
 	size_t len;
 
 	memset(ids, 0, sizeof(ids));
-	T_EQ_INT(egis_build_check(ids, FPAL_MAX_TEMPLATES + 1, 0, out,
+	T_EQ_INT(egis_build_check(ids, EGIS_MAX_TEMPLATES + 1, 0, out,
 				  sizeof(out), &len),
 		 FPAL_E_INVAL);
 }
@@ -156,7 +158,7 @@ static void test_parse_rejects_truncated(void) {
 }
 
 static void test_parse_list(void) {
-	uint8_t body[2 * FPAL_TEMPLATE_ID_LEN];
+	uint8_t body[2 * EGIS_ID_LEN];
 	struct fpal_template_id ids[FPAL_MAX_TEMPLATES];
 	struct egis_rsp rsp;
 	struct mock m;
@@ -170,8 +172,8 @@ static void test_parse_list(void) {
 	T_EQ_INT(egis_parse(m.in[0].data, m.in[0].len, &rsp), FPAL_OK);
 	T_EQ_INT(egis_parse_list(&rsp, ids, FPAL_MAX_TEMPLATES, &n), FPAL_OK);
 	T_EQ_INT(n, 2);
-	T_EQ_MEM(ids[0].bytes, body, 32);
-	T_EQ_MEM(ids[1].bytes, body + 32, 32);
+	T_EQ_MEM(fpal_id_data(&ids[0]), body, 32);
+	T_EQ_MEM(fpal_id_data(&ids[1]), body + 32, 32);
 
 	T_EQ_INT(egis_parse_list(&rsp, ids, 1, &n), FPAL_E_OVERFLOW);
 }

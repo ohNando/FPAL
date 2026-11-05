@@ -1,0 +1,12 @@
+# External symbols that exist only when the Egis driver is built WITH write
+# support (FPAL_ENABLE_ENROLL). One per line. scripts/check-readonly.sh --symbols
+# requires that none is defined in the read-only library that login code links,
+# and with --present that all are defined in the full library.
+egis_build_commit
+egis_build_delete
+egis_classify_capture
+egis_cmd_arm_enroll
+egis_cmd_enroll_start
+egis_cmd_start_capture
+egis_cmd_read_capture
+egis_cmd_commit_start

@@ -34,6 +34,7 @@ CPPFLAGS_WRITE := $(if $(filter 0,$(ENROLL)),,-DFPAL_ENABLE_ENROLL)
 
 LIB_SRCS := src/core/device.c \
             src/core/err.c \
+            src/core/id.c \
             src/core/lock.c \
             src/core/log.c \
             src/core/newid.c \
@@ -55,7 +56,8 @@ PAM_SRCS := pam/pam_fpal.c pam/opts.c
 DAEMON_SRCS := daemon/fprint_service.c
 
 TEST_NAMES := test_proto test_egis_moc test_bindings test_pam_opts test_dbus \
-              test_dbus_conn test_fprint_service test_labels test_finger test_setup test_status test_ui test_manage test_core
+              test_dbus_conn test_fprint_service test_labels test_finger test_setup test_status test_ui test_manage test_core \
+              test_golden_egis test_id test_conformance test_report
 ifneq ($(ENROLL),0)
 TEST_NAMES += test_enroll
 endif
@@ -73,7 +75,7 @@ DAEMON_OBJS := $(DAEMON_SRCS:%.c=$(BUILD)/%.o)
 PAM_MOD  := $(BUILD)/pam_fpal.so
 TESTS    := $(TEST_NAMES:%=$(BUILD)/tests/%)
 
-.PHONY: all pam test fuzz check-login-code clean install install-fpald uninstall uninstall-fpald dist
+.PHONY: all pam test fuzz check-login-code check-install check-platform clean install install-fpald uninstall uninstall-fpald dist
 
 all: $(BUILD)/fpal $(BUILD)/fpald $(PAM_MOD)
 
@@ -95,7 +97,7 @@ $(LIB_RO): $(LIB_RO_OBJS)
 
 $(BUILD)/fpal: $(BUILD)/tools/fpal.o $(BUILD)/tools/finger.o \
                $(BUILD)/tools/setup.o $(BUILD)/tools/status.o $(BUILD)/tools/ui.o \
-               $(BUILD)/tools/manage.o \
+               $(BUILD)/tools/manage.o $(BUILD)/tools/report.o \
                $(USB_OBJS) $(LIB)
 	$(CC) $(CFLAGS) $(HARDEN_LD) $^ -o $@ $(LDFLAGS)
 
@@ -110,6 +112,11 @@ $(PAM_MOD): $(PAM_OBJS) $(USB_OBJS) $(LIB_RO) pam/pam_fpal.map
 # Objects first, archives last: a static library only supplies what is still missing.
 $(BUILD)/tests/%: $(BUILD)/tests/%.o $(BUILD)/tests/mock_transport.o $(LIB)
 	$(CC) $(CFLAGS) $(filter-out %.a,$^) $(filter %.a,$^) -o $@ $(LDFLAGS)
+
+$(BUILD)/tests/test_report: $(BUILD)/tools/report.o
+
+# The made-up sensor the conformance tests run against.
+$(BUILD)/tests/test_conformance: $(BUILD)/tests/drivers/fake_moc.o
 
 # The finger picking of the command line tool is tested on its own.
 $(BUILD)/tests/test_finger: $(BUILD)/tools/finger.o
@@ -130,7 +137,7 @@ $(BUILD)/tests/test_fprint_service: $(BUILD)/daemon/fprint_service.o
 # PAM option parsing is plain C and tested without libpam.
 $(BUILD)/tests/test_pam_opts: $(BUILD)/pam/opts.o
 
-test: $(TESTS) check-login-code
+test: $(TESTS) check-login-code check-install check-platform
 	@set -e; for t in $(TESTS); do echo "== $$t"; $$t; done
 
 # The code that runs at login must not contain the commands that write to the
@@ -140,19 +147,30 @@ FUZZ_PERCENT ?= 100
 fuzz: $(BUILD)/tests/fuzz
 	$(BUILD)/tests/fuzz $(FUZZ_PERCENT)
 
-check-login-code: $(PAM_MOD) $(BUILD)/fpald $(BUILD)/fpal
+check-login-code: $(PAM_MOD) $(BUILD)/fpald $(BUILD)/fpal $(LIB) $(LIB_RO)
+	sh scripts/check-readonly.sh --symbols $(LIB_RO) $(PAM_MOD) $(BUILD)/fpald
 	sh scripts/check-readonly.sh $(PAM_MOD) $(BUILD)/fpald $(if $(filter 0,$(ENROLL)),$(BUILD)/fpal)
+ifeq ($(ENROLL),0)
+	sh scripts/check-readonly.sh --symbols $(LIB) $(BUILD)/fpal
+else
+	sh scripts/check-readonly.sh --symbols --present $(LIB)
+endif
 
 install: $(BUILD)/fpal $(PAM_MOD) install-fpald
 	@test -n "$(PAMDIR)" || { echo "PAMDIR not found, set PAMDIR=..."; exit 1; }
 	install -D -m 0755 $(BUILD)/fpal $(DESTDIR)$(SBINDIR)/fpal
 	install -D -m 0755 $(PAM_MOD) $(DESTDIR)$(PAMDIR)/pam_fpal.so
+	install -D -m 0755 scripts/platform.sh $(DESTDIR)$(DATADIR)/platform.sh
 	install -D -m 0755 scripts/authselect-fpal.sh $(DESTDIR)$(DATADIR)/authselect-fpal.sh
+	install -D -m 0644 data/pam-configs/fpal $(DESTDIR)$(DATADIR)/pam-configs/fpal
+	$(if $(PAMCONFIGDIR),install -D -m 0644 data/pam-configs/fpal $(DESTDIR)$(PAMCONFIGDIR)/fpal)
 	install -D -m 0644 README.md $(DESTDIR)$(DOCDIR)/README.md
 	install -D -m 0644 docs/usage.md $(DESTDIR)$(DOCDIR)/usage.md
 	install -D -m 0644 docs/pam.md $(DESTDIR)$(DOCDIR)/pam.md
 	install -D -m 0644 docs/gnome.md $(DESTDIR)$(DOCDIR)/gnome.md
 	install -D -m 0644 docs/protocol-egis-moc.md $(DESTDIR)$(DOCDIR)/protocol-egis-moc.md
+	install -D -m 0644 docs/adding-a-sensor.md $(DESTDIR)$(DOCDIR)/adding-a-sensor.md
+	install -D -m 0644 docs/architecture.md $(DESTDIR)$(DOCDIR)/architecture.md
 	for p in fpal pam_fpal fpald; do \
 		install -d $(DESTDIR)$(MANDIR)/man8; \
 		sed 's|@VERSION@|$(VERSION)|' man/$$p.8.in > $(DESTDIR)$(MANDIR)/man8/$$p.8; \
@@ -172,6 +190,7 @@ uninstall: uninstall-fpald
 	rm -f $(DESTDIR)$(SBINDIR)/fpal
 	rm -f $(DESTDIR)$(PAMDIR)/pam_fpal.so
 	rm -rf $(DESTDIR)$(DATADIR) $(DESTDIR)$(DOCDIR)
+	$(if $(PAMCONFIGDIR),rm -f $(DESTDIR)$(PAMCONFIGDIR)/fpal)
 	rm -f $(DESTDIR)$(MANDIR)/man8/fpal.8 $(DESTDIR)$(MANDIR)/man8/pam_fpal.8 \
 		$(DESTDIR)$(MANDIR)/man8/fpald.8
 
@@ -185,6 +204,25 @@ dist:
 	git archive --format=tar.gz --prefix=fpal-$(VERSION)/ \
 		-o $(BUILD)/fpal-$(VERSION).tar.gz HEAD
 	@echo $(BUILD)/fpal-$(VERSION).tar.gz
+
+# The helper that "fpal setup" runs, against fake authselect and pam-auth-update.
+check-platform:
+	sh tests/platform_test.sh scripts/platform.sh
+
+# "make install" into a scratch directory must produce the files the packages
+# list; a broken or missing install rule is caught here, not by a package build.
+CHECK_INSTALL_FILES := usr/sbin/fpal usr/lib64/security/pam_fpal.so \
+	usr/libexec/fpald usr/lib/systemd/system/fpald.service \
+	etc/dbus-1/system.d/fpald.conf usr/share/fpal/platform.sh usr/share/fpal/authselect-fpal.sh \
+	usr/share/fpal/pam-configs/fpal \
+	usr/share/man/man8/fpal.8 usr/share/doc/fpal/usage.md
+check-install: $(BUILD)/fpal $(BUILD)/fpald $(PAM_MOD)
+	@d=$$(mktemp -d) && trap 'rm -rf "$$d"' EXIT && \
+	$(MAKE) --no-print-directory install DESTDIR="$$d" PREFIX=/usr \
+		PAMDIR=/usr/lib64/security >/dev/null && \
+	for f in $(CHECK_INSTALL_FILES); do \
+		test -f "$$d/$$f" || { echo "check-install: $$f was not installed"; exit 1; }; \
+	done && echo "check-install: ok"
 
 clean:
 	rm -rf build build-readonly build-enroll

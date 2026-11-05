@@ -70,6 +70,7 @@ enum fpal_line_state fpal_line_feed(struct fpal_line *l, const struct fpal_key *
 struct fpal_manage_view {
 	const struct fpal_template_id *ids;
 	size_t n, sel;
+	size_t max;	       /* how many the sensor holds */
 	const char *state_dir; /* where the names live */
 	const char *user;      /* whose bindings "Yours" refers to */
 	bool can_write;
@@ -90,7 +91,8 @@ struct fpal_manage_ops {
 	bool can_write; /* false in a read-only build: no delete, no new finger */
 	int (*list)(void *ud, struct fpal_template_id *ids, size_t cap, size_t *n);
 	int (*remove)(void *ud, const struct fpal_template_id *id);
-	int (*new_id)(struct fpal_template_id *id);
+	int (*new_id)(void *ud, struct fpal_template_id *id);
+	size_t max; /* templates the sensor holds (at most FPAL_MAX_TEMPLATES) */
 	int (*enroll)(void *ud, const struct fpal_template_id *id,
 		      fpal_enroll_cb cb, void *cb_ud);
 };

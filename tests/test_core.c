@@ -9,6 +9,7 @@
 #include "core/driver.h"
 #include "core/log.h"
 #include "core/trace.h"
+#include "driver_lint.h"
 #include "t.h"
 
 static void test_trace_follows_the_environment_until_told_otherwise(void) {
@@ -78,9 +79,30 @@ static void test_device_strings_are_made_printable(void) {
 	T_EQ_INT(empty[0], 0);
 }
 
+/* Rules every driver in the table has to follow, now and in the future. */
+static void test_every_driver_follows_the_rules(void) {
+	size_t count = 0;
+
+	for (const struct fpal_driver *const *d = fpal_drivers; *d; d++) {
+		const struct fpal_driver *drv = *d;
+
+		count++;
+		driver_lint(drv);
+		for (const struct fpal_driver *const *o = d + 1; *o; o++)
+			T_CHECK(strcmp(drv->name, (*o)->name) != 0);
+		for (const struct fpal_usb_id *id = drv->ids; id->vid; id++)
+			for (const struct fpal_driver *const *o = fpal_drivers; *o; o++)
+				for (const struct fpal_usb_id *oid = (*o)->ids; oid->vid; oid++)
+					T_CHECK(oid == id || oid->vid != id->vid ||
+						oid->pid != id->pid);
+	}
+	T_CHECK(count > 0);
+}
+
 int main(void) {
 	T_RUN(test_trace_follows_the_environment_until_told_otherwise);
 	T_RUN(test_debug_logging_can_ignore_the_environment);
 	T_RUN(test_device_strings_are_made_printable);
+	T_RUN(test_every_driver_follows_the_rules);
 	return T_DONE();
 }

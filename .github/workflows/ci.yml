@@ -9,7 +9,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Install dependencies
         run: sudo apt-get update && sudo apt-get install -y libpam0g-dev
       - name: Build
@@ -28,10 +28,55 @@ jobs:
     env:
       SAN: -fsanitize=address,undefined -fno-sanitize-recover=undefined -fno-omit-frame-pointer -O1
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Install dependencies
         run: sudo apt-get update && sudo apt-get install -y libpam0g-dev
       - name: Tests under the sanitizers
         run: make CFLAGS_EXTRA="$SAN" test
       - name: Fuzz under the sanitizers
         run: make CFLAGS_EXTRA="$SAN" fuzz FUZZ_PERCENT=20
+
+  # The shell scripts that run as root, and the version in every place.
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: shellcheck
+        run: shellcheck scripts/*.sh tests/platform_test.sh
+      - name: The version agrees everywhere
+        run: sh scripts/check-version.sh
+
+  # Build and test inside a clean container of each distribution (the Ubuntu
+  # runner's own compiler is only one of them).
+  distros:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        distro: [fedora, debian, ubuntu, arch]
+    steps:
+      - uses: actions/checkout@v5
+      - run: scripts/ci-container.sh ${{ matrix.distro }}
+
+  # "fpal setup" with the real authselect and pam-auth-update.
+  platform:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        distro: [fedora, debian, ubuntu]
+    steps:
+      - uses: actions/checkout@v5
+      - run: scripts/platform-container.sh ${{ matrix.distro }}
+
+  # The real packages: they build, hold the right files, pass the read-only
+  # check and install. (The RPM is built by the release procedure.)
+  packages:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        distro: [debian, arch]
+    steps:
+      - uses: actions/checkout@v5
+      - run: scripts/package-container.sh ${{ matrix.distro }}

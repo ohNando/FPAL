@@ -30,6 +30,15 @@ struct fpal_driver {
 	const struct fpal_usb_id *ids; /* terminated by vid == 0 */
 	uint32_t caps;		      /* FPAL_CAP_* */
 	size_t priv_size;
+	/* How many templates the chip holds; at most FPAL_MAX_TEMPLATES. */
+	size_t max_templates;
+	/*
+	 * Length of the ids fpal_template_id_new() makes for this sensor. The
+	 * ids must be unique to the sensor and unlikely to repeat (at least 16
+	 * bytes, mostly random), never a slot index that is reused after a
+	 * delete: a stale binding must not match another finger.
+	 */
+	size_t new_id_len;
 
 	int (*open)(struct fpal_device *dev);
 	void (*close)(struct fpal_device *dev);
@@ -37,11 +46,23 @@ struct fpal_driver {
 		    size_t cap, size_t *n);
 	int (*identify)(struct fpal_device *dev, uint32_t timeout_ms,
 			struct fpal_template_id *match);
-	/* Optional, NULL in read-only builds. */
+	/*
+	 * Optional, NULL in read-only builds. The core has already listed the
+	 * sensor, refused a full one and a duplicate id (@existing holds what
+	 * is stored) and reads the list back afterwards; the driver only runs
+	 * the sensor's enrol sequence, leaves it idle and reports whether a
+	 * finger it already knows was presented (FPAL_E_EXISTS). With
+	 * FPAL_ENROLL_DRY_RUN it must not store anything.
+	 */
 	int (*enroll)(struct fpal_device *dev,
-		      const struct fpal_template_id *new_id, uint32_t flags,
-		      fpal_enroll_cb cb, void *ud);
-	/* Optional, NULL in read-only builds. Deletes ONE template. */
+		      const struct fpal_template_id *new_id,
+		      const struct fpal_template_id *existing, size_t n_existing,
+		      uint32_t flags, fpal_enroll_cb cb, void *ud);
+	/*
+	 * Optional, NULL in read-only builds. Sends the command that deletes
+	 * ONE template. The core has checked that @id is stored, and reads the
+	 * list back to make sure exactly @id is gone.
+	 */
 	int (*delete_template)(struct fpal_device *dev,
 			       const struct fpal_template_id *id);
 };

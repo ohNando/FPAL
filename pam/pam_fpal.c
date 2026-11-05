@@ -52,7 +52,7 @@ static bool is_remote(pam_handle_t *pamh) {
 static bool is_bound(const struct fpal_template_id *ids, size_t n,
 		     const struct fpal_template_id *id) {
 	for (size_t i = 0; i < n; i++)
-		if (memcmp(ids[i].bytes, id->bytes, FPAL_TEMPLATE_ID_LEN) == 0)
+		if (fpal_id_equal(&ids[i], id))
 			return true;
 	return false;
 }

@@ -154,7 +154,7 @@ static void show_fingers(const char *user, unsigned *problems) {
 	struct fpal_template_id ids[FPAL_MAX_TEMPLATES];
 	char label[FPAL_LABEL_MAX + 1];
 	struct fpal_device *dev;
-	size_t n = 0, bound = 0;
+	size_t n = 0, bound = 0, max;
 	int err;
 
 	err = fpal_device_open_first(&dev);
@@ -165,6 +165,7 @@ static void show_fingers(const char *user, unsigned *problems) {
 		return;
 	}
 	err = fpal_list(dev, ids, FPAL_MAX_TEMPLATES, &n);
+	max = fpal_device_max_templates(dev);
 	fpal_device_close(dev);
 	if (err) {
 		line(UI_BAD, "Fingerprints", "cannot list them: %s",
@@ -173,7 +174,7 @@ static void show_fingers(const char *user, unsigned *problems) {
 		return;
 	}
 	line(n ? UI_OK : UI_BAD, "Fingerprints",
-	     "%zu on the sensor (it holds up to %u)", n, FPAL_MAX_TEMPLATES);
+	     "%zu on the sensor (it holds up to %zu)", n, max);
 	for (size_t i = 0; i < n; i++) {
 		const bool ours = fpal_bindings_contains(FPAL_STATE_DIR, user, &ids[i]);
 
@@ -204,7 +205,7 @@ int fpal_cmd_status(int argc, char **argv) {
 		"/etc/pam.d/system-auth", "/etc/pam.d/fingerprint-auth",
 		"/etc/pam.d/common-auth", "/etc/pam.d/sudo",
 	};
-	struct fpal_usb_info info[4];
+	struct fpal_sensor_info info[4];
 	char who[64], used[256] = "";
 	const char *user = NULL;
 	unsigned problems = 0;

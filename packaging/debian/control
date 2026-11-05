@@ -4,7 +4,7 @@ Priority: optional
 Maintainer: ohNando <emirhanbuldurucu12@gmail.com>
 Build-Depends: debhelper-compat (= 13), gcc, make, libpam0g-dev
 Standards-Version: 4.6.2
-Homepage: https://github.com/ohNando/fpal
+Homepage: https://github.com/ohNando/FPAL
 Rules-Requires-Root: no
 
 Package: fpal
@@ -13,8 +13,9 @@ Depends: ${shlibs:Depends}, ${misc:Depends}, libpam-runtime, dbus
 Description: Fingerprint Auth for Linux
  A from-scratch userspace fingerprint driver, command line tool and PAM
  module for Match-on-Chip fingerprint sensors (currently EgisTec / LighTuning
- 1c7a:0587). No libusb or libfprint is needed, and templates stored on the
- sensor are never deleted.
+ 1c7a:0587). No libusb or libfprint is needed. Fingerprints on the sensor
+ are only added or deleted one at a time, after an explicit command and a
+ typed confirmation.
  .
- Installing the package does not change the PAM stack; see
- /usr/share/doc/fpal/usage.md.
+ Installing the package does not change the PAM stack. Run "sudo fpal setup"
+ to enable it (it uses pam-auth-update) and see /usr/share/doc/fpal/usage.md.

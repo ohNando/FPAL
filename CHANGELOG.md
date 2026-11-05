@@ -4,6 +4,23 @@ All notable changes to FPAL. The format follows [Keep a Changelog](https://keepa
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-11-05
+
+### Added
+- A general driver interface for more sensors. Template ids are variable length (1 to 128 bytes, at least 16 for new ones) behind `fpal/id.h`; each driver states its own capacity and the length of the ids it creates; the transport can send control-out transfers and wait for the finger on a bulk IN endpoint (cancellable); sensors are described by `fpal_sensor_info` and opened with `fpal_device_open`. The binding and label files accept ids of any even hex length, so 64-character lines written by older versions keep working.
+- The safety rules for writing now live in the core and apply to every driver: the sensor is listed first, a full sensor or an id that already exists is refused before the sensor is touched, and after an enrol or delete the sensor's own list is read back and must show exactly the expected change.
+- `fpal report [--markdown] [--all]`: describes the USB fingerprint sensor (id, interfaces, endpoints, what libfprint calls the chip, whether FPAL supports it) for a bug report. It reads `/sys` only, needs no root and leaves out the serial number. A "New sensor report" issue form goes with it.
+- `fpal setup` works on Debian and Ubuntu (`pam-auth-update`, with a PAM profile called `fpal`) as well as on Fedora and RHEL (`authselect`), and prints the steps on other systems. New options: `--dry-run`, `--backend`, `--no-services`. The helper script is now `platform.sh`; `authselect-fpal.sh` stays for one release. `--revert` also takes out the `with-fingerprint` feature when `fpal setup` was the one that added it.
+- Debian and Arch packages build in CI containers; the CI also builds and tests on Fedora, Debian, Ubuntu and Arch, runs `fpal setup` against the real `authselect` and `pam-auth-update`, and checks the shell scripts and the version numbers.
+- `docs/adding-a-sensor.md` and `docs/architecture.md`; a made-up sensor (`tests/drivers/fake_moc.c`) with conformance tests that every driver has to pass.
+
+### Changed
+- The read-only guarantee of the login code is checked on the symbols of the library (`nm`) instead of byte patterns alone, with each driver listing its write-only symbols in `readonly.symbols`.
+- `FPAL_MAX_TEMPLATES` (now 32) only sizes arrays; the real capacity comes from the driver.
+
+### Fixed
+- The row number buffer of the `fpal list` table was too small for the compiler to prove safe under `-O1`.
+
 ## [0.6.1] - 2026-11-05
 
 ### Security

@@ -15,8 +15,7 @@
 
 #include "fpal/labels.h"
 
-#define HEX_LEN (FPAL_TEMPLATE_ID_LEN * 2u)
-#define LINE_MAX_LEN (HEX_LEN + 1u + FPAL_LABEL_MAX + 2u)
+#define LINE_MAX_LEN (FPAL_ID_HEX_MAX + 1u + FPAL_LABEL_MAX + 2u)
 
 struct entry {
 	struct fpal_template_id id;
@@ -96,24 +95,14 @@ static int path_of(const char *dir, char *buf, size_t cap) {
 	return (len < 0 || (size_t)len >= cap) ? FPAL_E_OVERFLOW : FPAL_OK;
 }
 
-static int hex_nibble(char c) {
-	if (c >= '0' && c <= '9')
-		return c - '0';
-	if (c >= 'a' && c <= 'f')
-		return c - 'a' + 10;
-	return -1;
-}
+/* "<hex id>\t<name>": split at the tab, the id is lower case hex. */
+static bool parse_line(char *line, struct fpal_template_id *id, const char **label) {
+	char *tab = strchr(line, '\t');
 
-static bool parse_id(const char *s, struct fpal_template_id *id) {
-	for (size_t i = 0; i < FPAL_TEMPLATE_ID_LEN; i++) {
-		const int hi = hex_nibble(s[2 * i]);
-		const int lo = hex_nibble(s[2 * i + 1]);
-
-		if (hi < 0 || lo < 0)
-			return false;
-		id->bytes[i] = (uint8_t)(hi << 4 | lo);
-	}
-	return true;
+	if (!tab || fpal_id_from_hex(line, (size_t)(tab - line), false, id) != FPAL_OK)
+		return false;
+	*label = tab + 1;
+	return fpal_label_valid(*label);
 }
 
 static int load(const char *dir, struct entry *e, size_t *n) {
@@ -150,15 +139,21 @@ static int load(const char *dir, struct entry *e, size_t *n) {
 	while (fgets(line, sizeof(line), f) && count < FPAL_LABELS_MAX) {
 		char *nl = strchr(line, '\n');
 		struct entry *cur = &e[count];
+		const char *label;
 
-		if (!nl)
+		if (!nl) {
+			if (strlen(line) == sizeof(line) - 1) {
+				int c; /* drain: a fragment is not a line */
+
+				while ((c = fgetc(f)) != EOF && c != '\n')
+					;
+			}
 			continue; /* over long line */
+		}
 		*nl = '\0';
-		if (strlen(line) <= HEX_LEN + 1 || line[HEX_LEN] != '\t' ||
-		    !parse_id(line, &cur->id) ||
-		    !fpal_label_valid(line + HEX_LEN + 1))
+		if (!parse_line(line, &cur->id, &label))
 			continue; /* ignore malformed lines */
-		strcpy(cur->label, line + HEX_LEN + 1);
+		strcpy(cur->label, label);
 		count++;
 	}
 	fclose(f);
@@ -192,9 +187,10 @@ static int store(const char *dir, const struct entry *e, size_t n) {
 		return FPAL_E_NOMEM;
 	}
 	for (size_t i = 0; i < n; i++) {
-		for (size_t b = 0; b < FPAL_TEMPLATE_ID_LEN; b++)
-			fprintf(f, "%02x", e[i].id.bytes[b]);
-		fprintf(f, "\t%s\n", e[i].label);
+		char hex[FPAL_ID_HEX_MAX + 1];
+
+		(void)fpal_id_to_hex(&e[i].id, hex, sizeof(hex));
+		fprintf(f, "%s\t%s\n", hex, e[i].label);
 	}
 	if (fflush(f) != 0 || fsync(fileno(f)) != 0) {
 		fclose(f);
@@ -212,7 +208,7 @@ static int store(const char *dir, const struct entry *e, size_t n) {
 static size_t index_of(const struct entry *e, size_t n,
 		       const struct fpal_template_id *id) {
 	for (size_t i = 0; i < n; i++)
-		if (!memcmp(e[i].id.bytes, id->bytes, FPAL_TEMPLATE_ID_LEN))
+		if (fpal_id_equal(&e[i].id, id))
 			return i;
 	return n;
 }

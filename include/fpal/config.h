@@ -15,7 +15,7 @@
 
 /* Release version, shown by "fpal version". */
 #ifndef FPAL_VERSION
-#define FPAL_VERSION "0.6.1"
+#define FPAL_VERSION "0.7.0"
 #endif
 
 /* ---- Timeouts (milliseconds) ------------------------------------------- */
@@ -128,14 +128,17 @@
 #define FPAL_LABELS_MAX 64u
 #endif
 
-/* Maximum number of templates any supported sensor can store. */
+/*
+ * Upper bound on the templates any supported sensor can store; it sizes the
+ * arrays. Each driver states its own, smaller, capacity.
+ */
 #ifndef FPAL_MAX_TEMPLATES
-#define FPAL_MAX_TEMPLATES 10u
+#define FPAL_MAX_TEMPLATES 32u
 #endif
 
-/* Size of a template identifier as reported by the sensor. */
-#ifndef FPAL_TEMPLATE_ID_LEN
-#define FPAL_TEMPLATE_ID_LEN 32u
+/* Longest template id any driver may use, in bytes (libfprint's longest is 128). */
+#ifndef FPAL_ID_MAX
+#define FPAL_ID_MAX 128u
 #endif
 
 /* Largest single bulk IN response we accept. */

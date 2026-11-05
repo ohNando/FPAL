@@ -11,6 +11,7 @@
 #ifndef FPAL_BINDINGS_H
 #define FPAL_BINDINGS_H
 
+#include "id.h"
 #include "types.h"
 
 /* True if @user is a safe file name (portable POSIX user name subset). */

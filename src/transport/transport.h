@@ -28,6 +28,14 @@ struct fpal_transport_ops {
 			  uint16_t value, uint16_t index, uint8_t *buf,
 			  uint16_t len, uint32_t timeout_ms);
 
+	/*
+	 * Host-to-device control transfer of @len bytes (the direction bit of
+	 * @req_type is ignored). NULL when a transport cannot do it.
+	 */
+	int (*control_out)(void *ctx, uint8_t req_type, uint8_t req,
+			   uint16_t value, uint16_t index, const uint8_t *buf,
+			   uint16_t len, uint32_t timeout_ms);
+
 	int (*bulk_out)(void *ctx, uint8_t ep, const uint8_t *buf, size_t len,
 			uint32_t timeout_ms);
 	int (*bulk_in)(void *ctx, uint8_t ep, uint8_t *buf, size_t cap,
@@ -40,7 +48,15 @@ struct fpal_transport_ops {
 	int (*wait_interrupt)(void *ctx, uint8_t ep, uint8_t *buf, size_t cap,
 			      size_t *got, uint32_t timeout_ms);
 
-	/* Abort a pending wait_interrupt(). Must be async-signal-safe. */
+	/*
+	 * Like wait_interrupt, but for sensors that signal the finger with a
+	 * bulk IN transfer. Abortable with cancel() as well.
+	 */
+	int (*wait_bulk_in)(void *ctx, uint8_t ep, uint8_t *buf, size_t cap,
+			    size_t *got, uint32_t timeout_ms);
+
+	/* Abort a pending wait_interrupt() or wait_bulk_in(). Must be
+	 * async-signal-safe. */
 	void (*cancel)(void *ctx);
 
 	void (*close)(void *ctx);

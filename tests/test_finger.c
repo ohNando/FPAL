@@ -8,6 +8,7 @@
 
 #include "../tools/finger.h"
 #include "fpal/labels.h"
+#include "id_util.h"
 #include "t.h"
 
 static char dir[64];
@@ -15,10 +16,13 @@ static struct fpal_template_id ids[3];
 
 static void setup(void) {
 	/* [0] binary like a Windows id, [1] and [2] made by FPAL */
-	for (size_t i = 0; i < FPAL_TEMPLATE_ID_LEN; i++)
-		ids[0].bytes[i] = (uint8_t)(0x7d + i * 7);
-	memcpy(ids[1].bytes, "FPAL-7b516a3ef8dab92ad49f9124678", 32);
-	memcpy(ids[2].bytes, "FPAL-7b99ffffffffffffffffffffff0", 32);
+	uint8_t raw[TEST_ID_LEN];
+
+	for (size_t i = 0; i < sizeof(raw); i++)
+		raw[i] = (uint8_t)(0x7d + i * 7);
+	(void)fpal_id_set(&ids[0], raw, sizeof(raw));
+	id_pad(&ids[1], "FPAL-7b516a3ef8dab92ad49f9124678", TEST_ID_LEN);
+	id_pad(&ids[2], "FPAL-7b99ffffffffffffffffffffff0", TEST_ID_LEN);
 	fpal_labels_set(dir, &ids[0], "Windows finger");
 	fpal_labels_set(dir, &ids[1], "Linux finger");
 }

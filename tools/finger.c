@@ -19,31 +19,24 @@ static bool all_digits(const char *s) {
 
 /* Does @arg start the lower-case hex form of @id? */
 static bool hex_prefix_of(const struct fpal_template_id *id, const char *arg) {
+	char hex[FPAL_ID_HEX_MAX + 1];
 	const size_t len = strlen(arg);
 
-	if (len < 8 || len > FPAL_TEMPLATE_ID_LEN * 2)
+	if (len < 8 || fpal_id_to_hex(id, hex, sizeof(hex)) != FPAL_OK ||
+	    len > strlen(hex))
 		return false;
-	for (size_t i = 0; i < len; i++) {
-		const uint8_t byte = id->bytes[i / 2];
-		const char want = "0123456789abcdef"[i % 2 ? byte & 15 : byte >> 4];
-
-		if (arg[i] != want)
-			return false;
-	}
-	return true;
+	return strncmp(hex, arg, len) == 0;
 }
 
 /* Does @arg start the printable text of @id (e.g. "FPAL-7b51")? */
 static bool text_prefix_of(const struct fpal_template_id *id, const char *arg) {
 	const size_t len = strlen(arg);
 
-	return len >= 6 && len <= FPAL_TEMPLATE_ID_LEN &&
-	       !memcmp(id->bytes, arg, len);
+	return len >= 6 && fpal_id_has_prefix(id, arg);
 }
 
 bool fpal_finger_is_ours(const struct fpal_template_id *id) {
-	return !memcmp(id->bytes, FPAL_NEW_ID_PREFIX,
-		       sizeof(FPAL_NEW_ID_PREFIX) - 1);
+	return fpal_id_has_prefix(id, FPAL_NEW_ID_PREFIX);
 }
 
 int fpal_finger_find(const char *state_dir, const struct fpal_template_id *ids,

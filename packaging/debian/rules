@@ -1,5 +1,6 @@
 #!/usr/bin/make -f
 # dpkg-buildflags provide CFLAGS/LDFLAGS through the environment.
+include /usr/share/dpkg/architecture.mk
 export DEB_BUILD_MAINT_OPTIONS = hardening=+all
 
 %:
@@ -16,9 +17,11 @@ override_dh_auto_install:
 		PAMDIR=/usr/lib/$(DEB_HOST_MULTIARCH)/security \
 		DOCDIR=/usr/share/doc/fpal DATADIR=/usr/share/fpal \
 		LIBEXECDIR=/usr/libexec UNITDIR=/usr/lib/systemd/system \
-		POLICYDIR=/usr/share/dbus-1/system.d
+		POLICYDIR=/usr/share/dbus-1/system.d \
+		PAMCONFIGDIR=/usr/share/pam-configs
 
-# Installing the package must not start the service: authselect-fpal.sh does.
+# Installing the package must not start the service or change the PAM stack:
+# "fpal setup" does.
 override_dh_installsystemd:
 	dh_installsystemd --name=fpald --no-enable --no-start
 

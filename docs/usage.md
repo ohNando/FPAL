@@ -2,7 +2,7 @@
 
 ## Packages
 
-Packaging files live in `packaging/`: an RPM spec (`packaging/fpal.spec`, Fedora / RHEL), Debian files (`packaging/debian/`) and an Arch `PKGBUILD` (`packaging/arch/`). Only the RPM is tested. Installing a package never changes the PAM stack; the helper script is installed as `/usr/share/fpal/authselect-fpal.sh` (use it instead of `scripts/authselect-fpal.sh` below).
+Packaging files live in `packaging/`: an RPM spec (`packaging/fpal.spec`, Fedora / RHEL), Debian files (`packaging/debian/`) and an Arch `PKGBUILD` (`packaging/arch/`). The RPM is what the maintainer installs on the tested machine. The Debian and Arch packages are built in containers by CI, which checks their contents, the read-only guarantee of the login code, installing them and (Debian, Ubuntu) `fpal setup`, but they have not been tried on a real machine with a sensor. Installing a package never changes the PAM stack or starts a service; `sudo fpal setup` does. The helper it runs is installed as `/usr/share/fpal/platform.sh`.
 
 To build the RPM from a checkout:
 
@@ -13,7 +13,16 @@ mkdir -p ~/rpmbuild/SOURCES && cp build/fpal-*.tar.gz ~/rpmbuild/SOURCES/
 rpmbuild -ba packaging/fpal.spec
 ```
 
-For Debian, copy `packaging/debian` to `debian` in the source tree and run `dpkg-buildpackage -us -uc`.
+To build the `.deb` (Debian, Ubuntu):
+
+```sh
+sudo apt install build-essential debhelper libpam0g-dev
+cp -r packaging/debian debian
+dpkg-buildpackage -b -us -uc
+sudo apt install ../fpal_*.deb
+```
+
+For Arch, build from the release tarball (`makepkg -si` in `packaging/arch/`); `scripts/package-container.sh debian|arch` shows both builds in a throw-away container.
 
 ## Build and install
 
@@ -21,7 +30,7 @@ You need a C compiler, `make` and the `libpam` headers:
 
 ```sh
 sudo dnf install gcc make pam-devel      # Fedora
-sudo apt install gcc make libpam0g-dev   # Debian / Ubuntu (untested)
+sudo apt install gcc make libpam0g-dev   # Debian / Ubuntu
 
 make            # build/fpal, build/fpald, build/pam_fpal.so
 make test       # unit tests, no hardware needed
@@ -120,11 +129,11 @@ A finger FPAL did not create (its id does not start with `FPAL-`, so it most lik
 
 ```sh
 sudo fpal bind $USER
-sudo fpal setup            # Fedora / RHEL (authselect)
+sudo fpal setup            # Fedora / RHEL (authselect), Debian / Ubuntu (pam-auth-update)
 fpal status                # check that it is all in place
 ```
 
-`fpal setup` masks `fprintd`, selects an authselect profile called `custom/fpal` and starts `fpald` for GNOME (see [gnome.md](gnome.md)); `sudo fpal setup --revert` undoes it. It runs `authselect-fpal.sh`, which is installed next to `fpal` (`/usr/share/fpal/`, or `scripts/` in a checkout). For the PAM options (`timeout=`, `retries=`, `quiet`, `debug`), the messages and safe testing steps see [pam.md](pam.md).
+`fpal setup` masks `fprintd`, changes the PAM files the way the system does it (an authselect profile called `custom/fpal` on Fedora, the `fpal` profile of `pam-auth-update` on Debian and Ubuntu; elsewhere it only prints what to do) and starts `fpald` for GNOME (see [gnome.md](gnome.md)); `sudo fpal setup --revert` undoes it, and `fpal setup --dry-run` shows the steps without doing anything. It runs `platform.sh`, which is installed next to `fpal` (`/usr/share/fpal/`, or `scripts/` in a checkout). For the PAM options (`timeout=`, `retries=`, `quiet`, `debug`), the messages and safe testing steps see [pam.md](pam.md).
 
 ## Troubleshooting
 

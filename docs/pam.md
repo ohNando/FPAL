@@ -69,7 +69,7 @@ sudo make install                         # /usr/local/sbin/fpal + /usr/lib64/se
 sudo fpal setup                           # select the profile, mask fprintd
 ```
 
-`fpal setup` runs `authselect-fpal.sh` (installed next to `fpal`). It backs up the previous settings (`authselect backup-list`). It also masks `fprintd`; otherwise fprintd could grab the sensor and keep pam_fpal from opening it.
+`fpal setup` runs `platform.sh` (installed next to `fpal`) with the `authselect` backend. It backs up the previous settings (`authselect backup-list`). It also masks `fprintd`; otherwise fprintd could grab the sensor and keep pam_fpal from opening it.
 
 Then try it in a new terminal with `sudo -k; sudo true`. If no finger is presented, the password is asked after 10 seconds.
 
@@ -78,5 +78,32 @@ To undo it:
 ```sh
 sudo fpal setup --revert
 ```
+
+## sudo and su (Debian / Ubuntu)
+
+Debian generates `/etc/pam.d/common-auth` from small profile files in `/usr/share/pam-configs/`. fpal ships one called `fpal` (not enabled by default), and `fpal setup` enables it with `pam-auth-update`:
+
+```sh
+sudo make install PREFIX=/usr PAMDIR=/usr/lib/$(gcc -dumpmachine)/security \
+    PAMCONFIGDIR=/usr/share/pam-configs
+sudo fpal setup                           # pam-auth-update --enable fpal, mask fprintd
+```
+
+The profile adds `auth [success=2 default=ignore] pam_fpal.so` in front of `pam_unix.so`: a matching finger skips the password, anything else falls through to it. To go back, `sudo fpal setup --revert` (which runs `pam-auth-update --remove fpal`) restores `common-auth` as it was.
+
+This is checked in a Debian and an Ubuntu container (`scripts/platform-container.sh`): enabling, enabling twice and removing leave `common-auth` exactly as expected. It has **not** been tried on a real Debian or Ubuntu machine with a sensor, nor with the GDM fingerprint screen there.
+
+## Other systems
+
+If neither `authselect` nor `pam-auth-update` is found (Arch, openSUSE, ...), `fpal setup` changes nothing and prints what to do by hand: the one `auth sufficient pam_fpal.so` line for the PAM services you choose, and the `fprintd` and `fpald` service commands.
+
+## Options of `fpal setup`
+
+| Option | Meaning |
+|---|---|
+| `--revert` | undo what `fpal setup` did |
+| `--dry-run` | print every step and change nothing (needs no root) |
+| `--backend NAME` | `authselect`, `pam-auth-update` or `manual`; by default the one this system has |
+| `--no-services` | leave `fprintd` and `fpald` alone |
 
 The GNOME login and lock screens first ask `net.reactivated.Fprint` over D-Bus whether a reader exists. `fpald` answers that, and the same script starts it; see [gnome.md](gnome.md).

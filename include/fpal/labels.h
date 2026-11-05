@@ -10,6 +10,7 @@
 #ifndef FPAL_LABELS_H
 #define FPAL_LABELS_H
 
+#include "id.h"
 #include "types.h"
 
 /*

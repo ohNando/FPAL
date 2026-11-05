@@ -110,6 +110,28 @@ static int ud_control_in(void *ctx, uint8_t req_type, uint8_t req,
 	return FPAL_OK;
 }
 
+static int ud_control_out(void *ctx, uint8_t req_type, uint8_t req,
+			  uint16_t value, uint16_t index, const uint8_t *buf,
+			  uint16_t len, uint32_t timeout_ms) {
+	struct usbdevfs_ctx *c = ctx;
+	struct usbdevfs_ctrltransfer ct = {
+		.bRequestType = (uint8_t)(req_type & ~FPAL_USB_DIR_IN),
+		.bRequest = req,
+		.wValue = value,
+		.wIndex = index,
+		.wLength = len,
+		.timeout = timeout_ms,
+		/* the ioctl takes a non-const pointer but does not write OUT data */
+		.data = (void *)(uintptr_t)buf,
+	};
+	int rc = ioctl(c->fd, USBDEVFS_CONTROL, &ct);
+
+	fpal_trace("CTRL-OUT", req, buf, len);
+	if (rc < 0)
+		return errno_to_fpal(errno);
+	return rc == len ? FPAL_OK : FPAL_E_IO;
+}
+
 static int ud_bulk(struct usbdevfs_ctx *c, uint8_t ep, void *buf, size_t len,
 		   uint32_t timeout_ms) {
 	struct usbdevfs_bulktransfer bt = {
@@ -169,9 +191,13 @@ static void discard_urb(struct usbdevfs_ctx *c, struct usbdevfs_urb *urb) {
 		;
 }
 
-static int ud_wait_interrupt(void *ctx, uint8_t ep, uint8_t *buf, size_t cap,
-			     size_t *got, uint32_t timeout_ms) {
-	struct usbdevfs_ctx *c = ctx;
+/*
+ * Wait for one IN transfer of @type (interrupt or bulk) that cancel() can
+ * abort. @tag names the transfer in FPAL_TRACE output.
+ */
+static int ud_wait_urb(struct usbdevfs_ctx *c, unsigned char type, const char *tag,
+		       uint8_t ep, uint8_t *buf, size_t cap, size_t *got,
+		       uint32_t timeout_ms) {
 	struct usbdevfs_urb urb;
 	struct pollfd pfd[2];
 	void *reaped = NULL;
@@ -186,7 +212,7 @@ static int ud_wait_interrupt(void *ctx, uint8_t ep, uint8_t *buf, size_t cap,
 	 * end this wait at once. The pipe is emptied when a wait reports it.
 	 */
 	memset(&urb, 0, sizeof(urb));
-	urb.type = USBDEVFS_URB_TYPE_INTERRUPT;
+	urb.type = type;
 	urb.endpoint = ep;
 	urb.buffer = buf;
 	urb.buffer_length = (int)cap;
@@ -224,13 +250,25 @@ static int ud_wait_interrupt(void *ctx, uint8_t ep, uint8_t *buf, size_t cap,
 	if (ioctl(c->fd, USBDEVFS_REAPURBNDELAY, &reaped) < 0)
 		return errno_to_fpal(errno);
 	if (reaped != &urb || urb.status != 0) {
-		fpal_dbg("interrupt urb failed, status %d", urb.status);
+		fpal_dbg("%s urb failed, status %d", tag, urb.status);
 		return FPAL_E_IO;
 	}
 
 	*got = (size_t)urb.actual_length;
-	fpal_trace("IRQ", ep, buf, *got);
+	fpal_trace(tag, ep, buf, *got);
 	return FPAL_OK;
+}
+
+static int ud_wait_interrupt(void *ctx, uint8_t ep, uint8_t *buf, size_t cap,
+			     size_t *got, uint32_t timeout_ms) {
+	return ud_wait_urb(ctx, USBDEVFS_URB_TYPE_INTERRUPT, "IRQ", ep, buf, cap,
+			   got, timeout_ms);
+}
+
+static int ud_wait_bulk_in(void *ctx, uint8_t ep, uint8_t *buf, size_t cap,
+			   size_t *got, uint32_t timeout_ms) {
+	return ud_wait_urb(ctx, USBDEVFS_URB_TYPE_BULK, "IN", ep, buf, cap, got,
+			   timeout_ms);
 }
 
 static void ud_cancel(void *ctx) {
@@ -257,6 +295,8 @@ static const struct fpal_transport_ops usbdevfs_ops = {
 	.control_in = ud_control_in,
 	.bulk_out = ud_bulk_out,
 	.bulk_in = ud_bulk_in,
+	.control_out = ud_control_out,
+	.wait_bulk_in = ud_wait_bulk_in,
 	.wait_interrupt = ud_wait_interrupt,
 	.cancel = ud_cancel,
 	.close = ud_close,

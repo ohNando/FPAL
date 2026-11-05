@@ -211,9 +211,9 @@ static void draw_row(const struct fpal_ui *ui, FILE *f,
 void fpal_manage_draw(const struct fpal_ui *ui, FILE *f,
 		      const struct fpal_manage_view *v) {
 	fputs("\033[H\033[2J", f);
-	fprintf(f, "\n  %sfpal manage%s   %s%zu of %u fingerprints%s\n\n",
+	fprintf(f, "\n  %sfpal manage%s   %s%zu of %zu fingerprints%s\n\n",
 		fpal_ui_style(ui, UI_BOLD), fpal_ui_style(ui, UI_RESET),
-		fpal_ui_style(ui, UI_DIM), v->n, FPAL_MAX_TEMPLATES,
+		fpal_ui_style(ui, UI_DIM), v->n, v->max,
 		fpal_ui_style(ui, UI_RESET));
 
 	fputs(fpal_ui_style(ui, UI_DIM), f);
@@ -300,7 +300,7 @@ static void draw(struct app *a) {
 	struct fpal_manage_view v = {
 		.ids = a->ids, .n = a->n, .sel = a->sel,
 		.state_dir = a->state_dir, .user = a->user,
-		.can_write = a->ops->can_write,
+		.can_write = a->ops->can_write, .max = a->ops->max,
 		.status = a->has_status ? a->status : NULL,
 		.status_mark = a->mark,
 		.input = a->line.text,
@@ -426,7 +426,7 @@ static void do_new(struct app *a) {
 		say(a, UI_WARN, "not confirmed, nothing was stored");
 		return;
 	}
-	err = a->ops->new_id(&a->fresh);
+	err = a->ops->new_id(a->ops->ud, &a->fresh);
 	if (!err)
 		err = a->ops->enroll(a->ops->ud, &a->fresh, on_progress, a);
 	if (err == FPAL_E_NOTSUP) {
@@ -442,7 +442,7 @@ static void do_new(struct app *a) {
 	err = fpal_bindings_add(a->state_dir, a->user, &a->fresh);
 	(void)refresh(a);
 	for (size_t i = 0; i < a->n; i++)
-		if (!memcmp(a->ids[i].bytes, a->fresh.bytes, FPAL_TEMPLATE_ID_LEN))
+		if (fpal_id_equal(&a->ids[i], &a->fresh))
 			a->sel = i;
 	if (err)
 		say(a, UI_WARN, "stored, but could not bind it to %s: %s", a->user,
@@ -568,8 +568,8 @@ int fpal_manage_run(const struct fpal_manage_ops *ops, const struct fpal_ui *ui,
 			} else if (k.type == K_CHAR && k.ch == 'n') {
 				if (!ops->can_write)
 					say(&a, UI_WARN, "this is a read-only build, it cannot add a finger");
-				else if (a.n >= FPAL_MAX_TEMPLATES)
-					say(&a, UI_WARN, "the sensor is full (%u fingerprints)", FPAL_MAX_TEMPLATES);
+				else if (a.n >= a.ops->max)
+					say(&a, UI_WARN, "the sensor is full (%zu fingerprints)", a.ops->max);
 				else
 					enter_mode(&a, M_CONFIRM_NEW, "");
 			}
@@ -613,6 +613,15 @@ static void on_signal(int sig) {
 	stop_requested = 1;
 	if (active_dev)
 		fpal_cancel(active_dev);
+}
+
+/* What fpal_cmd_manage learned from the sensor before the screen starts. */
+struct sensor_info {
+	size_t max, id_len;
+};
+
+static int sensor_new_id(void *ud, struct fpal_template_id *id) {
+	return fpal_template_id_make(((const struct sensor_info *)ud)->id_len, id);
 }
 
 static int sensor_list(void *ud, struct fpal_template_id *ids, size_t cap, size_t *n) {
@@ -678,10 +687,12 @@ int fpal_cmd_manage(int argc, char **argv) {
 			false,
 #endif
 		.list = sensor_list, .remove = sensor_remove,
-		.new_id = fpal_template_id_generate, .enroll = sensor_enroll,
+		.new_id = sensor_new_id, .enroll = sensor_enroll,
 	};
 	struct sigaction sa = { .sa_handler = on_signal };
 	struct fpal_ui ui = fpal_ui_init(stdout);
+	struct sensor_info info = { FPAL_MAX_TEMPLATES, 0 };
+	struct fpal_device *probe;
 	struct termios raw;
 	const char *term = getenv("TERM");
 	int rc;
@@ -697,6 +708,15 @@ int fpal_cmd_manage(int argc, char **argv) {
 		      stderr);
 		return 2;
 	}
+
+	/* How big the sensor is; if it cannot be opened the list says why. */
+	if (fpal_device_open_first(&probe) == FPAL_OK) {
+		info.max = fpal_device_max_templates(probe);
+		info.id_len = fpal_device_new_id_len(probe);
+		fpal_device_close(probe);
+	}
+	ops.ud = &info;
+	ops.max = info.max;
 
 	/* No SA_RESTART: a signal must interrupt the key read. */
 	sigemptyset(&sa.sa_mask);

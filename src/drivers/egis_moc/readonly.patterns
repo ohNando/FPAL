@@ -1,0 +1,8 @@
+# Byte patterns of the Egis MoC commands that write to the sensor.
+# One "name|pattern" per line; the pattern is a grep -P expression.
+# scripts/check-readonly.sh refuses a binary that contains any of them (login
+# code) and, with --present, requires all of them (the full fpal).
+store|\x00\x00\x00\x27\x50\x16\x03\x00\x00\x00\x20
+commit start|\x00\x00\x00\x07\x50\x16\x05\x00\x00\x00\x20
+enrol start|\x00\x00\x00\x07\x50\x16\x01\x00\x00\x00\x20
+delete|\x50\x18\x04\x00\x00

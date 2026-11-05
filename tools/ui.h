@@ -12,7 +12,7 @@
 #include <stddef.h>
 #include <stdio.h>
 
-#include "fpal/types.h"
+#include "fpal/id.h"
 
 enum fpal_style {
 	UI_RESET,

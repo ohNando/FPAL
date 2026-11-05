@@ -8,9 +8,7 @@
 
 #define STAGES 20u
 
-static const struct fpal_template_id new_id = {
-	.bytes = "FPAL-0123456789abcdef0123456789"
-};
+static struct fpal_template_id new_id; /* set in main() */
 
 struct events {
 	unsigned check, touch, done, center, dirty, retry;
@@ -255,14 +253,14 @@ static void test_duplicate_finger_stops_before_enrol_mode(void) {
 }
 
 static void test_full_sensor_sends_nothing_but_list(void) {
-	struct fpal_template_id before[FPAL_MAX_TEMPLATES];
+	struct fpal_template_id before[EGIS_MAX_TEMPLATES];
 	struct fpal_device *dev;
 	struct mock m;
 
-	make_ids(before, FPAL_MAX_TEMPLATES);
+	make_ids(before, EGIS_MAX_TEMPLATES);
 	mock_init(&m);
 	dev = open_dev(&m);
-	push_list(&m, before, FPAL_MAX_TEMPLATES);
+	push_list(&m, before, EGIS_MAX_TEMPLATES);
 
 	m.n_out = 0;
 	T_EQ_INT(fpal_enroll(dev, &new_id, 0, NULL, NULL), FPAL_E_FULL);
@@ -354,9 +352,9 @@ static void test_store_command_bytes(void) {
 					0x03, 0x00, 0x00, 0x00, 0x20 };
 
 	T_EQ_INT(egis_build_commit(&new_id, out, sizeof(out), &n), 0);
-	T_EQ_INT(n, sizeof(head) + FPAL_TEMPLATE_ID_LEN);
+	T_EQ_INT(n, sizeof(head) + EGIS_ID_LEN);
 	T_EQ_MEM(out, head, sizeof(head));
-	T_EQ_MEM(out + sizeof(head), new_id.bytes, FPAL_TEMPLATE_ID_LEN);
+	T_EQ_MEM(out + sizeof(head), fpal_id_data(&new_id), EGIS_ID_LEN);
 	T_EQ_INT(egis_build_commit(&new_id, out, 10, &n), FPAL_E_OVERFLOW);
 }
 
@@ -399,13 +397,25 @@ static void test_classify_capture(void) {
 
 static void test_generated_ids(void) {
 	struct fpal_template_id a, b;
+	struct fpal_device *dev;
+	struct mock m;
 
-	T_EQ_INT(fpal_template_id_generate(&a), FPAL_OK);
-	T_EQ_INT(fpal_template_id_generate(&b), FPAL_OK);
-	T_EQ_MEM(a.bytes, FPAL_NEW_ID_PREFIX, sizeof(FPAL_NEW_ID_PREFIX) - 1);
-	for (size_t i = 0; i < FPAL_TEMPLATE_ID_LEN; i++)
-		T_CHECK(a.bytes[i] >= 0x20 && a.bytes[i] <= 0x7e);
-	T_CHECK(memcmp(a.bytes, b.bytes, FPAL_TEMPLATE_ID_LEN) != 0);
+	mock_init(&m);
+	dev = open_dev(&m);
+	T_CHECK(dev != NULL);
+	if (!dev)
+		return;
+	T_EQ_INT(fpal_template_id_new(dev, &a), FPAL_OK);
+	T_EQ_INT(fpal_template_id_new(dev, &b), FPAL_OK);
+	T_EQ_INT(fpal_id_len(&a), EGIS_ID_LEN); /* the driver picks the length */
+	T_CHECK(fpal_id_has_prefix(&a, FPAL_NEW_ID_PREFIX));
+	for (size_t i = 0; i < EGIS_ID_LEN; i++)
+		T_CHECK(fpal_id_data(&a)[i] >= 0x20 && fpal_id_data(&a)[i] <= 0x7e);
+	T_CHECK(!fpal_id_equal(&a, &b));
+	T_EQ_INT(fpal_template_id_new(dev, NULL), FPAL_E_INVAL);
+	T_EQ_INT(fpal_template_id_new(NULL, &a), FPAL_E_INVAL);
+	T_EQ_INT(fpal_device_max_templates(dev), EGIS_MAX_TEMPLATES);
+	fpal_device_close(dev);
 }
 
 /* ---- delete -------------------------------------------------------------- */
@@ -426,9 +436,9 @@ static void test_delete_command_bytes(void) {
 	size_t n;
 
 	T_EQ_INT(egis_build_delete(&new_id, out, sizeof(out), &n), 0);
-	T_EQ_INT(n, sizeof(head) + FPAL_TEMPLATE_ID_LEN); /* one id, 43 bytes */
+	T_EQ_INT(n, sizeof(head) + EGIS_ID_LEN); /* one id, 43 bytes */
 	T_EQ_MEM(out, head, sizeof(head));
-	T_EQ_MEM(out + sizeof(head), new_id.bytes, FPAL_TEMPLATE_ID_LEN);
+	T_EQ_MEM(out + sizeof(head), fpal_id_data(&new_id), EGIS_ID_LEN);
 	T_EQ_INT(egis_build_delete(&new_id, out, 10, &n), FPAL_E_OVERFLOW);
 	T_EQ_INT(egis_build_delete(NULL, out, sizeof(out), &n), FPAL_E_INVAL);
 }
@@ -500,7 +510,7 @@ static void test_delete_checks_what_really_happened(void) {
 
 	make_ids(ids, 3);
 	make_ids(other, 3);
-	memset(d.bytes, 'Z', FPAL_TEMPLATE_ID_LEN);
+	id_fill(&d, 'Z', EGIS_ID_LEN);
 
 	/* nothing was removed */
 	mock_init(&m);
@@ -533,6 +543,7 @@ static void test_delete_checks_what_really_happened(void) {
 }
 
 int main(void) {
+	id_pad(&new_id, "FPAL-0123456789abcdef0123456789", EGIS_ID_LEN);
 	T_RUN(test_full_enroll);
 	T_RUN(test_dry_run_never_writes);
 	T_RUN(test_retries_do_not_count);

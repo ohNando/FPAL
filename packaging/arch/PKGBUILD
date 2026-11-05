@@ -1,14 +1,15 @@
 # Maintainer: ohNando <emirhanbuldurucu12@gmail.com>
 pkgname=fpal
-pkgver=0.6.1
+pkgver=0.7.0
 pkgrel=1
 pkgdesc='Fingerprint Auth for Linux: userspace driver, CLI and PAM module for Match-on-Chip sensors'
 arch=('x86_64')
-url='https://github.com/ohNando/fpal'
+url='https://github.com/ohNando/FPAL'
 license=('Apache-2.0')
 depends=('pam' 'dbus')
 makedepends=('gcc' 'make')
-source=("$pkgname-$pkgver.tar.gz::$url/archive/refs/tags/v$pkgver.tar.gz")
+# The release tarball made by "make dist" (its top directory is fpal-$pkgver).
+source=("$pkgname-$pkgver.tar.gz::$url/releases/download/v$pkgver/$pkgname-$pkgver.tar.gz")
 sha256sums=('SKIP')
 
 build() {

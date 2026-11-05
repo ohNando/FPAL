@@ -11,6 +11,7 @@
 #include "../tools/manage.h"
 #include "fpal/bindings.h"
 #include "fpal/labels.h"
+#include "id_util.h"
 #include "t.h"
 
 /* ---- keys ---------------------------------------------------------------- */
@@ -182,7 +183,7 @@ static int f_remove(void *ud, const struct fpal_template_id *id) {
 	if (sensor.remove_rc)
 		return sensor.remove_rc;
 	for (size_t i = 0; i < sensor.n; i++) {
-		if (!memcmp(sensor.ids[i].bytes, id->bytes, FPAL_TEMPLATE_ID_LEN)) {
+		if (fpal_id_equal(&sensor.ids[i], id)) {
 			memmove(&sensor.ids[i], &sensor.ids[i + 1],
 				(sensor.n - i - 1) * sizeof(sensor.ids[0]));
 			sensor.n--;
@@ -194,9 +195,12 @@ static int f_remove(void *ud, const struct fpal_template_id *id) {
 	return FPAL_E_NODATA;
 }
 
-static int f_new_id(struct fpal_template_id *id) {
-	memset(id->bytes, 0, FPAL_TEMPLATE_ID_LEN);
-	snprintf((char *)id->bytes, FPAL_TEMPLATE_ID_LEN, "FPAL-new-%u", ++sensor.next_new);
+static int f_new_id(void *ud, struct fpal_template_id *id) {
+	(void)ud;
+	char text[TEST_ID_LEN];
+
+	snprintf(text, sizeof(text), "FPAL-new-%u", ++sensor.next_new);
+	id_pad(id, text, TEST_ID_LEN);
 	return FPAL_OK;
 }
 
@@ -216,7 +220,7 @@ static int f_enroll(void *ud, const struct fpal_template_id *id, fpal_enroll_cb 
 
 static struct fpal_manage_ops ops = {
 	.can_write = true, .list = f_list, .remove = f_remove,
-	.new_id = f_new_id, .enroll = f_enroll,
+	.new_id = f_new_id, .enroll = f_enroll, .max = 10,
 };
 
 static void reset(void) {
@@ -224,9 +228,14 @@ static void reset(void) {
 
 	memset(&sensor, 0, sizeof(sensor));
 	/* [0] binary like a Windows id, [1] made by fpal */
-	for (size_t i = 0; i < FPAL_TEMPLATE_ID_LEN; i++)
-		sensor.ids[0].bytes[i] = (uint8_t)(0x7d + i * 7);
-	memcpy(sensor.ids[1].bytes, "FPAL-7b516a3ef8dab92ad49f9124678", 32);
+	{
+		uint8_t raw[TEST_ID_LEN];
+
+		for (size_t i = 0; i < sizeof(raw); i++)
+			raw[i] = (uint8_t)(0x7d + i * 7);
+		(void)fpal_id_set(&sensor.ids[0], raw, sizeof(raw));
+	}
+	id_pad(&sensor.ids[1], "FPAL-7b516a3ef8dab92ad49f9124678", TEST_ID_LEN);
 	sensor.n = 2;
 	ops.can_write = true;
 
@@ -273,7 +282,7 @@ static void test_draw_shows_fingers_and_selection(void) {
 	size_t len = 0;
 	FILE *f = open_memstream(&buf, &len);
 	struct fpal_manage_view v = {
-		.ids = sensor.ids, .n = 2, .sel = 1, .state_dir = dir,
+		.max = 10, .ids = sensor.ids, .n = 2, .sel = 1, .state_dir = dir,
 		.user = "alice", .can_write = true,
 	};
 
@@ -294,7 +303,7 @@ static void test_draw_read_only_has_no_delete_key(void) {
 	char *buf = NULL;
 	size_t len = 0;
 	FILE *f = open_memstream(&buf, &len);
-	struct fpal_manage_view v = { .ids = sensor.ids, .n = 2, .state_dir = dir,
+	struct fpal_manage_view v = { .max = 10, .ids = sensor.ids, .n = 2, .state_dir = dir,
 				      .user = "alice", .can_write = false };
 
 	reset();
@@ -310,7 +319,7 @@ static void test_draw_utf8_selection_is_reversed(void) {
 	char *buf = NULL;
 	size_t len = 0;
 	FILE *f = open_memstream(&buf, &len);
-	struct fpal_manage_view v = { .ids = sensor.ids, .n = 2, .sel = 0,
+	struct fpal_manage_view v = { .max = 10, .ids = sensor.ids, .n = 2, .sel = 0,
 				      .state_dir = dir, .user = "alice" };
 
 	reset();
@@ -344,7 +353,7 @@ static void test_delete_needs_the_word_yes(void) {
 	reset();
 	out = session("j" "d" "yes\r" "q"); /* select Linux finger, delete */
 	T_EQ_INT(sensor.removed, 1);
-	T_EQ_MEM(sensor.last_removed.bytes, "FPAL-7b516a3ef8dab92ad49f9124678", 32);
+	T_EQ_MEM(fpal_id_data(&sensor.last_removed), "FPAL-7b516a3ef8dab92ad49f9124678", 32);
 	T_EQ_INT(sensor.n, 1);
 	T_CHECK(has(out, "deleted; 1 fingerprint(s) left"));
 	/* what pointed at it is gone: its name and both users' bindings */
@@ -503,7 +512,7 @@ static void test_new_finger_failures(void) {
 	free(out);
 
 	reset();
-	sensor.n = FPAL_MAX_TEMPLATES; /* a full sensor never even asks */
+	sensor.n = ops.max; /* a full sensor never even asks */
 	out = session("n" "q");
 	T_CHECK(has(out, "sensor is full"));
 	T_EQ_INT(sensor.enrolled, 0);

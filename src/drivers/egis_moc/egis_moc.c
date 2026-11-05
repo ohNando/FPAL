@@ -205,7 +205,7 @@ static int egis_wait_finger(struct fpal_device *dev, uint32_t timeout_ms) {
 static bool id_in_list(const struct fpal_template_id *id,
 		       const struct fpal_template_id *ids, size_t n) {
 	for (size_t i = 0; i < n; i++)
-		if (memcmp(id->bytes, ids[i].bytes, FPAL_TEMPLATE_ID_LEN) == 0)
+		if (fpal_id_equal(id, &ids[i]))
 			return true;
 	return false;
 }
@@ -231,13 +231,13 @@ static int egis_match(struct fpal_device *dev, const struct fpal_template_id *id
 	if (rsp.sw != EGIS_SW_OK)
 		return FPAL_E_PROTO;
 
-	if (rsp.body_len < EGIS_IDENTIFY_ID_BODY_OFF + FPAL_TEMPLATE_ID_LEN) {
+	if (rsp.body_len < EGIS_IDENTIFY_ID_BODY_OFF + EGIS_ID_LEN) {
 		fpal_dbg("identify response body too short (%zu)",
 			rsp.body_len);
 		return FPAL_E_PROTO;
 	}
-	memcpy(match->bytes, rsp.body + EGIS_IDENTIFY_ID_BODY_OFF,
-	       FPAL_TEMPLATE_ID_LEN);
+	(void)fpal_id_set(match, rsp.body + EGIS_IDENTIFY_ID_BODY_OFF,
+			  EGIS_ID_LEN);
 
 	/*
 	 * The id offset comes from reverse engineering. A matched id that is
@@ -258,7 +258,7 @@ static int egis_identify(struct fpal_device *dev, uint32_t timeout_ms,
 	size_t n = 0;
 	int err, rerr;
 
-	err = egis_list(dev, ids, FPAL_MAX_TEMPLATES, &n);
+	err = egis_list(dev, ids, EGIS_MAX_TEMPLATES, &n);
 	if (err)
 		return err;
 	if (n == 0)
@@ -392,23 +392,13 @@ static int egis_enroll_commit(struct fpal_device *dev,
 }
 
 static int egis_enroll(struct fpal_device *dev,
-		       const struct fpal_template_id *new_id, uint32_t flags,
-		       fpal_enroll_cb cb, void *ud) {
-	struct fpal_template_id ids[FPAL_MAX_TEMPLATES];
+		       const struct fpal_template_id *new_id,
+		       const struct fpal_template_id *ids, size_t n,
+		       uint32_t flags, fpal_enroll_cb cb, void *ud) {
 	const uint8_t stages =
 		(dev->id->flags & EGIS_FLAG_ENROLL_STAGES_20) ? 20 : 10;
 	const bool dry_run = flags & FPAL_ENROLL_DRY_RUN;
-	size_t n = 0;
 	int err, rerr;
-
-	/* Read only: refuse before the sensor is put into enrol mode. */
-	err = egis_list(dev, ids, FPAL_MAX_TEMPLATES, &n);
-	if (err)
-		return err;
-	if (n >= FPAL_MAX_TEMPLATES)
-		return FPAL_E_FULL;
-	if (id_in_list(new_id, ids, n))
-		return FPAL_E_EXISTS;
 
 	err = egis_exec_simple(dev, &egis_cmd_sensor_reset);
 	if (!err)
@@ -432,35 +422,20 @@ static int egis_enroll(struct fpal_device *dev,
 	rerr = egis_exec_simple(dev, &egis_cmd_sensor_reset);
 	if (rerr)
 		fpal_dbg("final sensor reset failed: %s", fpal_strerror(rerr));
-	if (err || dry_run)
-		return err;
-
-	/* Trust the sensor's own list, not the status word. */
-	err = egis_list(dev, ids, FPAL_MAX_TEMPLATES, &n);
-	if (err)
-		return err;
-	return id_in_list(new_id, ids, n) ? FPAL_OK : FPAL_E_PROTO;
+	return err;
 }
 
 /*
  * Delete one template. The command is the one the Windows driver sends; the
- * answer to it is a bare success status, so the sensor's list is read back
- * to make sure it removed exactly what was asked for.
+ * answer to it is a bare success status, which is why the core reads the
+ * sensor's list back afterwards.
  */
 static int egis_delete(struct fpal_device *dev,
 		       const struct fpal_template_id *id) {
-	struct fpal_template_id before[FPAL_MAX_TEMPLATES];
-	struct fpal_template_id after[FPAL_MAX_TEMPLATES];
 	struct egis_priv *p = priv(dev);
-	size_t n_before = 0, n_after = 0, plen;
+	size_t plen;
 	struct egis_rsp rsp;
 	int err;
-
-	err = egis_list(dev, before, FPAL_MAX_TEMPLATES, &n_before);
-	if (err)
-		return err;
-	if (!id_in_list(id, before, n_before))
-		return FPAL_E_NODATA;
 
 	err = egis_build_delete(id, p->payload, sizeof(p->payload), &plen);
 	if (err)
@@ -471,18 +446,6 @@ static int egis_delete(struct fpal_device *dev,
 	if (rsp.sw != EGIS_SW_OK || rsp.body_len != 0) {
 		fpal_warn("delete answered status %04x", rsp.sw);
 		return FPAL_E_PROTO;
-	}
-
-	err = egis_list(dev, after, FPAL_MAX_TEMPLATES, &n_after);
-	if (err)
-		return err;
-	/* exactly @id gone, everything else untouched */
-	if (n_after != n_before - 1 || id_in_list(id, after, n_after))
-		return FPAL_E_PROTO;
-	for (size_t i = 0; i < n_before; i++) {
-		if (memcmp(before[i].bytes, id->bytes, FPAL_TEMPLATE_ID_LEN) &&
-		    !id_in_list(&before[i], after, n_after))
-			return FPAL_E_PROTO;
 	}
 	return FPAL_OK;
 }
@@ -497,6 +460,8 @@ const struct fpal_driver fpal_driver_egis_moc = {
 	.caps = FPAL_CAP_MOC,
 #endif
 	.priv_size = sizeof(struct egis_priv),
+	.max_templates = EGIS_MAX_TEMPLATES,
+	.new_id_len = EGIS_ID_LEN,
 	.open = egis_open,
 	.close = egis_close,
 	.list = egis_list,
