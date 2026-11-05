@@ -31,7 +31,7 @@ If the finger is not read, the sensor is unplugged or you are logged in over SSH
 
 Your laptop's fingerprint sensor works on Windows but does nothing for you on Linux. FPAL ships the driver that talks to the sensor, a command line tool and a PAM module in one small package.
 
-- **Written from scratch.** The sensor's USB protocol was captured and verified on real hardware, and every step is [documented](docs/protocol-egis-moc.md). The code base is about 3,000 lines of C that you can read end to end.
+- **Written from scratch.** The sensor's USB protocol was captured and verified on real hardware, and every step is [documented](docs/protocol-egis-moc.md). The code base is about 7,000 lines of C that you can read end to end.
 - **No dependencies.** No `libusb`, no `libfprint`, no D-Bus library (the small D-Bus client is part of the project), no build system. At runtime it needs only libc and `libpam`. Building takes nothing but `make`.
 - **Leaves Windows enrolments alone.** Fingers you enrolled in Windows Hello work on Linux as they are, so a dual-boot machine keeps both. Enrolling and deleting a fingerprint are guarded: they need `--allow-chip-write` and a typed confirmation, deleting works on one fingerprint at a time, and it refuses fingers FPAL did not create unless you insist. The code that runs at login (the PAM module and `fpald`) cannot write to the sensor at all, and `make ENROLL=0` builds a fully read-only `fpal`.
 - **Safe defaults.** The password is always the fallback, only root can open the sensor, corrupt responses are rejected, and binding files go through symlink and permission checks.
@@ -113,4 +113,4 @@ See [SECURITY.md](SECURITY.md) for the threat model and how to report a problem.
 
 ## License
 
-[Apache-2.0](LICENSE). The protocol was learned by reading libfprint's `egismoc` driver and verifying it on real hardware; no code was copied from libfprint.
+[Apache-2.0](LICENSE). The protocol was learned by reading libfprint's `egismoc` driver and verifying it on real hardware; no code was copied from libfprint. The one thing taken from it is data: `tools/known_sensors.h` is a table of USB vendor and product ids generated from the id tables of libfprint's drivers (`scripts/gen-known-sensors.sh`), used by `fpal report`.

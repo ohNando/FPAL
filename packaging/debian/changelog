@@ -1,3 +1,10 @@
+fpal (0.7.1-1) unstable; urgency=medium
+
+  * Documentation only: code of conduct, pull request template, README fixes.
+    The program is the same as 0.7.0.
+
+ -- ohNando <emirhanbuldurucu12@gmail.com>  Thu, 05 Nov 2026 21:00:00 +0300
+
 fpal (0.7.0-1) unstable; urgency=medium
 
   * General driver interface: variable-length ids, per-driver capacity, control
