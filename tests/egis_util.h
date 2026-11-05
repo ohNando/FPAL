@@ -25,17 +25,17 @@ static inline bool out_is(const struct mock *m, size_t i, const struct egis_cmd 
 
 static inline void make_ids(struct fpal_template_id *ids, size_t n) {
 	for (size_t i = 0; i < n; i++)
-		memset(ids[i].bytes, (int)('A' + i), FPAL_TEMPLATE_ID_LEN);
+		memset(ids[i].bytes, (int)('A' + i), EGIS_ID_LEN);
 }
 
 static inline void push_list(struct mock *m, const struct fpal_template_id *ids,
 		      size_t n) {
-	uint8_t body[FPAL_MAX_TEMPLATES * FPAL_TEMPLATE_ID_LEN];
+	uint8_t body[EGIS_MAX_TEMPLATES * EGIS_ID_LEN];
 
 	for (size_t i = 0; i < n; i++)
-		memcpy(body + i * FPAL_TEMPLATE_ID_LEN, ids[i].bytes,
-		       FPAL_TEMPLATE_ID_LEN);
-	mock_push_egis(m, body, n * FPAL_TEMPLATE_ID_LEN, EGIS_SW_OK);
+		memcpy(body + i * EGIS_ID_LEN, ids[i].bytes,
+		       EGIS_ID_LEN);
+	mock_push_egis(m, body, n * EGIS_ID_LEN, EGIS_SW_OK);
 }
 
 static inline void push_ok(struct mock *m) {

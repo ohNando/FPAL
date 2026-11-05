@@ -99,7 +99,7 @@ static void push_match(struct mock *m, const struct fpal_template_id *id) {
 	uint8_t body[64];
 
 	memset(body, 0x14, 32);
-	memcpy(body + 32, id->bytes, FPAL_TEMPLATE_ID_LEN);
+	memcpy(body + 32, id->bytes, EGIS_ID_LEN);
 	mock_push_egis(m, body, sizeof(body), EGIS_SW_OK);
 }
 

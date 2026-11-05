@@ -42,6 +42,11 @@
 #define EGIS_FLAG_CHECK_PREFIX_TYPE2 (1u << 0) /* 50 17 03 80 00 instead of 50 17 03 00 00 */
 #define EGIS_FLAG_ENROLL_STAGES_20 (1u << 1)
 
+/* Template ids are 32 bytes and the sensor stores at most 10 (the largest
+ * list the check command can carry in one frame). */
+#define EGIS_ID_LEN 32u
+#define EGIS_MAX_TEMPLATES 10u
+
 /* Framing */
 #define EGIS_MAGIC_LEN 8u
 #define EGIS_CK_LEN 2u

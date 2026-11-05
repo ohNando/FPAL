@@ -79,7 +79,7 @@ static struct fpal_device *identify_setup(struct mock *m,
 
 static void test_identify_match(void) {
 	struct fpal_template_id ids[2], match;
-	uint8_t body[EGIS_IDENTIFY_ID_BODY_OFF + FPAL_TEMPLATE_ID_LEN];
+	uint8_t body[EGIS_IDENTIFY_ID_BODY_OFF + EGIS_ID_LEN];
 	struct fpal_device *dev;
 	struct mock m;
 
@@ -89,12 +89,12 @@ static void test_identify_match(void) {
 		return;
 	memset(body, 0xee, EGIS_IDENTIFY_ID_BODY_OFF);
 	memcpy(body + EGIS_IDENTIFY_ID_BODY_OFF, ids[1].bytes,
-	       FPAL_TEMPLATE_ID_LEN);
+	       EGIS_ID_LEN);
 	mock_push_egis(&m, body, sizeof(body), EGIS_SW_OK);
 	push_ok(&m); /* final reset */
 
 	T_EQ_INT(fpal_identify(dev, 1000, &match), FPAL_OK);
-	T_EQ_MEM(match.bytes, ids[1].bytes, FPAL_TEMPLATE_ID_LEN);
+	T_EQ_MEM(match.bytes, ids[1].bytes, EGIS_ID_LEN);
 	T_EQ_INT(m.irqs, 1);
 
 	/* fw, list, reset, arm, check, match, reset */
@@ -103,8 +103,8 @@ static void test_identify_match(void) {
 	T_CHECK(out_is(&m, 3, &egis_cmd_arm_identify));
 	T_CHECK(out_is(&m, 4, &egis_cmd_sensor_check));
 	/* the match request carries both stored ids */
-	T_EQ_MEM(out_payload(&m, 5) + 43, ids[0].bytes, FPAL_TEMPLATE_ID_LEN);
-	T_EQ_MEM(out_payload(&m, 5) + 75, ids[1].bytes, FPAL_TEMPLATE_ID_LEN);
+	T_EQ_MEM(out_payload(&m, 5) + 43, ids[0].bytes, EGIS_ID_LEN);
+	T_EQ_MEM(out_payload(&m, 5) + 75, ids[1].bytes, EGIS_ID_LEN);
 	T_CHECK(out_is(&m, 6, &egis_cmd_sensor_reset));
 	fpal_device_close(dev);
 }
@@ -129,7 +129,7 @@ static void test_identify_no_match(void) {
 /* A matched id that is not on the sensor means a wrong offset: refuse. */
 static void test_identify_unknown_id_is_proto_error(void) {
 	struct fpal_template_id ids[1], match;
-	uint8_t body[EGIS_IDENTIFY_ID_BODY_OFF + FPAL_TEMPLATE_ID_LEN];
+	uint8_t body[EGIS_IDENTIFY_ID_BODY_OFF + EGIS_ID_LEN];
 	struct fpal_device *dev;
 	struct mock m;
 

@@ -139,7 +139,7 @@ int egis_build_check(const struct fpal_template_id *ids, size_t n,
 					check_prefix_type2 :
 					check_prefix_type1;
 	/* The chip expects one zero "separator" id in front of the real ones. */
-	const size_t ids_len = (n + 1) * FPAL_TEMPLATE_ID_LEN;
+	const size_t ids_len = (n + 1) * EGIS_ID_LEN;
 	const size_t body_len = sizeof(check_prefix_type1) + 2 + ids_len +
 				sizeof(check_suffix);
 	const size_t len = 4 + body_len;
@@ -147,7 +147,7 @@ int egis_build_check(const struct fpal_template_id *ids, size_t n,
 
 	if (!out || !out_len || (n && !ids))
 		return FPAL_E_INVAL;
-	if (n > FPAL_MAX_TEMPLATES)
+	if (n > EGIS_MAX_TEMPLATES)
 		return FPAL_E_INVAL;
 	if (len > cap)
 		return FPAL_E_OVERFLOW;
@@ -161,8 +161,8 @@ int egis_build_check(const struct fpal_template_id *ids, size_t n,
 	memset(p, 0, CHECK_SEPARATOR_LEN);
 	p += CHECK_SEPARATOR_LEN;
 	for (size_t i = 0; i < n; i++) {
-		memcpy(p, ids[i].bytes, FPAL_TEMPLATE_ID_LEN);
-		p += FPAL_TEMPLATE_ID_LEN;
+		memcpy(p, ids[i].bytes, EGIS_ID_LEN);
+		p += EGIS_ID_LEN;
 	}
 	memcpy(p, check_suffix, sizeof(check_suffix));
 
@@ -188,14 +188,14 @@ enum egis_capture egis_classify_capture(const struct egis_rsp *rsp) {
 
 int egis_build_commit(const struct fpal_template_id *id, uint8_t *out,
 		      size_t cap, size_t *out_len) {
-	const size_t len = sizeof(commit_prefix) + FPAL_TEMPLATE_ID_LEN;
+	const size_t len = sizeof(commit_prefix) + EGIS_ID_LEN;
 
 	if (!id || !out || !out_len)
 		return FPAL_E_INVAL;
 	if (len > cap)
 		return FPAL_E_OVERFLOW;
 	memcpy(out, commit_prefix, sizeof(commit_prefix));
-	memcpy(out + sizeof(commit_prefix), id->bytes, FPAL_TEMPLATE_ID_LEN);
+	memcpy(out + sizeof(commit_prefix), id->bytes, EGIS_ID_LEN);
 	*out_len = len;
 	return FPAL_OK;
 }
@@ -210,7 +210,7 @@ static const uint8_t delete_prefix[] = { 0x50, 0x18, 0x04, 0x00, 0x00 };
 
 int egis_build_delete(const struct fpal_template_id *id, uint8_t *out,
 		      size_t cap, size_t *out_len) {
-	const size_t body = sizeof(delete_prefix) + 2 + FPAL_TEMPLATE_ID_LEN;
+	const size_t body = sizeof(delete_prefix) + 2 + EGIS_ID_LEN;
 	const size_t len = 4 + body;
 	uint8_t *p = out;
 
@@ -222,9 +222,9 @@ int egis_build_delete(const struct fpal_template_id *id, uint8_t *out,
 	p += 4;
 	memcpy(p, delete_prefix, sizeof(delete_prefix));
 	p += sizeof(delete_prefix);
-	fpal_put_be16(p, FPAL_TEMPLATE_ID_LEN);
+	fpal_put_be16(p, EGIS_ID_LEN);
 	p += 2;
-	memcpy(p, id->bytes, FPAL_TEMPLATE_ID_LEN);
+	memcpy(p, id->bytes, EGIS_ID_LEN);
 	*out_len = len;
 	return FPAL_OK;
 }
@@ -239,17 +239,17 @@ int egis_parse_list(const struct egis_rsp *rsp, struct fpal_template_id *out,
 	if (rsp->sw != EGIS_SW_OK)
 		return FPAL_E_PROTO;
 	/* Not seen in practice; keep the whole ids and report the rest. */
-	if (rsp->body_len % FPAL_TEMPLATE_ID_LEN != 0)
+	if (rsp->body_len % EGIS_ID_LEN != 0)
 		fpal_warn("list body length %zu is not a multiple of %u",
-			 rsp->body_len, FPAL_TEMPLATE_ID_LEN);
+			 rsp->body_len, EGIS_ID_LEN);
 
-	count = rsp->body_len / FPAL_TEMPLATE_ID_LEN;
+	count = rsp->body_len / EGIS_ID_LEN;
 	if (count > cap)
 		return FPAL_E_OVERFLOW;
 
 	for (size_t i = 0; i < count; i++)
-		memcpy(out[i].bytes, rsp->body + i * FPAL_TEMPLATE_ID_LEN,
-		       FPAL_TEMPLATE_ID_LEN);
+		memcpy(out[i].bytes, rsp->body + i * EGIS_ID_LEN,
+		       EGIS_ID_LEN);
 	*n = count;
 	return FPAL_OK;
 }

@@ -205,7 +205,7 @@ static int egis_wait_finger(struct fpal_device *dev, uint32_t timeout_ms) {
 static bool id_in_list(const struct fpal_template_id *id,
 		       const struct fpal_template_id *ids, size_t n) {
 	for (size_t i = 0; i < n; i++)
-		if (memcmp(id->bytes, ids[i].bytes, FPAL_TEMPLATE_ID_LEN) == 0)
+		if (memcmp(id->bytes, ids[i].bytes, EGIS_ID_LEN) == 0)
 			return true;
 	return false;
 }
@@ -231,13 +231,13 @@ static int egis_match(struct fpal_device *dev, const struct fpal_template_id *id
 	if (rsp.sw != EGIS_SW_OK)
 		return FPAL_E_PROTO;
 
-	if (rsp.body_len < EGIS_IDENTIFY_ID_BODY_OFF + FPAL_TEMPLATE_ID_LEN) {
+	if (rsp.body_len < EGIS_IDENTIFY_ID_BODY_OFF + EGIS_ID_LEN) {
 		fpal_dbg("identify response body too short (%zu)",
 			rsp.body_len);
 		return FPAL_E_PROTO;
 	}
 	memcpy(match->bytes, rsp.body + EGIS_IDENTIFY_ID_BODY_OFF,
-	       FPAL_TEMPLATE_ID_LEN);
+	       EGIS_ID_LEN);
 
 	/*
 	 * The id offset comes from reverse engineering. A matched id that is
@@ -258,7 +258,7 @@ static int egis_identify(struct fpal_device *dev, uint32_t timeout_ms,
 	size_t n = 0;
 	int err, rerr;
 
-	err = egis_list(dev, ids, FPAL_MAX_TEMPLATES, &n);
+	err = egis_list(dev, ids, EGIS_MAX_TEMPLATES, &n);
 	if (err)
 		return err;
 	if (n == 0)
@@ -402,10 +402,10 @@ static int egis_enroll(struct fpal_device *dev,
 	int err, rerr;
 
 	/* Read only: refuse before the sensor is put into enrol mode. */
-	err = egis_list(dev, ids, FPAL_MAX_TEMPLATES, &n);
+	err = egis_list(dev, ids, EGIS_MAX_TEMPLATES, &n);
 	if (err)
 		return err;
-	if (n >= FPAL_MAX_TEMPLATES)
+	if (n >= EGIS_MAX_TEMPLATES)
 		return FPAL_E_FULL;
 	if (id_in_list(new_id, ids, n))
 		return FPAL_E_EXISTS;
@@ -436,7 +436,7 @@ static int egis_enroll(struct fpal_device *dev,
 		return err;
 
 	/* Trust the sensor's own list, not the status word. */
-	err = egis_list(dev, ids, FPAL_MAX_TEMPLATES, &n);
+	err = egis_list(dev, ids, EGIS_MAX_TEMPLATES, &n);
 	if (err)
 		return err;
 	return id_in_list(new_id, ids, n) ? FPAL_OK : FPAL_E_PROTO;
@@ -456,7 +456,7 @@ static int egis_delete(struct fpal_device *dev,
 	struct egis_rsp rsp;
 	int err;
 
-	err = egis_list(dev, before, FPAL_MAX_TEMPLATES, &n_before);
+	err = egis_list(dev, before, EGIS_MAX_TEMPLATES, &n_before);
 	if (err)
 		return err;
 	if (!id_in_list(id, before, n_before))
@@ -473,14 +473,14 @@ static int egis_delete(struct fpal_device *dev,
 		return FPAL_E_PROTO;
 	}
 
-	err = egis_list(dev, after, FPAL_MAX_TEMPLATES, &n_after);
+	err = egis_list(dev, after, EGIS_MAX_TEMPLATES, &n_after);
 	if (err)
 		return err;
 	/* exactly @id gone, everything else untouched */
 	if (n_after != n_before - 1 || id_in_list(id, after, n_after))
 		return FPAL_E_PROTO;
 	for (size_t i = 0; i < n_before; i++) {
-		if (memcmp(before[i].bytes, id->bytes, FPAL_TEMPLATE_ID_LEN) &&
+		if (memcmp(before[i].bytes, id->bytes, EGIS_ID_LEN) &&
 		    !id_in_list(&before[i], after, n_after))
 			return FPAL_E_PROTO;
 	}

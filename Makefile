@@ -34,6 +34,7 @@ CPPFLAGS_WRITE := $(if $(filter 0,$(ENROLL)),,-DFPAL_ENABLE_ENROLL)
 
 LIB_SRCS := src/core/device.c \
             src/core/err.c \
+            src/core/id.c \
             src/core/lock.c \
             src/core/log.c \
             src/core/newid.c \
@@ -56,7 +57,7 @@ DAEMON_SRCS := daemon/fprint_service.c
 
 TEST_NAMES := test_proto test_egis_moc test_bindings test_pam_opts test_dbus \
               test_dbus_conn test_fprint_service test_labels test_finger test_setup test_status test_ui test_manage test_core \
-              test_golden_egis
+              test_golden_egis test_id
 ifneq ($(ENROLL),0)
 TEST_NAMES += test_enroll
 endif

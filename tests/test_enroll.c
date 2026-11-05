@@ -255,14 +255,14 @@ static void test_duplicate_finger_stops_before_enrol_mode(void) {
 }
 
 static void test_full_sensor_sends_nothing_but_list(void) {
-	struct fpal_template_id before[FPAL_MAX_TEMPLATES];
+	struct fpal_template_id before[EGIS_MAX_TEMPLATES];
 	struct fpal_device *dev;
 	struct mock m;
 
-	make_ids(before, FPAL_MAX_TEMPLATES);
+	make_ids(before, EGIS_MAX_TEMPLATES);
 	mock_init(&m);
 	dev = open_dev(&m);
-	push_list(&m, before, FPAL_MAX_TEMPLATES);
+	push_list(&m, before, EGIS_MAX_TEMPLATES);
 
 	m.n_out = 0;
 	T_EQ_INT(fpal_enroll(dev, &new_id, 0, NULL, NULL), FPAL_E_FULL);
@@ -354,9 +354,9 @@ static void test_store_command_bytes(void) {
 					0x03, 0x00, 0x00, 0x00, 0x20 };
 
 	T_EQ_INT(egis_build_commit(&new_id, out, sizeof(out), &n), 0);
-	T_EQ_INT(n, sizeof(head) + FPAL_TEMPLATE_ID_LEN);
+	T_EQ_INT(n, sizeof(head) + EGIS_ID_LEN);
 	T_EQ_MEM(out, head, sizeof(head));
-	T_EQ_MEM(out + sizeof(head), new_id.bytes, FPAL_TEMPLATE_ID_LEN);
+	T_EQ_MEM(out + sizeof(head), new_id.bytes, EGIS_ID_LEN);
 	T_EQ_INT(egis_build_commit(&new_id, out, 10, &n), FPAL_E_OVERFLOW);
 }
 
@@ -403,9 +403,9 @@ static void test_generated_ids(void) {
 	T_EQ_INT(fpal_template_id_generate(&a), FPAL_OK);
 	T_EQ_INT(fpal_template_id_generate(&b), FPAL_OK);
 	T_EQ_MEM(a.bytes, FPAL_NEW_ID_PREFIX, sizeof(FPAL_NEW_ID_PREFIX) - 1);
-	for (size_t i = 0; i < FPAL_TEMPLATE_ID_LEN; i++)
+	for (size_t i = 0; i < EGIS_ID_LEN; i++)
 		T_CHECK(a.bytes[i] >= 0x20 && a.bytes[i] <= 0x7e);
-	T_CHECK(memcmp(a.bytes, b.bytes, FPAL_TEMPLATE_ID_LEN) != 0);
+	T_CHECK(memcmp(a.bytes, b.bytes, EGIS_ID_LEN) != 0);
 }
 
 /* ---- delete -------------------------------------------------------------- */
@@ -426,9 +426,9 @@ static void test_delete_command_bytes(void) {
 	size_t n;
 
 	T_EQ_INT(egis_build_delete(&new_id, out, sizeof(out), &n), 0);
-	T_EQ_INT(n, sizeof(head) + FPAL_TEMPLATE_ID_LEN); /* one id, 43 bytes */
+	T_EQ_INT(n, sizeof(head) + EGIS_ID_LEN); /* one id, 43 bytes */
 	T_EQ_MEM(out, head, sizeof(head));
-	T_EQ_MEM(out + sizeof(head), new_id.bytes, FPAL_TEMPLATE_ID_LEN);
+	T_EQ_MEM(out + sizeof(head), new_id.bytes, EGIS_ID_LEN);
 	T_EQ_INT(egis_build_delete(&new_id, out, 10, &n), FPAL_E_OVERFLOW);
 	T_EQ_INT(egis_build_delete(NULL, out, sizeof(out), &n), FPAL_E_INVAL);
 }
@@ -500,7 +500,7 @@ static void test_delete_checks_what_really_happened(void) {
 
 	make_ids(ids, 3);
 	make_ids(other, 3);
-	memset(d.bytes, 'Z', FPAL_TEMPLATE_ID_LEN);
+	memset(d.bytes, 'Z', EGIS_ID_LEN);
 
 	/* nothing was removed */
 	mock_init(&m);

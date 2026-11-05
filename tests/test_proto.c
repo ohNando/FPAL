@@ -109,12 +109,12 @@ static void test_build_check_seven_ids_type2(void) {
 }
 
 static void test_build_check_too_many(void) {
-	struct fpal_template_id ids[FPAL_MAX_TEMPLATES + 1];
+	struct fpal_template_id ids[EGIS_MAX_TEMPLATES + 1];
 	uint8_t out[1024];
 	size_t len;
 
 	memset(ids, 0, sizeof(ids));
-	T_EQ_INT(egis_build_check(ids, FPAL_MAX_TEMPLATES + 1, 0, out,
+	T_EQ_INT(egis_build_check(ids, EGIS_MAX_TEMPLATES + 1, 0, out,
 				  sizeof(out), &len),
 		 FPAL_E_INVAL);
 }
@@ -156,7 +156,7 @@ static void test_parse_rejects_truncated(void) {
 }
 
 static void test_parse_list(void) {
-	uint8_t body[2 * FPAL_TEMPLATE_ID_LEN];
+	uint8_t body[2 * EGIS_ID_LEN];
 	struct fpal_template_id ids[FPAL_MAX_TEMPLATES];
 	struct egis_rsp rsp;
 	struct mock m;

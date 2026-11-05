@@ -6,6 +6,7 @@
 #define FPAL_FPAL_H
 
 #include "config.h"
+#include "id.h"
 #include "types.h"
 
 struct fpal_device;
