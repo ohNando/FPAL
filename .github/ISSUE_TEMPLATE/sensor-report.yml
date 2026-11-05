@@ -1,0 +1,47 @@
+name: New sensor report
+description: Ask for support of a fingerprint sensor that fpal does not know yet
+title: "[sensor] "
+labels: ["new-sensor"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for helping. fpal supports Match-on-Chip sensors (the fingerprints
+        are stored and matched on the sensor itself). Image sensors, where the
+        computer does the matching, are out of scope.
+
+        The report below is read from `/sys`, needs no root and sends nothing to
+        the sensor. It leaves out the serial number.
+  - type: textarea
+    id: report
+    attributes:
+      label: Output of `fpal report --markdown`
+      description: Paste it as it is. If `fpal` is not installed, build it (`make`) and run `build/fpal report --markdown`.
+      render: text
+    validations:
+      required: true
+  - type: input
+    id: laptop
+    attributes:
+      label: Laptop or device model
+      placeholder: "for example ASUS Zenbook 14 UX3402VA"
+    validations:
+      required: false
+  - type: dropdown
+    id: windows
+    attributes:
+      label: Does fingerprint login work on Windows on this machine?
+      options:
+        - "Yes"
+        - "No"
+        - "Not tried"
+    validations:
+      required: true
+  - type: checkboxes
+    id: help
+    attributes:
+      label: Can you test?
+      description: A new driver can only be checked on the real hardware.
+      options:
+        - label: I can run commands as root on this machine and paste the output (a USB trace with `FPAL_TRACE=1`)
+          required: false
