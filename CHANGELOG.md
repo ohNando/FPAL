@@ -4,6 +4,16 @@ All notable changes to FPAL. The format follows [Keep a Changelog](https://keepa
 
 ## [Unreleased]
 
+## [0.7.1] - 2026-11-05
+
+Documentation only; the program is the same as 0.7.0.
+
+### Added
+- A code of conduct and a pull request template.
+
+### Changed
+- README: the size of the code base is stated correctly, and it says that the table of sensor ids behind `fpal report` is generated from libfprint's id tables (data, not code).
+
 ## [0.7.0] - 2026-11-05
 
 ### Added
