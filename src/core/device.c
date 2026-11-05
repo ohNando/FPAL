@@ -146,22 +146,104 @@ int fpal_identify(struct fpal_device *dev, uint32_t timeout_ms,
 	return dev->drv->identify(dev, timeout_ms, match);
 }
 
+#ifdef FPAL_ENABLE_ENROLL
+static bool id_stored(const struct fpal_template_id *ids, size_t n,
+		      const struct fpal_template_id *id) {
+	for (size_t i = 0; i < n; i++)
+		if (fpal_id_equal(&ids[i], id))
+			return true;
+	return false;
+}
+
+/* The sensor's capacity as far as the core can use it for array bounds. */
+static size_t list_cap(const struct fpal_device *dev) {
+	return dev->drv->max_templates < FPAL_MAX_TEMPLATES ?
+		       dev->drv->max_templates :
+		       FPAL_MAX_TEMPLATES;
+}
+
+/*
+ * The safety rules of every write live here, not in the drivers, so a new
+ * driver cannot forget them: look before touching anything, never go past
+ * the capacity, never reuse an id, and trust the sensor's own list over a
+ * status word afterwards.
+ */
 int fpal_enroll(struct fpal_device *dev, const struct fpal_template_id *new_id,
 		uint32_t flags, fpal_enroll_cb cb, void *ud) {
+	struct fpal_template_id ids[FPAL_MAX_TEMPLATES];
+	size_t n = 0;
+	int err;
+
 	if (!dev || !new_id)
 		return FPAL_E_INVAL;
 	if (!dev->drv->enroll)
 		return FPAL_E_NOTSUP;
-	return dev->drv->enroll(dev, new_id, flags, cb, ud);
+
+	/* Read only: refuse before the sensor is put into enrol mode. */
+	err = dev->drv->list(dev, ids, list_cap(dev), &n);
+	if (err)
+		return err;
+	if (n >= dev->drv->max_templates)
+		return FPAL_E_FULL;
+	if (id_stored(ids, n, new_id))
+		return FPAL_E_EXISTS;
+
+	err = dev->drv->enroll(dev, new_id, ids, n, flags, cb, ud);
+	if (err || (flags & FPAL_ENROLL_DRY_RUN))
+		return err;
+
+	err = dev->drv->list(dev, ids, list_cap(dev), &n);
+	if (err)
+		return err;
+	return id_stored(ids, n, new_id) ? FPAL_OK : FPAL_E_PROTO;
 }
 
 int fpal_delete(struct fpal_device *dev, const struct fpal_template_id *id) {
+	struct fpal_template_id before[FPAL_MAX_TEMPLATES];
+	struct fpal_template_id after[FPAL_MAX_TEMPLATES];
+	size_t n_before = 0, n_after = 0;
+	int err;
+
 	if (!dev || !id)
 		return FPAL_E_INVAL;
 	if (!dev->drv->delete_template)
 		return FPAL_E_NOTSUP;
-	return dev->drv->delete_template(dev, id);
+
+	err = dev->drv->list(dev, before, list_cap(dev), &n_before);
+	if (err)
+		return err;
+	if (!id_stored(before, n_before, id))
+		return FPAL_E_NODATA;
+
+	err = dev->drv->delete_template(dev, id);
+	if (err)
+		return err;
+
+	err = dev->drv->list(dev, after, list_cap(dev), &n_after);
+	if (err)
+		return err;
+	/* exactly @id gone, everything else untouched */
+	if (n_after != n_before - 1 || id_stored(after, n_after, id))
+		return FPAL_E_PROTO;
+	for (size_t i = 0; i < n_before; i++)
+		if (!fpal_id_equal(&before[i], id) &&
+		    !id_stored(after, n_after, &before[i]))
+			return FPAL_E_PROTO;
+	return FPAL_OK;
 }
+#else
+/* Read-only build: nothing here can change what the sensor stores. */
+int fpal_enroll(struct fpal_device *dev, const struct fpal_template_id *new_id,
+		uint32_t flags, fpal_enroll_cb cb, void *ud) {
+	(void)dev, (void)new_id, (void)flags, (void)cb, (void)ud;
+	return FPAL_E_NOTSUP;
+}
+
+int fpal_delete(struct fpal_device *dev, const struct fpal_template_id *id) {
+	(void)dev, (void)id;
+	return FPAL_E_NOTSUP;
+}
+#endif
 
 void fpal_cancel(struct fpal_device *dev) {
 	if (dev)

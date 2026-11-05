@@ -46,11 +46,23 @@ struct fpal_driver {
 		    size_t cap, size_t *n);
 	int (*identify)(struct fpal_device *dev, uint32_t timeout_ms,
 			struct fpal_template_id *match);
-	/* Optional, NULL in read-only builds. */
+	/*
+	 * Optional, NULL in read-only builds. The core has already listed the
+	 * sensor, refused a full one and a duplicate id (@existing holds what
+	 * is stored) and reads the list back afterwards; the driver only runs
+	 * the sensor's enrol sequence, leaves it idle and reports whether a
+	 * finger it already knows was presented (FPAL_E_EXISTS). With
+	 * FPAL_ENROLL_DRY_RUN it must not store anything.
+	 */
 	int (*enroll)(struct fpal_device *dev,
-		      const struct fpal_template_id *new_id, uint32_t flags,
-		      fpal_enroll_cb cb, void *ud);
-	/* Optional, NULL in read-only builds. Deletes ONE template. */
+		      const struct fpal_template_id *new_id,
+		      const struct fpal_template_id *existing, size_t n_existing,
+		      uint32_t flags, fpal_enroll_cb cb, void *ud);
+	/*
+	 * Optional, NULL in read-only builds. Sends the command that deletes
+	 * ONE template. The core has checked that @id is stored, and reads the
+	 * list back to make sure exactly @id is gone.
+	 */
 	int (*delete_template)(struct fpal_device *dev,
 			       const struct fpal_template_id *id);
 };
