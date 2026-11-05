@@ -27,6 +27,7 @@ trap 'rm -f "$snap"' EXIT
 
 case $1 in
 fedora)
+	# shellcheck disable=SC2016 # the text is for the shell inside the container
 	script='
 dnf -y -q install gcc make pam-devel authselect tar findutils diffutils >/dev/null
 mkdir /work && tar -xf /src.tar -C /work && cd /work
@@ -59,6 +60,7 @@ echo "--- fedora: setup and revert restore the PAM files exactly"
 '
 	;;
 debian | ubuntu)
+	# shellcheck disable=SC2016 # the text is for the shell inside the container
 	script='
 apt-get update -qq >/dev/null
 DEBIAN_FRONTEND=noninteractive apt-get install -y -qq gcc make libpam0g-dev libpam-runtime ca-certificates >/dev/null

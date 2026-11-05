@@ -31,6 +31,7 @@ trap 'rm -f "$snap"' EXIT
 
 case $1 in
 debian | ubuntu)
+	# shellcheck disable=SC2016 # the text is for the shell inside the container
 	script='
 apt-get update -qq >/dev/null
 DEBIAN_FRONTEND=noninteractive apt-get install -y -qq build-essential debhelper dpkg-dev \
@@ -52,7 +53,7 @@ mkdir /tmp/x && dpkg-deb -x "$deb" /tmp/x
 sh scripts/check-readonly.sh /tmp/x/usr/lib/*/security/pam_fpal.so /tmp/x/usr/libexec/fpald
 
 echo "--- lintian (warnings only)"
-lintian --no-tag-display-limit "$deb" 2>&1 | head -30 || true
+lintian --tag-display-limit 0 "$deb" 2>&1 | head -30 || true
 
 echo "--- install it"
 DEBIAN_FRONTEND=noninteractive apt-get install -y -qq "$deb" >/dev/null
@@ -67,6 +68,7 @@ echo "--- '"$1"': package builds, passes the checks, installs, setup and revert 
 '
 	;;
 arch)
+	# shellcheck disable=SC2016 # the text is for the shell inside the container
 	script='
 pacman -Syu --noconfirm --quiet base-devel pam >/dev/null
 mkdir -p /src && tar -xf /src.tar -C /src
