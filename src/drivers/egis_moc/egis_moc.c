@@ -205,7 +205,7 @@ static int egis_wait_finger(struct fpal_device *dev, uint32_t timeout_ms) {
 static bool id_in_list(const struct fpal_template_id *id,
 		       const struct fpal_template_id *ids, size_t n) {
 	for (size_t i = 0; i < n; i++)
-		if (memcmp(id->bytes, ids[i].bytes, EGIS_ID_LEN) == 0)
+		if (fpal_id_equal(id, &ids[i]))
 			return true;
 	return false;
 }
@@ -236,8 +236,8 @@ static int egis_match(struct fpal_device *dev, const struct fpal_template_id *id
 			rsp.body_len);
 		return FPAL_E_PROTO;
 	}
-	memcpy(match->bytes, rsp.body + EGIS_IDENTIFY_ID_BODY_OFF,
-	       EGIS_ID_LEN);
+	(void)fpal_id_set(match, rsp.body + EGIS_IDENTIFY_ID_BODY_OFF,
+			  EGIS_ID_LEN);
 
 	/*
 	 * The id offset comes from reverse engineering. A matched id that is
@@ -480,7 +480,7 @@ static int egis_delete(struct fpal_device *dev,
 	if (n_after != n_before - 1 || id_in_list(id, after, n_after))
 		return FPAL_E_PROTO;
 	for (size_t i = 0; i < n_before; i++) {
-		if (memcmp(before[i].bytes, id->bytes, EGIS_ID_LEN) &&
+		if (!fpal_id_equal(&before[i], id) &&
 		    !id_in_list(&before[i], after, n_after))
 			return FPAL_E_PROTO;
 	}

@@ -30,7 +30,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include "fpal/types.h"
+#include "fpal/id.h"
 
 /* USB */
 #define EGIS_IFACE 0u

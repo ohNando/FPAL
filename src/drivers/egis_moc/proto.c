@@ -149,6 +149,9 @@ int egis_build_check(const struct fpal_template_id *ids, size_t n,
 		return FPAL_E_INVAL;
 	if (n > EGIS_MAX_TEMPLATES)
 		return FPAL_E_INVAL;
+	for (size_t i = 0; i < n; i++)
+		if (fpal_id_len(&ids[i]) != EGIS_ID_LEN)
+			return FPAL_E_INVAL; /* not an id this sensor can hold */
 	if (len > cap)
 		return FPAL_E_OVERFLOW;
 
@@ -161,7 +164,7 @@ int egis_build_check(const struct fpal_template_id *ids, size_t n,
 	memset(p, 0, CHECK_SEPARATOR_LEN);
 	p += CHECK_SEPARATOR_LEN;
 	for (size_t i = 0; i < n; i++) {
-		memcpy(p, ids[i].bytes, EGIS_ID_LEN);
+		memcpy(p, fpal_id_data(&ids[i]), EGIS_ID_LEN);
 		p += EGIS_ID_LEN;
 	}
 	memcpy(p, check_suffix, sizeof(check_suffix));
@@ -190,12 +193,12 @@ int egis_build_commit(const struct fpal_template_id *id, uint8_t *out,
 		      size_t cap, size_t *out_len) {
 	const size_t len = sizeof(commit_prefix) + EGIS_ID_LEN;
 
-	if (!id || !out || !out_len)
+	if (!id || !out || !out_len || fpal_id_len(id) != EGIS_ID_LEN)
 		return FPAL_E_INVAL;
 	if (len > cap)
 		return FPAL_E_OVERFLOW;
 	memcpy(out, commit_prefix, sizeof(commit_prefix));
-	memcpy(out + sizeof(commit_prefix), id->bytes, EGIS_ID_LEN);
+	memcpy(out + sizeof(commit_prefix), fpal_id_data(id), EGIS_ID_LEN);
 	*out_len = len;
 	return FPAL_OK;
 }
@@ -214,7 +217,7 @@ int egis_build_delete(const struct fpal_template_id *id, uint8_t *out,
 	const size_t len = 4 + body;
 	uint8_t *p = out;
 
-	if (!id || !out || !out_len)
+	if (!id || !out || !out_len || fpal_id_len(id) != EGIS_ID_LEN)
 		return FPAL_E_INVAL;
 	if (len > cap)
 		return FPAL_E_OVERFLOW;
@@ -224,7 +227,7 @@ int egis_build_delete(const struct fpal_template_id *id, uint8_t *out,
 	p += sizeof(delete_prefix);
 	fpal_put_be16(p, EGIS_ID_LEN);
 	p += 2;
-	memcpy(p, id->bytes, EGIS_ID_LEN);
+	memcpy(p, fpal_id_data(id), EGIS_ID_LEN);
 	*out_len = len;
 	return FPAL_OK;
 }
@@ -248,8 +251,8 @@ int egis_parse_list(const struct egis_rsp *rsp, struct fpal_template_id *out,
 		return FPAL_E_OVERFLOW;
 
 	for (size_t i = 0; i < count; i++)
-		memcpy(out[i].bytes, rsp->body + i * EGIS_ID_LEN,
-		       EGIS_ID_LEN);
+		(void)fpal_id_set(&out[i], rsp->body + i * EGIS_ID_LEN,
+				  EGIS_ID_LEN);
 	*n = count;
 	return FPAL_OK;
 }
