@@ -8,13 +8,13 @@
 
 #include "fpal/bindings.h"
 #include "fpal/labels.h"
+#include "id_util.h"
 #include "t.h"
 
 static char dir[64];
 
 static void make_id(struct fpal_template_id *id, uint8_t seed) {
-	for (size_t i = 0; i < FPAL_TEMPLATE_ID_LEN; i++)
-		id->bytes[i] = (uint8_t)(seed + i);
+	id_seq(id, seed, TEST_ID_LEN);
 }
 
 static void test_valid_labels(void) {
@@ -117,7 +117,7 @@ static void test_find_by_label(void) {
 	T_EQ_INT(fpal_labels_set(dir, &a, "left"), FPAL_OK);
 	T_EQ_INT(fpal_labels_set(dir, &b, "right"), FPAL_OK);
 	T_EQ_INT(fpal_labels_find(dir, "right", &got), FPAL_OK);
-	T_EQ_MEM(got.bytes, b.bytes, FPAL_TEMPLATE_ID_LEN);
+	T_CHECK(fpal_id_equal(&got, &b));
 	T_EQ_INT(fpal_labels_find(dir, "nope", &got), FPAL_E_NODATA);
 	T_EQ_INT(fpal_labels_set(dir, &a, NULL), FPAL_OK);
 	T_EQ_INT(fpal_labels_set(dir, &b, NULL), FPAL_OK);
@@ -171,7 +171,7 @@ static void test_malformed_lines_are_ignored(void) {
 	fputs("garbage\n", f);
 	fputs("zz\tshort\n", f);
 	/* id of make_id(1) = 01 02 03 ... 20, then a valid label */
-	for (unsigned i = 0; i < FPAL_TEMPLATE_ID_LEN; i++)
+	for (unsigned i = 0; i < TEST_ID_LEN; i++)
 		fprintf(f, "%02x", 1 + i);
 	fputs("\tsurvivor\n", f);
 	fclose(f);
@@ -197,7 +197,7 @@ static void test_forget_removes_from_every_user(void) {
 	T_EQ_INT(fpal_bindings_load(dir, "alice", ids, FPAL_MAX_TEMPLATES, &n),
 		 FPAL_OK);
 	T_EQ_INT(n, 1);
-	T_EQ_MEM(ids[0].bytes, b.bytes, FPAL_TEMPLATE_ID_LEN);
+	T_CHECK(fpal_id_equal(&ids[0], &b));
 	T_EQ_INT(fpal_bindings_load(dir, "bob", ids, FPAL_MAX_TEMPLATES, &n),
 		 FPAL_OK);
 	T_EQ_INT(n, 0);

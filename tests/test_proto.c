@@ -6,6 +6,7 @@
 #include "core/bytes.h"
 #include "drivers/egis_moc/egis_moc_proto.h"
 #include "mock_transport.h"
+#include "id_util.h"
 #include "t.h"
 
 static void test_frame_sensor_reset(void) {
@@ -78,7 +79,7 @@ static void test_build_check_one_id(void) {
 	uint8_t out[256];
 	size_t len = 0;
 
-	memset(id.bytes, 0xab, sizeof(id.bytes));
+	id_fill(&id, 0xab, EGIS_ID_LEN);
 	T_EQ_INT(egis_build_check(&id, 1, 0, out, sizeof(out), &len), FPAL_OK);
 
 	/* 4 len + 5 prefix + 2 len + 32 separator + 32 id + 2 suffix */
@@ -88,7 +89,7 @@ static void test_build_check_one_id(void) {
 	T_EQ_INT(fpal_get_be16(out + 9), 0x40);
 	for (size_t i = 11; i < 43; i++)
 		T_EQ_INT(out[i], 0);
-	T_EQ_MEM(out + 43, id.bytes, 32);
+	T_EQ_MEM(out + 43, fpal_id_data(&id), 32);
 	T_EQ_MEM(out + 75, "\x00\x40", 2);
 }
 
@@ -170,8 +171,8 @@ static void test_parse_list(void) {
 	T_EQ_INT(egis_parse(m.in[0].data, m.in[0].len, &rsp), FPAL_OK);
 	T_EQ_INT(egis_parse_list(&rsp, ids, FPAL_MAX_TEMPLATES, &n), FPAL_OK);
 	T_EQ_INT(n, 2);
-	T_EQ_MEM(ids[0].bytes, body, 32);
-	T_EQ_MEM(ids[1].bytes, body + 32, 32);
+	T_EQ_MEM(fpal_id_data(&ids[0]), body, 32);
+	T_EQ_MEM(fpal_id_data(&ids[1]), body + 32, 32);
 
 	T_EQ_INT(egis_parse_list(&rsp, ids, 1, &n), FPAL_E_OVERFLOW);
 }

@@ -7,13 +7,13 @@
 #include <unistd.h>
 
 #include "fpal/bindings.h"
+#include "id_util.h"
 #include "t.h"
 
 static char dir[64];
 
 static void make_id(struct fpal_template_id *id, uint8_t seed) {
-	for (size_t i = 0; i < FPAL_TEMPLATE_ID_LEN; i++)
-		id->bytes[i] = (uint8_t)(seed + i);
+	id_seq(id, seed, TEST_ID_LEN);
 }
 
 static void test_valid_user(void) {
@@ -53,8 +53,8 @@ static void test_add_load_roundtrip(void) {
 	T_EQ_INT(fpal_bindings_load(dir, "alice", ids, FPAL_MAX_TEMPLATES, &n),
 		 FPAL_OK);
 	T_EQ_INT(n, 2);
-	T_EQ_MEM(ids[0].bytes, a.bytes, FPAL_TEMPLATE_ID_LEN);
-	T_EQ_MEM(ids[1].bytes, b.bytes, FPAL_TEMPLATE_ID_LEN);
+	T_CHECK(fpal_id_equal(&ids[0], &a));
+	T_CHECK(fpal_id_equal(&ids[1], &b));
 
 	T_CHECK(fpal_bindings_contains(dir, "alice", &b));
 	T_CHECK(!fpal_bindings_contains(dir, "bob", &b));

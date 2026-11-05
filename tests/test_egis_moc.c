@@ -88,13 +88,13 @@ static void test_identify_match(void) {
 	if (!dev)
 		return;
 	memset(body, 0xee, EGIS_IDENTIFY_ID_BODY_OFF);
-	memcpy(body + EGIS_IDENTIFY_ID_BODY_OFF, ids[1].bytes,
+	memcpy(body + EGIS_IDENTIFY_ID_BODY_OFF, fpal_id_data(&ids[1]),
 	       EGIS_ID_LEN);
 	mock_push_egis(&m, body, sizeof(body), EGIS_SW_OK);
 	push_ok(&m); /* final reset */
 
 	T_EQ_INT(fpal_identify(dev, 1000, &match), FPAL_OK);
-	T_EQ_MEM(match.bytes, ids[1].bytes, EGIS_ID_LEN);
+	T_CHECK(fpal_id_equal(&match, &ids[1]));
 	T_EQ_INT(m.irqs, 1);
 
 	/* fw, list, reset, arm, check, match, reset */
@@ -103,8 +103,8 @@ static void test_identify_match(void) {
 	T_CHECK(out_is(&m, 3, &egis_cmd_arm_identify));
 	T_CHECK(out_is(&m, 4, &egis_cmd_sensor_check));
 	/* the match request carries both stored ids */
-	T_EQ_MEM(out_payload(&m, 5) + 43, ids[0].bytes, EGIS_ID_LEN);
-	T_EQ_MEM(out_payload(&m, 5) + 75, ids[1].bytes, EGIS_ID_LEN);
+	T_EQ_MEM(out_payload(&m, 5) + 43, fpal_id_data(&ids[0]), EGIS_ID_LEN);
+	T_EQ_MEM(out_payload(&m, 5) + 75, fpal_id_data(&ids[1]), EGIS_ID_LEN);
 	T_CHECK(out_is(&m, 6, &egis_cmd_sensor_reset));
 	fpal_device_close(dev);
 }
@@ -220,12 +220,13 @@ static void test_bad_checksum_rejected(void) {
 #ifndef FPAL_ENABLE_ENROLL
 /* A normal build must be unable to write to the sensor. */
 static void test_default_build_cannot_enroll(void) {
-	struct fpal_template_id id = { .bytes = "FPAL-test" };
+	struct fpal_template_id id;
 	const struct fpal_driver *drv = fpal_driver_lookup(0x1c7a, 0x0587, NULL);
 	struct fpal_device *dev;
 	struct mock m;
 	size_t sent;
 
+	id_pad(&id, "FPAL-test", TEST_ID_LEN);
 	mock_init(&m);
 	dev = open_dev(&m);
 	T_CHECK(dev != NULL);

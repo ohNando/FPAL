@@ -8,9 +8,7 @@
 
 #define STAGES 20u
 
-static const struct fpal_template_id new_id = {
-	.bytes = "FPAL-0123456789abcdef0123456789"
-};
+static struct fpal_template_id new_id; /* set in main() */
 
 struct events {
 	unsigned check, touch, done, center, dirty, retry;
@@ -356,7 +354,7 @@ static void test_store_command_bytes(void) {
 	T_EQ_INT(egis_build_commit(&new_id, out, sizeof(out), &n), 0);
 	T_EQ_INT(n, sizeof(head) + EGIS_ID_LEN);
 	T_EQ_MEM(out, head, sizeof(head));
-	T_EQ_MEM(out + sizeof(head), new_id.bytes, EGIS_ID_LEN);
+	T_EQ_MEM(out + sizeof(head), fpal_id_data(&new_id), EGIS_ID_LEN);
 	T_EQ_INT(egis_build_commit(&new_id, out, 10, &n), FPAL_E_OVERFLOW);
 }
 
@@ -402,10 +400,10 @@ static void test_generated_ids(void) {
 
 	T_EQ_INT(fpal_template_id_generate(&a), FPAL_OK);
 	T_EQ_INT(fpal_template_id_generate(&b), FPAL_OK);
-	T_EQ_MEM(a.bytes, FPAL_NEW_ID_PREFIX, sizeof(FPAL_NEW_ID_PREFIX) - 1);
+	T_CHECK(fpal_id_has_prefix(&a, FPAL_NEW_ID_PREFIX));
 	for (size_t i = 0; i < EGIS_ID_LEN; i++)
-		T_CHECK(a.bytes[i] >= 0x20 && a.bytes[i] <= 0x7e);
-	T_CHECK(memcmp(a.bytes, b.bytes, EGIS_ID_LEN) != 0);
+		T_CHECK(fpal_id_data(&a)[i] >= 0x20 && fpal_id_data(&a)[i] <= 0x7e);
+	T_CHECK(!fpal_id_equal(&a, &b));
 }
 
 /* ---- delete -------------------------------------------------------------- */
@@ -428,7 +426,7 @@ static void test_delete_command_bytes(void) {
 	T_EQ_INT(egis_build_delete(&new_id, out, sizeof(out), &n), 0);
 	T_EQ_INT(n, sizeof(head) + EGIS_ID_LEN); /* one id, 43 bytes */
 	T_EQ_MEM(out, head, sizeof(head));
-	T_EQ_MEM(out + sizeof(head), new_id.bytes, EGIS_ID_LEN);
+	T_EQ_MEM(out + sizeof(head), fpal_id_data(&new_id), EGIS_ID_LEN);
 	T_EQ_INT(egis_build_delete(&new_id, out, 10, &n), FPAL_E_OVERFLOW);
 	T_EQ_INT(egis_build_delete(NULL, out, sizeof(out), &n), FPAL_E_INVAL);
 }
@@ -500,7 +498,7 @@ static void test_delete_checks_what_really_happened(void) {
 
 	make_ids(ids, 3);
 	make_ids(other, 3);
-	memset(d.bytes, 'Z', EGIS_ID_LEN);
+	id_fill(&d, 'Z', EGIS_ID_LEN);
 
 	/* nothing was removed */
 	mock_init(&m);
@@ -533,6 +531,7 @@ static void test_delete_checks_what_really_happened(void) {
 }
 
 int main(void) {
+	id_pad(&new_id, "FPAL-0123456789abcdef0123456789", EGIS_ID_LEN);
 	T_RUN(test_full_enroll);
 	T_RUN(test_dry_run_never_writes);
 	T_RUN(test_retries_do_not_count);

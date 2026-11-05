@@ -7,6 +7,7 @@
 #define FPAL_TESTS_EGIS_UTIL_H
 
 #include "core/driver.h"
+#include "id_util.h"
 #include "drivers/egis_moc/egis_moc_proto.h"
 #include "mock_transport.h"
 #include "t.h"
@@ -25,7 +26,7 @@ static inline bool out_is(const struct mock *m, size_t i, const struct egis_cmd 
 
 static inline void make_ids(struct fpal_template_id *ids, size_t n) {
 	for (size_t i = 0; i < n; i++)
-		memset(ids[i].bytes, (int)('A' + i), EGIS_ID_LEN);
+		id_fill(&ids[i], (int)('A' + i), EGIS_ID_LEN);
 }
 
 static inline void push_list(struct mock *m, const struct fpal_template_id *ids,
@@ -33,7 +34,7 @@ static inline void push_list(struct mock *m, const struct fpal_template_id *ids,
 	uint8_t body[EGIS_MAX_TEMPLATES * EGIS_ID_LEN];
 
 	for (size_t i = 0; i < n; i++)
-		memcpy(body + i * EGIS_ID_LEN, ids[i].bytes,
+		memcpy(body + i * EGIS_ID_LEN, fpal_id_data(&ids[i]),
 		       EGIS_ID_LEN);
 	mock_push_egis(m, body, n * EGIS_ID_LEN, EGIS_SW_OK);
 }

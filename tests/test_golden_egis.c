@@ -99,7 +99,7 @@ static void push_match(struct mock *m, const struct fpal_template_id *id) {
 	uint8_t body[64];
 
 	memset(body, 0x14, 32);
-	memcpy(body + 32, id->bytes, EGIS_ID_LEN);
+	memcpy(body + 32, fpal_id_data(id), EGIS_ID_LEN);
 	mock_push_egis(m, body, sizeof(body), EGIS_SW_OK);
 }
 
@@ -164,9 +164,7 @@ static void test_identify_match_0582(void) { run_identify(0x0582, "identify_matc
 #ifdef FPAL_ENABLE_ENROLL
 /* ---- enrol and delete ---------------------------------------------------- */
 
-static const struct fpal_template_id new_id = {
-	.bytes = "FPAL-0123456789abcdef0123456789"
-};
+static struct fpal_template_id new_id; /* set in main() */
 
 static void push_scan(struct mock *m, int kind) {
 	static const uint8_t two[2] = { 0x00, 0x01 };
@@ -273,6 +271,9 @@ static void test_delete_unknown(void) { run_delete("delete_unknown_0587", 2); }
 
 int main(int argc, char **argv) {
 	update_mode = argc > 1 && !strcmp(argv[1], "--update");
+#ifdef FPAL_ENABLE_ENROLL
+	id_pad(&new_id, "FPAL-0123456789abcdef0123456789", EGIS_ID_LEN);
+#endif
 
 	T_RUN(test_list_0587);
 	T_RUN(test_list_05a1);
