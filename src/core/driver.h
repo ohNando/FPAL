@@ -35,7 +35,7 @@ struct fpal_driver {
 	/*
 	 * Length of the ids fpal_template_id_new() makes for this sensor. The
 	 * ids must be unique to the sensor and unlikely to repeat (at least 16
-	 * bytes of random data), never a slot index that is reused after a
+	 * bytes, mostly random), never a slot index that is reused after a
 	 * delete: a stale binding must not match another finger.
 	 */
 	size_t new_id_len;

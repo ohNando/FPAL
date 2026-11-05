@@ -9,6 +9,7 @@
 #include "core/driver.h"
 #include "core/log.h"
 #include "core/trace.h"
+#include "driver_lint.h"
 #include "t.h"
 
 static void test_trace_follows_the_environment_until_told_otherwise(void) {
@@ -86,14 +87,7 @@ static void test_every_driver_follows_the_rules(void) {
 		const struct fpal_driver *drv = *d;
 
 		count++;
-		T_CHECK(drv->name && drv->name[0]);
-		T_CHECK(drv->ids && drv->ids[0].vid);
-		T_CHECK(drv->open && drv->close && drv->list && drv->identify);
-		T_CHECK(drv->max_templates >= 1 &&
-			drv->max_templates <= FPAL_MAX_TEMPLATES);
-		/* enough random data that a stale binding cannot match another finger */
-		T_CHECK(drv->new_id_len >= sizeof(FPAL_NEW_ID_PREFIX) - 1 + 16 &&
-			drv->new_id_len <= FPAL_ID_MAX);
+		driver_lint(drv);
 		for (const struct fpal_driver *const *o = d + 1; *o; o++)
 			T_CHECK(strcmp(drv->name, (*o)->name) != 0);
 		for (const struct fpal_usb_id *id = drv->ids; id->vid; id++)

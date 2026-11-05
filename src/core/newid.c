@@ -17,8 +17,8 @@ int fpal_template_id_make(size_t len, struct fpal_template_id *out) {
 
 	if (!out)
 		return FPAL_E_INVAL;
-	/* Room for the prefix and at least 16 random characters. */
-	if (len < prefix + 16 || len > FPAL_ID_MAX)
+	/* Long enough to be unique (16 bytes), with room for the prefix. */
+	if (len < 16 || len <= prefix || len > FPAL_ID_MAX)
 		return FPAL_E_INVAL;
 	n = len - prefix;
 	/* Every byte is printable, so the id reads well in logs. */
