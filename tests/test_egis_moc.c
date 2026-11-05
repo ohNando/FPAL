@@ -55,7 +55,8 @@ static void test_list(void) {
 
 	T_EQ_INT(fpal_list(dev, got, FPAL_MAX_TEMPLATES, &n), FPAL_OK);
 	T_EQ_INT(n, 3);
-	T_EQ_MEM(got, ids, sizeof(ids));
+	for (size_t i = 0; i < 3; i++)
+		T_CHECK(fpal_id_equal(&got[i], &ids[i]));
 	T_CHECK(out_is(&m, 1, &egis_cmd_list));
 	fpal_device_close(dev);
 }

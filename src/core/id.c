@@ -4,18 +4,19 @@
 #include <string.h>
 
 size_t fpal_id_len(const struct fpal_template_id *id) {
-	(void)id;
-	return FPAL_TEMPLATE_ID_LEN;
+	/* a struct that was never filled in (or was overwritten) cannot make us read past it */
+	return id->len > FPAL_ID_MAX ? FPAL_ID_MAX : id->len;
 }
 
 const uint8_t *fpal_id_data(const struct fpal_template_id *id) {
-	return id->bytes;
+	return id->data;
 }
 
 int fpal_id_set(struct fpal_template_id *id, const void *data, size_t len) {
-	if (!id || !data || len != FPAL_TEMPLATE_ID_LEN)
+	if (!id || !data || len == 0 || len > FPAL_ID_MAX)
 		return FPAL_E_INVAL;
-	memcpy(id->bytes, data, len);
+	memcpy(id->data, data, len);
+	id->len = (uint8_t)len;
 	return FPAL_OK;
 }
 
@@ -58,12 +59,12 @@ static int nibble(char c, bool allow_upper) {
 
 int fpal_id_from_hex(const char *hex, size_t hexlen, bool allow_upper,
 		     struct fpal_template_id *id) {
-	uint8_t raw[FPAL_TEMPLATE_ID_LEN];
+	uint8_t raw[FPAL_ID_MAX];
+	const size_t n = hexlen / 2;
 
-	if (!hex || !id || hexlen == 0 || hexlen % 2 != 0 ||
-	    hexlen / 2 != sizeof(raw))
+	if (!hex || !id || hexlen == 0 || hexlen % 2 != 0 || n > FPAL_ID_MAX)
 		return FPAL_E_INVAL;
-	for (size_t i = 0; i < sizeof(raw); i++) {
+	for (size_t i = 0; i < n; i++) {
 		const int hi = nibble(hex[2 * i], allow_upper);
 		const int lo = nibble(hex[2 * i + 1], allow_upper);
 
@@ -71,7 +72,7 @@ int fpal_id_from_hex(const char *hex, size_t hexlen, bool allow_upper,
 			return FPAL_E_INVAL;
 		raw[i] = (uint8_t)(hi << 4 | lo);
 	}
-	return fpal_id_set(id, raw, sizeof(raw));
+	return fpal_id_set(id, raw, n);
 }
 
 void fpal_id_text(const struct fpal_template_id *id, char *out, size_t cap) {

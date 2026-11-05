@@ -141,8 +141,15 @@ static int load(const char *dir, struct entry *e, size_t *n) {
 		struct entry *cur = &e[count];
 		const char *label;
 
-		if (!nl)
+		if (!nl) {
+			if (strlen(line) == sizeof(line) - 1) {
+				int c; /* drain: a fragment is not a line */
+
+				while ((c = fgetc(f)) != EOF && c != '\n')
+					;
+			}
 			continue; /* over long line */
+		}
 		*nl = '\0';
 		if (!parse_line(line, &cur->id, &label))
 			continue; /* ignore malformed lines */

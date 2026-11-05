@@ -133,9 +133,9 @@
 #define FPAL_MAX_TEMPLATES 10u
 #endif
 
-/* Size of a template identifier as reported by the sensor. */
-#ifndef FPAL_TEMPLATE_ID_LEN
-#define FPAL_TEMPLATE_ID_LEN 32u
+/* Longest template id any driver may use, in bytes (libfprint's longest is 128). */
+#ifndef FPAL_ID_MAX
+#define FPAL_ID_MAX 128u
 #endif
 
 /* Largest single bulk IN response we accept. */

@@ -99,7 +99,8 @@ static void test_build_check_seven_ids_type2(void) {
 	uint8_t out[512];
 	size_t len = 0;
 
-	memset(ids, 0x11, sizeof(ids));
+	for (size_t i = 0; i < 7; i++)
+		id_fill(&ids[i], 0x11, TEST_ID_LEN);
 	T_EQ_INT(egis_build_check(ids, 7, EGIS_FLAG_CHECK_PREFIX_TYPE2, out,
 				  sizeof(out), &len),
 		 FPAL_OK);

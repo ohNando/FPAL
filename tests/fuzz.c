@@ -32,6 +32,7 @@
 #include "dbus/message.h"
 #include "drivers/egis_moc/egis_moc_proto.h"
 #include "fpal/bindings.h"
+#include "id_util.h"
 #include "fpal/labels.h"
 
 static uint64_t rng = 88172645463325252ull;
@@ -316,7 +317,8 @@ static void t_text(const uint8_t *b, size_t len) {
 
 	memcpy(s, b, len);
 	s[len] = '\0'; /* our own call sites always pass NUL terminated text */
-	memset(ids, 'A', sizeof(ids));
+	for (size_t i = 0; i < 3; i++)
+		id_fill(&ids[i], 'A', 32);
 	(void)fpal_label_valid(s);
 	(void)fpal_finger_find("/nonexistent", ids, 3, s, &idx, &matches);
 	fpal_text_sanitize(s);
@@ -434,7 +436,7 @@ static void t_files(const uint8_t *b, size_t len) {
 	char path[128], label[FPAL_LABEL_MAX + 1];
 	size_t n;
 
-	memset(&id, 'A', sizeof(id));
+	id_fill(&id, 'A', 32);
 	snprintf(path, sizeof(path), "%s/.labels", fdir);
 	write_file(path, b, len, 0600);
 	(void)fpal_labels_get(fdir, &id, label, sizeof(label));

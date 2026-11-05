@@ -64,6 +64,61 @@ static void test_add_load_roundtrip(void) {
 	T_EQ_INT(st.st_mode & 0777, 0600);
 }
 
+static void put_file(const char *user, const char *text) {
+	char path[128];
+	FILE *f;
+
+	snprintf(path, sizeof(path), "%s/%s", dir, user);
+	f = fopen(path, "w");
+	if (f) {
+		fputs(text, f);
+		fclose(f);
+		chmod(path, 0600);
+	}
+}
+
+static void test_ids_of_any_length(void) {
+	static const size_t lens[] = { 1, 20, 32, FPAL_ID_MAX };
+	struct fpal_template_id ids[FPAL_MAX_TEMPLATES], x;
+	size_t n = 0;
+
+	fpal_bindings_clear(dir, "len");
+	for (size_t i = 0; i < 4; i++) {
+		id_seq(&x, (uint8_t)(i * 16), lens[i]);
+		T_EQ_INT(fpal_bindings_add(dir, "len", &x), FPAL_OK);
+	}
+	T_EQ_INT(fpal_bindings_load(dir, "len", ids, FPAL_MAX_TEMPLATES, &n),
+		 FPAL_OK);
+	T_EQ_INT(n, 4);
+	for (size_t i = 0; i < n; i++) {
+		T_EQ_INT(fpal_id_len(&ids[i]), lens[i]);
+		T_CHECK(fpal_bindings_contains(dir, "len", &ids[i]));
+	}
+	/* a prefix of a bound id is not bound */
+	id_seq(&x, 0, 19);
+	T_CHECK(!fpal_bindings_contains(dir, "len", &x));
+}
+
+static void test_bad_lines_are_skipped_not_split(void) {
+	struct fpal_template_id ids[FPAL_MAX_TEMPLATES];
+	char text[1200], good[65];
+	size_t n = 9;
+
+	memset(good, 'a', 64);
+	good[64] = '\0';
+	/* odd length, 257 digits (a fragment of it would parse), one good
+	 * old-style line, one empty id */
+	memset(text, 'b', 257);
+	snprintf(text + 257, sizeof(text) - 257, "\n%s\n%.63s\n\n%s\n", good,
+		 good, "cc");
+	put_file("bad", text);
+	T_EQ_INT(fpal_bindings_load(dir, "bad", ids, FPAL_MAX_TEMPLATES, &n),
+		 FPAL_OK);
+	T_EQ_INT(n, 2); /* the 64-char line and "cc" */
+	T_EQ_INT(fpal_id_len(&ids[0]), 32);
+	T_EQ_INT(fpal_id_len(&ids[1]), 1);
+}
+
 static void test_clear(void) {
 	struct fpal_template_id a;
 
@@ -113,6 +168,8 @@ int main(void) {
 	T_RUN(test_valid_user);
 	T_RUN(test_missing_file_is_empty);
 	T_RUN(test_add_load_roundtrip);
+	T_RUN(test_ids_of_any_length);
+	T_RUN(test_bad_lines_are_skipped_not_split);
 	T_RUN(test_clear);
 	T_RUN(test_rejects_symlink_and_loose_mode);
 	T_RUN(test_rejects_bad_user);

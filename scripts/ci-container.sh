@@ -6,8 +6,8 @@
 #
 #   scripts/ci-container.sh fedora|debian|ubuntu|arch|all
 #
-# Uses podman, or docker if there is no podman. The working tree is mounted
-# read-only and copied inside; nothing on the host is changed.
+# Uses podman, or docker if there is no podman. The working tree is given
+# as a tarball snapshot and unpacked inside; nothing on the host is changed.
 set -eu
 
 root=$(cd "$(dirname "$0")/.." && pwd)
@@ -16,7 +16,7 @@ engine=${CONTAINER_ENGINE:-$(command -v podman || command -v docker || true)}
 
 image_for() {
 	case $1 in
-	fedora) echo registry.fedoraproject.org/fedora:latest ;;
+	fedora) echo docker.io/library/fedora:latest ;;
 	debian) echo docker.io/library/debian:stable ;;
 	ubuntu) echo docker.io/library/ubuntu:24.04 ;;
 	arch) echo docker.io/library/archlinux:latest ;;
@@ -33,15 +33,22 @@ deps_for() {
 	esac
 }
 
+# A snapshot of the working tree (tracked and new files, not ignored ones), so
+# edits made while the containers run do not change what is being tested.
+snapshot() {
+	snap=$(mktemp)
+	(cd "$root" && git ls-files -z -co --exclude-standard | tar --null -T - -cf "$snap")
+}
+
 run_one() {
 	distro=$1
 	image=$(image_for "$distro") || { echo "ci-container: unknown distro '$distro'" >&2; exit 2; }
 	echo "=== $distro ($image)"
 	"$engine" run --rm --security-opt label=disable \
-		-v "$root:/src:ro" "$image" sh -eu -c "
+		-v "$snap:/src.tar:ro" "$image" sh -eu -c "
 		$(deps_for "$distro")
 		git config --global --add safe.directory '*'
-		cp -r /src /work && cd /work && rm -rf build build-readonly
+		mkdir /work && tar -xf /src.tar -C /work && cd /work
 		gcc --version | head -n 1
 		make
 		make test
@@ -51,6 +58,9 @@ run_one() {
 		echo '--- $distro: build and tests passed'
 	"
 }
+
+snapshot
+trap 'rm -f "$snap"' EXIT
 
 case ${1:-} in
 all)

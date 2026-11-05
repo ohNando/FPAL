@@ -40,9 +40,14 @@ enum fpal_err {
 #define FPAL_CAP_IMAGE (1u << 1)  /* sensor delivers raw images */
 #define FPAL_CAP_ENROLL (1u << 2) /* driver supports enrolling new prints */
 
-/* Opaque identifier of a template stored on the sensor. */
+/*
+ * Opaque identifier of a template stored on the sensor. Its length depends on
+ * the sensor family. Use the helpers in fpal/id.h; do not read or compare the
+ * bytes directly.
+ */
 struct fpal_template_id {
-	uint8_t bytes[FPAL_TEMPLATE_ID_LEN];
+	uint8_t len; /* 1..FPAL_ID_MAX */
+	uint8_t data[FPAL_ID_MAX];
 };
 
 /* One entry of a driver's USB id table; terminated by vid == 0. */

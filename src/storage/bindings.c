@@ -93,7 +93,16 @@ int fpal_bindings_load(const char *dir, const char *user,
 
 	while (fgets(line, sizeof(line), f)) {
 		struct fpal_template_id id;
+		bool too_long = !strchr(line, '\n') &&
+				strlen(line) == sizeof(line) - 1;
 
+		if (too_long) {
+			int c; /* drain the rest: a fragment is not a line */
+
+			while ((c = fgetc(f)) != EOF && c != '\n')
+				;
+			continue;
+		}
 		if (line[0] == '#' || line[0] == '\n')
 			continue;
 		if (!parse_line(line, &id))
