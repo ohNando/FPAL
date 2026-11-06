@@ -4,6 +4,13 @@ All notable changes to FPAL. The format follows [Keep a Changelog](https://keepa
 
 ## [Unreleased]
 
+### Added
+- `fpal report` also lists fingerprint sensors that ACPI describes instead of USB (Goodix `GXFP` ids such as the GXFP5130 of some Huawei MateBook laptops, Elan `ELAN7001` and `ELAN70A1`): hardware id, ACPI path, state, the kernel driver bound to it and whether the device node (`/dev/gxfp`) exists. It says that FPAL does not drive them yet.
+- `docs/unsupported-sensors.md` (which kinds of sensor FPAL drives, which not yet, and the step-by-step plan) and `docs/protocol-gxfp5130.md` (draft notes on the GXFP5130 from community projects, not verified on hardware).
+
+### Changed
+- FPAL no longer calls image sensors and sensors outside USB out of scope; they are planned, step by step. Docs, the issue form and the `fpal report` text say so.
+
 ## [0.7.1] - 2026-11-05
 
 Documentation only; the program is the same as 0.7.0.
