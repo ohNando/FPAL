@@ -4,11 +4,13 @@
 #include <ctype.h>
 #include <dirent.h>
 #include <stdlib.h>
+#include <unistd.h>
 #include <string.h>
 #include <sys/utsname.h>
 
 #include "core/driver.h"
 #include "fpal/fpal.h"
+#include "known_acpi.h"
 #include "known_sensors.h"
 
 static bool read_attr(const char *dir, const char *name, char *buf, size_t cap) {
@@ -197,11 +199,126 @@ int fpal_report_scan(const char *sysfs_dir, bool all, struct fpal_report_dev *ou
 	return FPAL_OK;
 }
 
+static const struct fpal_known_acpi *known_acpi_for(const char *hid) {
+	for (size_t i = 0; i < sizeof(fpal_known_acpi) / sizeof(fpal_known_acpi[0]); i++)
+		if (!strncmp(hid, fpal_known_acpi[i].prefix, strlen(fpal_known_acpi[i].prefix)))
+			return &fpal_known_acpi[i];
+	return NULL;
+}
+
+/* The kernel driver bound to an ACPI device, from the "driver" symlink. */
+static void bound_driver(const char *dir, char *out, size_t cap) {
+	static const char *const places[] = { "physical_node/driver", "driver" };
+	char link[512], target[256];
+
+	out[0] = '\0';
+	for (size_t i = 0; i < sizeof(places) / sizeof(places[0]); i++) {
+		ssize_t len;
+		const char *slash;
+
+		if ((size_t)snprintf(link, sizeof(link), "%s/%s", dir, places[i]) >=
+		    sizeof(link))
+			continue;
+		len = readlink(link, target, sizeof(target) - 1);
+		if (len <= 0)
+			continue;
+		target[len] = '\0';
+		slash = strrchr(target, '/');
+		snprintf(out, cap, "%.*s", (int)cap - 1, slash ? slash + 1 : target);
+		fpal_text_sanitize(out);
+		return;
+	}
+}
+
+int fpal_report_scan_acpi(const char *acpi_dir, const char *root,
+			  struct fpal_report_acpi *out, size_t cap, size_t *n) {
+	DIR *d;
+	struct dirent *ent;
+	size_t found = 0;
+
+	if (!acpi_dir || !root || !out || !n)
+		return FPAL_E_INVAL;
+	*n = 0;
+	d = opendir(acpi_dir);
+	if (!d)
+		return FPAL_OK; /* no ACPI on this machine: nothing to report */
+
+	while ((ent = readdir(d)) && found < cap) {
+		struct fpal_report_acpi *a = &out[found];
+		const struct fpal_known_acpi *k;
+		char dir[512], path[512];
+		const char *colon;
+
+		if (ent->d_name[0] == '.' || strlen(ent->d_name) >= sizeof(a->name))
+			continue;
+		if ((size_t)snprintf(dir, sizeof(dir), "%s/%s", acpi_dir, ent->d_name) >=
+		    sizeof(dir))
+			continue;
+		memset(a, 0, sizeof(*a));
+		if (!read_attr(dir, "hid", a->hid, sizeof(a->hid)) || !a->hid[0]) {
+			/* fall back to the part of the name before the instance */
+			colon = strchr(ent->d_name, ':');
+			snprintf(a->hid, sizeof(a->hid), "%.*s",
+				 (int)(colon ? (size_t)(colon - ent->d_name) :
+					       strlen(ent->d_name)),
+				 ent->d_name);
+		}
+		k = known_acpi_for(a->hid);
+		if (!k)
+			continue;
+
+		snprintf(a->name, sizeof(a->name), "%.*s", (int)sizeof(a->name) - 1,
+			 ent->d_name);
+		a->status = (int)attr_num(dir, "status", 10, 0xffff);
+		if (a->status == 0 && !read_attr(dir, "status", path, sizeof(path)))
+			a->status = -1;
+		read_attr(dir, "path", a->path, sizeof(a->path));
+		fpal_text_sanitize(a->hid);
+		fpal_text_sanitize(a->path);
+		bound_driver(dir, a->driver, sizeof(a->driver));
+		a->vendor = k->vendor;
+		a->what = k->what;
+		a->devnode = k->devnode;
+		if (k->devnode) {
+			if ((size_t)snprintf(path, sizeof(path), "%s%s", root, k->devnode) <
+			    sizeof(path))
+				a->devnode_present = access(path, F_OK) == 0;
+		}
+		found++;
+	}
+	closedir(d);
+	*n = found;
+	return FPAL_OK;
+}
+
 static const char *ep_dir(uint8_t addr) {
 	return (addr & 0x80) ? "IN " : "OUT";
 }
 
+static void print_acpi(FILE *f, const struct fpal_report_acpi *a) {
+	fprintf(f, "\nACPI device %s: %s, %s\n", a->name, a->vendor, a->what);
+	fprintf(f, "  hardware id: %s\n", a->hid);
+	if (a->path[0])
+		fprintf(f, "  path:        %s\n", a->path);
+	if (a->status < 0)
+		fputs("  state:       unknown\n", f);
+	else if ((a->status & 3) == 3)
+		fputs("  state:       present and enabled\n", f);
+	else
+		fprintf(f, "  state:       not present or disabled (status %d)\n", a->status);
+	if (a->driver[0])
+		fprintf(f, "  kernel:      driver \"%s\" is bound\n", a->driver);
+	else
+		fputs("  kernel:      no kernel driver is bound\n", f);
+	if (a->devnode)
+		fprintf(f, "  device node: %s is %s\n", a->devnode,
+			a->devnode_present ? "present" : "missing");
+	fputs("  fpal:        not supported yet: this is not a USB device "
+	      "(see docs/unsupported-sensors.md)\n", f);
+}
+
 void fpal_report_print(FILE *f, const struct fpal_report_dev *devs, size_t n,
+		       const struct fpal_report_acpi *acpi, size_t n_acpi,
 		       bool markdown) {
 	struct utsname un;
 
@@ -215,6 +332,8 @@ void fpal_report_print(FILE *f, const struct fpal_report_dev *devs, size_t n,
 
 	if (n == 0)
 		fputs("\nno USB fingerprint sensor candidates found\n", f);
+	if (n == 0 && n_acpi == 0)
+		fputs("no ACPI fingerprint sensor found either\n", f);
 	for (size_t i = 0; i < n; i++) {
 		const struct fpal_report_dev *d = &devs[i];
 
@@ -233,7 +352,8 @@ void fpal_report_print(FILE *f, const struct fpal_report_dev *devs, size_t n,
 			fputs("  fpal:      not supported yet; a Match-on-Chip driver is "
 			      "possible (see docs/adding-a-sensor.md)\n", f);
 		else if (d->libfprint)
-			fputs("  fpal:      not supported; image sensors are out of scope\n", f);
+			fputs("  fpal:      not supported yet; an image sensor needs matching "
+			      "on the host (see docs/unsupported-sensors.md)\n", f);
 		else
 			fputs("  fpal:      not supported\n", f);
 		fprintf(f, "  usb:       bcdDevice %04x, class %02x, ", d->bcd, d->dev_class);
@@ -251,14 +371,17 @@ void fpal_report_print(FILE *f, const struct fpal_report_dev *devs, size_t n,
 					ifc->ep[e].type, ifc->ep[e].max_packet);
 		}
 	}
+	for (size_t i = 0; i < n_acpi; i++)
+		print_acpi(f, &acpi[i]);
 	if (markdown)
 		fputs("```\n", f);
 }
 
 int fpal_cmd_report(int argc, char **argv) {
 	struct fpal_report_dev devs[FPAL_REPORT_DEVS];
+	struct fpal_report_acpi acpi[FPAL_REPORT_ACPI];
 	bool markdown = false, all = false;
-	size_t n = 0;
+	size_t n = 0, n_acpi = 0;
 	int err;
 
 	for (int i = 1; i < argc; i++) {
@@ -278,6 +401,13 @@ int fpal_cmd_report(int argc, char **argv) {
 			fpal_strerror(err));
 		return 1;
 	}
-	fpal_report_print(stdout, devs, n, markdown);
+	err = fpal_report_scan_acpi(FPAL_SYSFS_ACPI_DEVICES, "", acpi, FPAL_REPORT_ACPI,
+				    &n_acpi);
+	if (err) {
+		fprintf(stderr, "fpal: cannot read %s: %s\n", FPAL_SYSFS_ACPI_DEVICES,
+			fpal_strerror(err));
+		return 1;
+	}
+	fpal_report_print(stdout, devs, n, acpi, n_acpi, markdown);
 	return 0;
 }

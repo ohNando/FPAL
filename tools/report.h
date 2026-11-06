@@ -43,6 +43,21 @@ struct fpal_report_dev {
 	const char *fpal;      /* our driver, or NULL */
 };
 
+#define FPAL_REPORT_ACPI 8u
+
+/* A fingerprint sensor that ACPI describes (it is not on USB). */
+struct fpal_report_acpi {
+	char name[32];	   /* sysfs name, e.g. "GXFP5130:00" */
+	char hid[32];	   /* ACPI hardware id, e.g. "GXFP5130" */
+	char path[128];	   /* ACPI namespace path */
+	int status;	   /* ACPI _STA bits (1 present, 2 enabled), -1 unknown */
+	char driver[32];   /* kernel driver bound to it, "" if none */
+	const char *vendor;  /* from tools/known_acpi.h */
+	const char *what;
+	const char *devnode; /* device node a driver would use, or NULL */
+	bool devnode_present;
+};
+
 /*
  * Walk @sysfs_dir (normally /sys/bus/usb/devices). Without @all only
  * sensors libfprint knows, devices called "fingerprint" or similar and
@@ -52,8 +67,17 @@ struct fpal_report_dev {
 int fpal_report_scan(const char *sysfs_dir, bool all, struct fpal_report_dev *out,
 		     size_t cap, size_t *n);
 
+/*
+ * Walk @acpi_dir (normally /sys/bus/acpi/devices) for sensors that ACPI
+ * describes. @root is put in front of device node paths ("" on a real
+ * system). A missing @acpi_dir (no ACPI) is not an error: *@n is 0.
+ */
+int fpal_report_scan_acpi(const char *acpi_dir, const char *root,
+			  struct fpal_report_acpi *out, size_t cap, size_t *n);
+
 /* Write the report. @markdown fences it so it survives pasting into GitHub. */
 void fpal_report_print(FILE *f, const struct fpal_report_dev *devs, size_t n,
+		       const struct fpal_report_acpi *acpi, size_t n_acpi,
 		       bool markdown);
 
 int fpal_cmd_report(int argc, char **argv);

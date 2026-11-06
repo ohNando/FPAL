@@ -64,6 +64,11 @@
 #define FPAL_SYSFS_USB_DEVICES "/sys/bus/usb/devices"
 #endif
 
+/* ACPI devices; "fpal report" looks here for sensors that are not on USB. */
+#ifndef FPAL_SYSFS_ACPI_DEVICES
+#define FPAL_SYSFS_ACPI_DEVICES "/sys/bus/acpi/devices"
+#endif
+
 #ifndef FPAL_DEVFS_USB_FMT
 #define FPAL_DEVFS_USB_FMT "/dev/bus/usb/%03u/%03u"
 #endif
