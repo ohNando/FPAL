@@ -171,6 +171,8 @@ install: $(BUILD)/fpal $(PAM_MOD) install-fpald
 	install -D -m 0644 docs/protocol-egis-moc.md $(DESTDIR)$(DOCDIR)/protocol-egis-moc.md
 	install -D -m 0644 docs/adding-a-sensor.md $(DESTDIR)$(DOCDIR)/adding-a-sensor.md
 	install -D -m 0644 docs/architecture.md $(DESTDIR)$(DOCDIR)/architecture.md
+	install -D -m 0644 docs/unsupported-sensors.md $(DESTDIR)$(DOCDIR)/unsupported-sensors.md
+	install -D -m 0644 docs/protocol-gxfp5130.md $(DESTDIR)$(DOCDIR)/protocol-gxfp5130.md
 	for p in fpal pam_fpal fpald; do \
 		install -d $(DESTDIR)$(MANDIR)/man8; \
 		sed 's|@VERSION@|$(VERSION)|' man/$$p.8.in > $(DESTDIR)$(MANDIR)/man8/$$p.8; \
