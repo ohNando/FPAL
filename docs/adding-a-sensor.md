@@ -1,6 +1,6 @@
 # Adding a sensor
 
-fpal supports **Match-on-Chip** sensors over USB: the fingerprints are stored and matched on the sensor itself and the computer only learns the id of the template that matched. Image sensors (the computer does the matching) are out of scope.
+fpal supports **Match-on-Chip** sensors over USB today: the fingerprints are stored and matched on the sensor itself and the computer only learns the id of the template that matched. Sensors on other buses (ACPI, SPI, ...) and sensors that hand an image to the computer are planned, step by step, but are **not supported yet**: see [unsupported-sensors.md](unsupported-sensors.md) for where each one stands and what is needed.
 
 This is the whole job, in order. The worked example is the made-up sensor in [`tests/drivers/fake_moc.c`](../tests/drivers/fake_moc.c): it is written against the same API, runs in every `make test` and cannot go out of date. Read it next to this page. The real driver, [`src/drivers/egis_moc/`](../src/drivers/egis_moc/), shows the same shape with a real protocol.
 

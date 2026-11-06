@@ -139,11 +139,13 @@ which is installed next to
 a real run needs root.
 .TP
 .BR report " [" \-\-markdown "] [" \-\-all ]
-Describe the USB fingerprint sensor for a bug report or a request for a new
-sensor: its id, interfaces and endpoints, what libfprint calls the chip, and
-whether
+Describe the fingerprint sensor for a bug report or a request for a new
+sensor: for a USB sensor its id, interfaces and endpoints, what libfprint calls
+the chip, and whether
 .B fpal
-supports it. It reads
+supports it; for a sensor that ACPI describes (not on USB, for example the
+Goodix GXFP5130 of some laptops) its hardware id, ACPI path, state, bound
+kernel driver and device node. It reads
 .I /sys
 only, needs no root, sends nothing to the device and leaves out the serial
 number.

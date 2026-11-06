@@ -85,7 +85,7 @@ FPAL reads the fingers you enrolled in Windows Hello from the chip and binds the
 | ✅ | Naming fingers, and `fpal manage`: pick, rename, delete and add fingers with the arrow keys |
 | ✅ | `fpal setup` for Fedora / RHEL (authselect) and Debian / Ubuntu (pam-auth-update); other systems get instructions |
 | ✅ | `fpal report`: describe an unknown USB sensor for a bug report; a documented way to add a driver |
-| 🔜 | More sensors |
+| 🔜 | More sensors, step by step: other buses (ACPI, SPI) and sensors that give the computer an image; see [docs/unsupported-sensors.md](docs/unsupported-sensors.md) |
 
 **Tested hardware:** EgisTec / LighTuning `1c7a:0587` (ASUS Zenbook 14 UX3402VA), firmware `9050.6.4.67`, Fedora 44, GNOME / Wayland.
 The driver also recognises the other members of the family (`0582`–`0588`, `05a1`), but those are not verified on real hardware. If you own another sensor, trying it and sharing the result would help a lot (`fpal report --markdown` and the "New sensor report" issue form).
@@ -110,6 +110,7 @@ See [SECURITY.md](SECURITY.md) for the threat model and how to report a problem.
 | [docs/protocol-egis-moc.md](docs/protocol-egis-moc.md) | The sensor's USB protocol, verified on real hardware |
 | [docs/architecture.md](docs/architecture.md) | How the pieces fit and where the safety rules are enforced |
 | [docs/adding-a-sensor.md](docs/adding-a-sensor.md) | How to write a driver for another sensor |
+| [docs/unsupported-sensors.md](docs/unsupported-sensors.md) | Sensors FPAL does not drive yet, why, and the plan |
 
 ## License
 

@@ -6,9 +6,10 @@ body:
   - type: markdown
     attributes:
       value: |
-        Thanks for helping. fpal supports Match-on-Chip sensors (the fingerprints
-        are stored and matched on the sensor itself). Image sensors, where the
-        computer does the matching, are out of scope.
+        Thanks for helping. fpal supports Match-on-Chip sensors on USB today (the
+        fingerprints are stored and matched on the sensor itself). Sensors on
+        other buses and sensors that give the computer an image are planned but
+        not supported yet; a report still helps to see which ones matter.
 
         The report below is read from `/sys`, needs no root and sends nothing to
         the sensor. It leaves out the serial number.
