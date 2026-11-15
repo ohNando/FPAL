@@ -14,7 +14,9 @@
 set -u
 
 VERSION=1
-out="fpal-sensor-info-$(date +%Y%m%d-%H%M%S).txt"
+stamp=$(date +%Y%m%d-%H%M%S)
+out="fpal-sensor-info-$stamp.txt"
+tables_out="fpal-acpi-tables-$stamp.tar.gz"
 root=0
 [ "$(id -u)" = 0 ] && root=1
 
@@ -50,6 +52,39 @@ device_block() {
 		{ print; n += gsub(/\{/, "{"); n -= gsub(/\}/, "}") }
 		NR > s && n <= 0 && seen { exit }
 		/\{/ { seen = 1 }' "$file"
+}
+
+# Without acpica-tools: the bytes around each "GXFP" in the DSDT and SSDT
+# tables, as hex, and a copy of those two kinds of table next to the report.
+# Only DSDT and SSDT are read: other tables such as MSDM hold the Windows
+# licence key and are never touched.
+raw_acpi() {
+	echo "(acpica-tools not installed: raw bytes instead of decoded text)"
+	needs_root || return 0
+	tables=${FPAL_ACPI_TABLES:-/sys/firmware/acpi/tables} # tests point it elsewhere
+	here=$PWD
+	tmp=$(mktemp -d) || return 0
+	hits=0
+	for t in "$tables"/DSDT "$tables"/SSDT*; do
+		[ -r "$t" ] || continue
+		cat "$t" >"$tmp/${t##*/}"
+		for off in $(grep -obUa "GXFP" "$tmp/${t##*/}" | cut -d: -f1 | head -n 4); do
+			hits=$((hits + 1))
+			from=$((off > 64 ? off - 64 : 0))
+			echo "-- ${t##*/}, \"GXFP\" at byte $off; bytes $from..$((from + 1535)):"
+			dd if="$tmp/${t##*/}" bs=1 skip="$from" count=1536 2>/dev/null |
+				od -An -tx1 -v
+		done
+	done
+	[ "$hits" -gt 0 ] || echo "(no GXFP in the DSDT or SSDT tables)"
+	if [ -e "$tmp/DSDT" ]; then
+		(cd "$tmp" && tar -czf "$here/$tables_out" DSDT SSDT* 2>/dev/null)
+		[ -n "${SUDO_USER:-}" ] && chown "$SUDO_USER" "$tables_out" 2>/dev/null
+		echo
+		echo "Also written: $tables_out (DSDT and SSDT tables only, no licence key)."
+		echo "Send that file too if you can; it lets the developer decode everything."
+	fi
+	rm -rf "$tmp"
 }
 
 collect() {
@@ -147,8 +182,7 @@ collect() {
 
 	section "acpi description of the sensor"
 	if ! have acpidump || ! have iasl; then
-		echo "(skipped: install the acpica-tools package and run again:"
-		echo "   sudo apt install acpica-tools   or   sudo dnf install acpica-tools)"
+		raw_acpi
 	elif needs_root; then
 		tmp=$(mktemp -d) || return
 		(
@@ -186,4 +220,5 @@ if [ -n "${SUDO_USER:-}" ]; then
 	chown "$SUDO_USER" "$out" 2>/dev/null
 fi
 echo "written: $PWD/$out"
+[ -e "$tables_out" ] && echo "written: $PWD/$tables_out"
 echo "Please read it, then send it to the FPAL developer (paste or attach)."
