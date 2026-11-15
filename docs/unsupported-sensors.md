@@ -29,7 +29,7 @@ How FPAL gets there, in order. Each step is only started after the one before it
 5. **Is it Match-on-Chip?** Ask the sensor, read-only, whether it holds templates. If yes it becomes a normal FPAL driver. If no, step 6.
 6. **Match on the computer.** Template store and a matcher written for FPAL, with a measured false-accept rate before it is ever used for login.
 
-If you own such a laptop and want to help: run [`scripts/sensor-info.sh`](../scripts/sensor-info.sh) with `sudo` (it only reads, needs no FPAL build, and leaves out serial numbers and keys; install `acpica-tools` first for the ACPI part), read the file it writes, and attach it to a "New sensor report" issue. Say whether Windows is installed next to Linux.
+If you own such a laptop and want to help: run [`scripts/sensor-info.sh`](../scripts/sensor-info.sh) with `sudo` (it only reads, needs no FPAL build, and leaves out serial numbers and keys; with `acpica-tools` installed it also decodes the ACPI description; without it, it saves the raw DSDT and SSDT tables, never the MSDM table that holds the Windows licence key), read the file it writes, and attach it to a "New sensor report" issue. Say whether Windows is installed next to Linux.
 
 ## Elan SPI sensors
 
